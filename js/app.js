@@ -244,6 +244,16 @@ window.animarReparto = async function() {
     renderJuego(); // Render final para asegurar estado correcto y listeners
 };
 
+window.shakeCards = function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(c => {
+        c.classList.remove('shake');
+        void c.offsetWidth; // Trigger reflow
+        c.classList.add('shake');
+        setTimeout(() => c.classList.remove('shake'), 800);
+    });
+};
+
 function renderJuego() {
     if (window.isAnimatingDeal) return;
     const oppHandEl = document.getElementById('opponent-hand');
@@ -256,10 +266,6 @@ function renderJuego() {
     if(plyHandEl) plyHandEl.innerHTML = '';
     game.manoJugador.forEach((c, index) => {
         const cardDOM = crearCartaDOM(c, false);
-        if (game.manoJugador.length === 3 && !game.mesa.jugador && !game.mesa.oponente) {
-            cardDOM.classList.add('animate-deal');
-            cardDOM.style.animationDelay = `${index * 0.15}s`;
-        }
         cardDOM.addEventListener('click', () => jugarUI(index));
         if(plyHandEl) plyHandEl.appendChild(cardDOM);
     });
@@ -524,6 +530,7 @@ async function jugarBot() {
             game.envidoCantado = true;
             const quiereEnv = await window.UI.confirm(`🤖 IA: ¡Toco Envido! (La IA te tocó la mesa)<br><br>Tus puntos: ${game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos} pts<br><br>¿Te le plantás?`, "Desafío de IA");
             if (quiereEnv) {
+                window.shakeCards();
                 await window.UI.alert(`🗣️ Tú: ¡QUIERO!<br>La máquina muestra: ${susPtos} puntos.`);
                 const yoGano = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos > susPtos || (game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos === susPtos && game.manoDelPartido === 'jugador');
                 if (!yoGano) {
@@ -544,6 +551,7 @@ async function jugarBot() {
     } else if (game.apuestaTruco.estado === 'nada' && proba > 0.9) {
         const quiereT = await window.UI.confirm("🤖 IA: ¡TRUCO! (Te apura en la primera)<br><br>¿Le dás el Quiero?", "¡Truco de la Máquina!");
         if (quiereT) {
+            window.shakeCards();
             await window.UI.alert("🗣️ Tú: ¡QUIERO vale!");
             game.apuestaTruco.valor = 2;
             game.apuestaTruco.estado = 'truco';
@@ -662,6 +670,7 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: No quiero.`);
         game.puntosPartido.jugador += 1; // Solo se lleva 1 si no se quiere el primero
     } else {
+        window.shakeCards();
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡QUIERO con ${misPtos}!`);
         if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
             await window.UI.alert(`Tus ${tusPtos} le ganaron a sus ${misPtos}.<br>¡Cobrás ${ptsToque} Pts!`);
@@ -699,6 +708,7 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
         
         const contraFlor = await window.UI.confirm(`🗣️ Tú: ¡Flor!<br>🤖 Rival: ¡Con Flor me achico! (También tiene Flor).<br><br>¿Te le animás a gritarle CONTRA FLOR AL RESTO?`, "Choque de Flores");
         if (contraFlor) {
+            window.shakeCards();
             await window.UI.alert(`🗣️ Tú: ¡CONTRA FLOR AL RESTO, che!<br>🤖 Rival: ...Quiero vale.`);
             let lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
             let premio = game.config.limitePuntos - lider; 
@@ -757,6 +767,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
     const aceptaIA = Math.random() > 0.4; 
     
     if (aceptaIA) {
+        window.shakeCards();
         await window.UI.alert(`🗣️ Tú: ¡Canto ${canto}!<br>🤖 Rival: ¡QUIERO VALE!`);
         game.apuestaTruco.valor = sigValor;
         game.apuestaTruco.estado = sigNivel;
