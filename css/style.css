@@ -31,6 +31,11 @@ body, html {
     cursor: default;
 }
 
+.play-area {
+    position: relative;
+    z-index: 10004;
+}
+
 /* Mate Flotante */
 .mate-container {
     position: absolute;
@@ -138,7 +143,9 @@ body, html {
 .deck-area {
     display: flex;
     align-items: center;
-    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Movimiento suave */
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    z-index: 10003; 
+    position: relative;
 }
 
 /* El mazo a la derecha del Jugador (Abajo Derecha) */
@@ -199,6 +206,11 @@ body, html {
     gap: 15px;
     padding: 30px;
     perspective: 1000px;
+}
+
+.player-hand {
+    z-index: 10005;
+    position: relative;
 }
 
 .player-hand .card {
@@ -433,6 +445,7 @@ body, html {
     pointer-events: none;
     transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     transform: translateX(-50%) translateY(-20px) scale(0.9) !important;
+    z-index: 10002;
 }
 #mini-marcador.show-score {
     opacity: 1;
@@ -512,7 +525,7 @@ body, html {
         width: 100vw;
         justify-content: center;
         gap: 5px !important;
-        z-index: 100;
+        z-index: 10005 !important;
         margin: 0;
     }
 
@@ -734,4 +747,3 @@ body, html {
     background: var(--gold);
     border-radius: 10px;
 }
-$content

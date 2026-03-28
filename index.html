@@ -168,7 +168,7 @@
         </div>
 
         <!-- Mazo y Muestra (Izquierda) -->
-        <div class="mazo-container">
+        <div class="mazo-container" style="z-index: 10003; position: relative;">
             <div id="carta-muestra" class="carta carta-muestra">
                 <span class="numero"></span><div class="palo-symbol"></div>
             </div>
@@ -234,7 +234,7 @@
     
     <!-- Modal Personalizado (Reemplazo de alert/confirm/prompt) -->
     <div id="overlay-custom" style="display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10000; backdrop-filter: blur(8px);"></div>
-    <div id="modal-custom" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; min-width: 260px; max-width: 90%; text-align: center; border: 1px solid var(--gold);">
+    <div id="modal-custom" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10010; min-width: 260px; max-width: 90%; text-align: center; border: 1px solid var(--gold);">
         <h2 id="modal-title" style="margin-bottom: 10px;">Atención</h2>
         <p id="modal-message" style="margin-bottom: 20px; font-size: 1.1rem; line-height: 1.5; color: #fff;"></p>
         <div id="modal-buttons" style="display: flex; flex-direction: column; gap: 10px;">
