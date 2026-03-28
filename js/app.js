@@ -492,6 +492,18 @@ async function jugarBot() {
     if (window.modoJuego === 'multiplayer') return;
     if (game.rondaTerminada || game.manoOponente.length === 0) return;
     
+    // IA con "Personalidad": Retardo de pensamiento e indicador visual
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.innerText = "Rival está pensando...";
+        indicator.style.display = 'block';
+    }
+    
+    // Espera aleatoria entre 1 y 2.5 segundos para simular decisión humana
+    await new Promise(r => setTimeout(r, 800 + Math.random() * 1500));
+    
+    if (indicator) indicator.style.display = 'none';
+
     const proba = Math.random();
     const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
     const objJG = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
@@ -612,6 +624,8 @@ async function verificarResolucionMesa() {
         } else {
             if (game.turno === 'oponente' && window.modoJuego === 'singleplayer') {
                 setTimeout(async () => { await jugarBot(); }, 400);
+            } else if (game.turno === 'jugador') {
+                window.vibrateAction(100); // Vibrar al inicio del turno del jugador
             }
         }
     }
@@ -913,16 +927,33 @@ window.guardarConfig = function() {
     game.config.nombreOponente = document.getElementById('config-name-rival').value.trim() || "RIVAL";
     game.config.limitePuntos = parseInt(document.getElementById('config-limite').value) || 30;
     
+    // Config de Sonido y Vibración
+    if (window.audio) {
+        window.audio.muted = !document.getElementById('config-sound').checked;
+    }
+    game.config.vibration = document.getElementById('config-vibrate').checked;
+
     document.getElementById('modal-config').style.display = 'none';
     document.getElementById('overlay-custom').style.display = 'none';
     
     renderJuego();
 };
 
+window.vibrateAction = function(ms = 50) {
+    if (game.config.vibration && navigator.vibrate) {
+        navigator.vibrate(ms);
+    }
+};
+
 window.abrirConfig = function() {
     document.getElementById('config-name-yo').value = game.config.nombreJugador;
     document.getElementById('config-name-rival').value = game.config.nombreOponente;
     document.getElementById('config-limite').value = game.config.limitePuntos;
+    
+    if (window.audio) {
+        document.getElementById('config-sound').checked = !window.audio.muted;
+    }
+    document.getElementById('config-vibrate').checked = !!game.config.vibration;
 
     document.getElementById('modal-config').style.display = 'block';
     document.getElementById('overlay-custom').style.display = 'block';

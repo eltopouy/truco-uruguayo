@@ -20,13 +20,15 @@ class SoundManager {
             'mazo': null
         };
 
-        // Volumen por defecto
+        // Volumen por defecto y Estado
+        this.muted = false;
         Object.values(this.sounds).forEach(s => {
             if (s) s.volume = 0.5;
         });
     }
 
     play(name) {
+        if (this.muted) return;
         if (this.sounds[name]) {
             // Reiniciar si ya estaba sonando
             this.sounds[name].currentTime = 0;
