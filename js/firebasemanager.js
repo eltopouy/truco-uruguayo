@@ -164,6 +164,7 @@ window.crearSalaFirebase = async function(isPublica = false) {
                 }
                 renderJuego();
                 logJugada("🎮 ¡Rival Conectado! Empieza el partido...", "sistema");
+                attachTypingListener(codigoSalaActual, 'invitado');
             }
         });
         
@@ -251,6 +252,8 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
             // Sincronizar solo acciones nuevas
             const initTime = Date.now();
             roomRef.child('acciones_host').orderByChild('ts').startAt(initTime).on('child_added', procesarAccionRed);
+            
+            attachTypingListener(codigoSalaActual, 'creador');
             
             if(isPublica) logJugada("Te conectaste a una partida al azar.", "sistema");
         });
@@ -357,6 +360,15 @@ window.enviarAccionFirebase = function(tipoAccion, payload) {
         sender: miRol,
         ts: Date.now() 
     });
+};
+
+window.finalizarSalaFirebase = function() {
+    if (modoJuego !== 'multiplayer' || !codigoSalaActual) return;
+    db.ref('salas/' + codigoSalaActual).update({
+        estado: 'finalizado',
+        finTs: Date.now()
+    });
+    borrarSesionLocal();
 };
 
 async function procesarAccionRed(snap) {
@@ -831,6 +843,7 @@ window.checkExistingSession = async function() {
                         }
                     });
                     roomRef.child('acciones_in').on('child_added', procesarAccionRed);
+                    attachTypingListener(codigoSalaActual, 'invitado');
                     renderJuego();
                 } else {
                     // Invitado reconecta
@@ -843,6 +856,7 @@ window.checkExistingSession = async function() {
                         if (data) asignarEstadoDesdeRed(data);
                     });
                     roomRef.child('acciones_host').on('child_added', procesarAccionRed);
+                    attachTypingListener(codigoSalaActual, 'creador');
                 }
             } else {
                 borrarSesionLocal();
@@ -870,5 +884,38 @@ document.addEventListener('DOMContentLoaded', () => {
             unirseSalaFirebase(hash);
         }, 500);
     }
+
+    // Listener de Escritura (Typing)
+    const chatInput = document.getElementById('input-chat');
+    if (chatInput) {
+        let typingTimeout = null;
+        chatInput.addEventListener('input', () => {
+            if (window.modoJuego === 'multiplayer' && codigoSalaActual) {
+                db.ref(`salas/${codigoSalaActual}/typing_${miRol}`).set(true);
+                
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    db.ref(`salas/${codigoSalaActual}/typing_${miRol}`).set(false);
+                }, 2000);
+            }
+        });
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                window.enviarChatRed();
+                db.ref(`salas/${codigoSalaActual}/typing_${miRol}`).set(false);
+            }
+        });
+    }
 });
+
+// Listener para el typing del rival
+function attachTypingListener(roomCode, rivalRole) {
+    db.ref(`salas/${roomCode}/typing_${rivalRole}`).on('value', (snap) => {
+        const isTyping = snap.val();
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.style.display = isTyping ? 'block' : 'none';
+        }
+    });
+}
 

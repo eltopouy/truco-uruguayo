@@ -361,6 +361,7 @@ async function verificarLimitesPartido() {
         window.resetTimer();
         
         if (window.modoJuego === 'multiplayer') {
+            window.finalizarSalaFirebase();
             const revancha = await window.UI.confirm("¿Querés pedirle una revancha al rival?", "Revancha");
             if (revancha) {
                 window.esperandoRespuestaRevancha = true; // Flag anti-duplicados por lag
