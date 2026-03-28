@@ -383,7 +383,8 @@ function renderJuego() {
 
     const btnTogglePuntos = document.getElementById('toggle-puntos-btn');
     if (btnTogglePuntos) {
-        btnTogglePuntos.style.display = game.partidoIniciado ? 'block' : 'none';
+        btnTogglePuntos.style.opacity = game.partidoIniciado ? '1' : '0';
+        btnTogglePuntos.style.pointerEvents = game.partidoIniciado ? 'auto' : 'none';
     }
 
     for(let i=1; i<=3; i++) {
