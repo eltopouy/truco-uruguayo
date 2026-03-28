@@ -12,7 +12,9 @@ let lastJugadorPts = 0;
 let lastOponentePts = 0;
 
 let turnTimerInterval = null;
+let autoRepartirInterval = null;
 const TURN_TIME = 25; // 25 Segundos para jugar
+window.isAwaitingStateSync = false; 
 
 window.resetTimer = function() {
     clearInterval(turnTimerInterval);
@@ -309,17 +311,22 @@ function renderJuego() {
 }
 
 async function jugarUI(indexCarta) {
-    if (game.turno !== 'jugador' || game.rondaTerminada) return;
+    if (game.turno !== 'jugador' || game.rondaTerminada || window.isAwaitingStateSync) return;
     
     const c = game.manoJugador[indexCarta];
     const nombre= c.getNombreCriollo(game.paloMuestra, game.piezasActivas);
+    
+    const cartaAprobada = game.jugarCarta('jugador', indexCarta);
+    if (!cartaAprobada) {
+        logJugada("⚠️ No podés jugar esa carta ahora.", "sistema");
+        return;
+    }
+
     logJugada(`🃏 Jugaste ${nombre}`, 'propio');
     window.audio.play('card-play');
     
-    const cartaAprobada = game.jugarCarta('jugador', indexCarta);
-    if (!cartaAprobada) return;
-    
     if (window.modoJuego === 'multiplayer') {
+        window.isAwaitingStateSync = true;
         enviarAccionFirebase('jugar_carta', { index: indexCarta });
         sincronizarEstadoMotor({ timerStartTime: Date.now() });
     }
@@ -519,9 +526,10 @@ async function verificarResolucionMesa() {
 }
 
 document.getElementById('btn-envido').addEventListener('click', async () => {
-    if (game.manoJugador.length !== 3 || game.envidoCantado) return;
+    if (game.manoJugador.length !== 3 || game.envidoCantado || window.isAwaitingStateSync) return;
     
     if (window.modoJuego === 'multiplayer') {
+        window.isAwaitingStateSync = true;
         game.envidoCantado = true;
         window.audio.play('envido');
         enviarAccionFirebase('canto', { tipo: 'envido', pts: game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos });
@@ -606,10 +614,11 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-flor').addEventListener('click', async () => {
-    if (game.manoJugador.length !== 3 || game.envidoCantado) return;
+    if (game.manoJugador.length !== 3 || game.envidoCantado || window.isAwaitingStateSync) return;
     
     // FLOR
     if (window.modoJuego === 'multiplayer') {
+        window.isAwaitingStateSync = true;
         game.envidoCantado = true;
         enviarAccionFirebase('accion', { tipo: 'canta_flor', pts: game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos });
         await window.UI.alert("🗣️ Tú: ¡Flor!<br>(Esperando para ver si el rival cruza otra Flor por red...)");
@@ -655,8 +664,8 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-truco').addEventListener('click', async () => {
-    if (game.apuestaTruco.turnoCantar === 'oponente') {
-        await window.UI.alert("El rival tiene el control ahora. Solo él puede subirle el tono al Truco.");
+    if (game.apuestaTruco.turnoCantar === 'oponente' || window.isAwaitingStateSync) {
+        if (!window.isAwaitingStateSync) await window.UI.alert("El rival tiene el control ahora. Solo él puede subirle el tono al Truco.");
         return;
     }
 
@@ -671,6 +680,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
     else { await window.UI.alert("Ya están en las nubes, no hay más que Vale 4."); return; }
 
     if (window.modoJuego === 'multiplayer') {
+        window.isAwaitingStateSync = true;
         window.audio.play('truco');
         enviarAccionFirebase('canto', { tipo: 'truco', nivel: p.estado, sigValor: sigValor, sigNivel: sigNivel, canto: canto });
         await window.UI.alert(`🗣️ Tú: ¡${canto}!<br>(Esperando respuesta por la red...)`);
@@ -794,10 +804,24 @@ document.getElementById('overlay-reglamento').addEventListener('click', () => {
 window.manejarFinDeRondaUI = async function() {
     if (await verificarLimitesPartido()) return; // Si terminó el partido
     
+    clearInterval(autoRepartirInterval);
+    
     if (window.modoJuego === 'multiplayer') {
         const yoRepartoProxima = (game.manoDelPartido === 'jugador');
         if (yoRepartoProxima) {
-            document.getElementById('btn-repartir').style.display = 'block';
+            const btn = document.getElementById('btn-repartir');
+            btn.style.display = 'block';
+            btn.innerText = "🔄 Repartir (5s)";
+            
+            let count = 5;
+            autoRepartirInterval = setInterval(() => {
+                count--;
+                btn.innerText = `🔄 Repartir (${count}s)`;
+                if (count <= 0) {
+                    clearInterval(autoRepartirInterval);
+                    btn.click();
+                }
+            }, 1000);
         } else {
             document.getElementById('btn-repartir').style.display = 'none';
             if (document.getElementById('modal-custom').style.display !== 'block') {
@@ -838,6 +862,7 @@ window.abandonarSala = async function() {
     const seguro = await window.UI.confirm("¿Estás seguro que querés abandonar el partido y salir a la pantalla principal?", "Cagazo Inminente");
     if (seguro) {
         if (window.modoJuego === 'multiplayer') {
+            if (miRol === 'creador') window.finalizarSalaFirebase();
             enviarAccionFirebase('abandonar_sala');
         }
         location.reload();

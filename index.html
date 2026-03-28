@@ -242,6 +242,14 @@
         </div>
     </div>
     
+    <!-- Overlay de Reconexión (Bulletproof) -->
+    <div id="overlay-reconnecting" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 100000; backdrop-filter: blur(10px); color: white; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+        <div class="loader" style="margin-bottom: 20px;"></div>
+        <h2 style="color: var(--gold); margin-bottom: 10px;">🔌 ¡Ups! Conexión Inestable</h2>
+        <p id="reconnecting-msg" style="max-width: 300px; font-size: 1.1rem; line-height: 1.4;">Esperando a que el rival vuelva al paño...<br><span style="font-size: 0.8rem; color: #888;">Intentando reconexión automática</span></p>
+        <button class="btn-primary" style="margin-top: 30px; background: #c0392b; font-size: 0.9rem;" onclick="location.reload()">Salir al Menú</button>
+    </div>
+    
     <!-- Modal de Configuración -->
     <div id="modal-config" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; min-width: 280px; text-align: left; border: 1px solid #1abc9c;">
         <h2 style="text-align: center; margin-bottom: 20px;">⚙️ Ajustes</h2>

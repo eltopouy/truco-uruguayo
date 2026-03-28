@@ -302,6 +302,9 @@ function asignarEstadoDesdeRed(dataStr) {
     game.piezasActivas = data.piezasActivas || [];
     game.paloMuestra = data.paloMuestra;
     
+    // Unlock interaction as we have the latest server state
+    window.isAwaitingStateSync = false;
+    
     if (data.config) {
         game.config.limitePuntos = data.config.limitePuntos;
     }
@@ -954,6 +957,16 @@ function iniciarHeartbeat(roomCode, myRole, rivalRole) {
         const now = Date.now();
         const diff = now - lastSeen; // Diferencia en ms
         
+        // RECONEXIÓN UI (Bulletproof)
+        const reconnectingOverlay = document.getElementById('overlay-reconnecting');
+        if (reconnectingOverlay) {
+            if (diff > 8000) {
+                reconnectingOverlay.style.display = 'flex';
+            } else {
+                reconnectingOverlay.style.display = 'none';
+            }
+        }
+
         const dot = document.getElementById('ping-dot');
         const text = document.getElementById('ping-text');
         
