@@ -15,11 +15,13 @@ window.UI = {
         this.buttonsContainer.innerHTML = '';
         this.modal.style.display = 'block';
         this.overlay.style.display = 'block';
+        document.body.classList.add('modal-active');
     },
 
     _hide: function() {
         this.modal.style.display = 'none';
         this.overlay.style.display = 'none';
+        document.body.classList.remove('modal-active');
     },
 
     alert: function(msg, title = "Atención") {

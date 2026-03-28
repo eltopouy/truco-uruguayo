@@ -33,7 +33,7 @@ body, html {
 
 .play-area {
     position: relative;
-    z-index: 10004;
+    z-index: 4000;
 }
 
 /* Mate Flotante */
@@ -144,7 +144,7 @@ body, html {
     display: flex;
     align-items: center;
     transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-    z-index: 10003; 
+    z-index: 4000; 
     position: relative;
 }
 
@@ -209,7 +209,7 @@ body, html {
 }
 
 .player-hand {
-    z-index: 10005;
+    z-index: 5000;
     position: relative;
 }
 
@@ -445,7 +445,7 @@ body, html {
     pointer-events: none;
     transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     transform: translateX(-50%) translateY(-20px) scale(0.9) !important;
-    z-index: 10002;
+    z-index: 8000;
 }
 #mini-marcador.show-score {
     opacity: 1;
@@ -525,7 +525,7 @@ body, html {
         width: 100vw;
         justify-content: center;
         gap: 5px !important;
-        z-index: 10005 !important;
+        z-index: 100 !important;
         margin: 0;
     }
 
@@ -581,7 +581,7 @@ body, html {
         border-radius: 0 !important;
         background: rgba(0,0,0,0.8) !important;
         padding: 5px 10px !important;
-        z-index: 2000 !important;
+        z-index: 10000 !important;
         position: fixed !important;
     }
     
@@ -617,6 +617,7 @@ body, html {
         pointer-events: none;
         min-width: unset;
         width: 220px;
+        z-index: 9000;
     }
     
     .ui-panel:not(#actions-panel) h2 {
@@ -746,4 +747,13 @@ body, html {
 #lista-salas-publicas::-webkit-scrollbar-thumb {
     background: var(--gold);
     border-radius: 10px;
+}
+
+/* Lógica de Visibilidad Dinámica para Decisiones */
+.modal-active .player-hand,
+.modal-active .play-area,
+.modal-active .deck-area,
+.modal-active .mazo-container,
+.modal-active #mini-marcador {
+    z-index: 26000 !important;
 }
