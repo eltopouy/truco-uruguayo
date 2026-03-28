@@ -321,15 +321,31 @@ function renderJuego() {
 
     const btnFlor = document.getElementById('btn-flor');
     const btnEnvido = document.getElementById('btn-envido');
+    const btnTruco = document.getElementById('btn-truco');
     
+    // REGLA DE TRUCO: Solo puedes cantar si es tu turno o si la palabra te favorece
+    const esMiTurno = game.turno === 'jugador';
+    const puedeCantarEnvidoFlor = esMiTurno && game.manoJugador.length === 3 && !game.envidoCantado;
+    
+    // Envido y Flor
     if (btnFlor && btnEnvido) {
         if (game.manoJugador.length === 3 && !game.envidoCantado) {
-            if (calc.tieneFlor) {
-                btnFlor.style.display = 'block';
-                btnEnvido.style.display = 'none'; 
+            btnFlor.style.display = calc.tieneFlor ? 'block' : 'none';
+            btnEnvido.style.display = calc.tieneFlor ? 'none' : 'block';
+            
+            // Si no es mi turno, se ven opacos y desactivados (Regla de Mano/Pie)
+            if (!esMiTurno) {
+                [btnFlor, btnEnvido].forEach(b => {
+                    b.style.opacity = '0.4';
+                    b.style.filter = 'grayscale(100%)';
+                    b.style.pointerEvents = 'none';
+                });
             } else {
-                btnFlor.style.display = 'none';
-                btnEnvido.style.display = 'block';
+                [btnFlor, btnEnvido].forEach(b => {
+                    b.style.opacity = '1';
+                    b.style.filter = 'none';
+                    b.style.pointerEvents = 'auto';
+                });
             }
         } else {
             btnFlor.style.display = 'none';
@@ -337,22 +353,24 @@ function renderJuego() {
         }
     }
 
-    const btnTruco = document.getElementById('btn-truco');
+    // Truco
     if (btnTruco) {
-        if (game.apuestaTruco.turnoCantar === 'oponente' || game.apuestaTruco.estado === 'vale4') {
+        const bloqueoPorEstado = game.apuestaTruco.turnoCantar === 'oponente' || game.apuestaTruco.estado === 'vale4';
+        const bloqueado = !esMiTurno || bloqueoPorEstado;
+
+        if (bloqueado) {
             btnTruco.style.opacity = '0.4';
             btnTruco.style.filter = 'grayscale(100%)';
-            btnTruco.style.pointerEvents = 'none'; // Deshabilita clicks temporalmente
+            btnTruco.style.pointerEvents = 'none';
         } else {
             btnTruco.style.opacity = '1';
             btnTruco.style.filter = 'none';
             btnTruco.style.pointerEvents = 'auto';
         }
         
-        // Reflejar texto según el nivel actual
         if (game.apuestaTruco.estado === 'nada') btnTruco.innerText = '¡TRUCO!';
-        if (game.apuestaTruco.estado === 'truco') btnTruco.innerText = '¡RETRUCO!';
-        if (game.apuestaTruco.estado === 'retruco') btnTruco.innerText = '¡VALE 4!';
+        else if (game.apuestaTruco.estado === 'truco') btnTruco.innerText = '¡RETRUCO!';
+        else if (game.apuestaTruco.estado === 'retruco') btnTruco.innerText = '¡VALE 4!';
     }
 
     const scoreJugador = document.getElementById('mini-score-yo');
