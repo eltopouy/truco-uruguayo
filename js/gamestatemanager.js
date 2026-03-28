@@ -407,4 +407,31 @@ class GameStateManager {
 
         return { ganadorMesa: ganador, ganadorRonda: null };
     }
+
+    // --- MÉTODOS DE APOYO PARA IA (SISTEMA DE DECISIÓN) ---
+    
+    evaluarPoderMano(mano) {
+        if (!mano || mano.length === 0) return 0;
+        // El poder de la mano se calcula sumando el poder de las cartas restantes
+        // y dándole un peso explosivo a las piezas.
+        let total = 0;
+        mano.forEach(c => {
+            if (c.esPieza) total += (c.poder * 2); // Factor determinante
+            else total += c.poder;
+        });
+        return total;
+    }
+
+    obtenerMejorRespuesta(mano, poderRival) {
+        // Estratégicamente: Buscar la carta más baja que gane al rival.
+        // Si ninguna gana, devolver la más baja posible (regalar la mano).
+        let ganadoras = mano.filter(c => c.poder > poderRival);
+        if (ganadoras.length > 0) {
+            ganadoras.sort((a, b) => a.poder - b.poder); // De menor a mayor poder
+            return ganadoras[0]; // La más baja de las que ganan
+        }
+        // No hay ganadoras, devolver la peor carta para no quemar piezas/matas
+        let todas = [...mano].sort((a, b) => a.poder - b.poder);
+        return todas[0];
+    }
 }
