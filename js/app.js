@@ -15,6 +15,7 @@ let turnTimerInterval = null;
 let autoRepartirInterval = null;
 const TURN_TIME = 25; // 25 Segundos para jugar
 window.isAwaitingStateSync = false; 
+window.isWinnerAlertShowing = false;
 
 window.resetTimer = function() {
     clearInterval(turnTimerInterval);
@@ -501,13 +502,14 @@ async function jugarUI(indexCarta) {
 }
 
 async function verificarLimitesPartido() {
-    if (game.partidoFinalizado) return true;
+    if (game.partidoFinalizado || window.isWinnerAlertShowing) return true;
     
     const lim = game.config.limitePuntos;
     const jLlega = game.puntosPartido.jugador >= lim;
     const oLlega = game.puntosPartido.oponente >= lim;
 
     if (jLlega || oLlega) {
+        window.isWinnerAlertShowing = true; // Bloqueo de entrada
         let ganadorPartido = null;
         if (jLlega && !oLlega) ganadorPartido = 'jugador';
         else if (oLlega && !jLlega) ganadorPartido = 'oponente';
@@ -523,6 +525,7 @@ async function verificarLimitesPartido() {
         
         await window.UI.alert(txt, "🏆 FIN DEL PARTIDO 🏆");
         window.resetTimer();
+        window.isWinnerAlertShowing = false; // Reset tras cerrar el modal
         
         if (window.modoJuego === 'multiplayer') {
             window.finalizarSalaFirebase();
@@ -557,7 +560,7 @@ async function verificarLimitesPartido() {
 
 async function jugarBot() {
     if (window.modoJuego === 'multiplayer') return;
-    if (game.rondaTerminada || game.manoOponente.length === 0) return;
+    if (game.turno !== 'oponente' || game.rondaTerminada || game.manoOponente.length === 0) return;
     
     const indicator = document.getElementById('typing-indicator');
     if (indicator) {

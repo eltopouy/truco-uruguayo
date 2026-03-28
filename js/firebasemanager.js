@@ -111,6 +111,10 @@ function aislarManoParaInvitado(gameObj) {
             jugador: gameObj.manosGanadas?.oponente || 0,
             oponente: gameObj.manosGanadas?.jugador || 0,
             empates: gameObj.manosGanadas?.empates || 0
+        },
+        apuestaTruco: {
+            ...gameObj.apuestaTruco,
+            turnoCantar: gameObj.apuestaTruco?.turnoCantar === 'jugador' ? 'oponente' : (gameObj.apuestaTruco?.turnoCantar === 'oponente' ? 'jugador' : 'ambos')
         }
     };
 }
