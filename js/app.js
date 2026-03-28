@@ -303,6 +303,16 @@ function renderJuego() {
     if(envPts) envPts.innerText = `${calc.puntos} pts (${calc.tipo})`;
     if(florPts) florPts.innerText = calc.tieneFlor ? `Sí (Obligatorio)` : `No`;
 
+    // Visual: Malas o Buenas en el Marcador
+    const ptsJ = game.puntosPartido.jugador;
+    const ptsO = game.puntosPartido.oponente;
+    const mitad = game.config.limitePuntos / 2;
+    
+    const labelJ = document.getElementById('label-malas-buenas-jugador');
+    const labelO = document.getElementById('label-malas-buenas-oponente');
+    if (labelJ) labelJ.innerText = ptsJ < mitad ? 'MALAS' : 'BUENAS';
+    if (labelO) labelO.innerText = ptsO < mitad ? 'MALAS' : 'BUENAS';
+
     const btnFlor = document.getElementById('btn-flor');
     const btnEnvido = document.getElementById('btn-envido');
     
@@ -602,19 +612,34 @@ async function verificarResolucionMesa() {
 document.getElementById('btn-envido').addEventListener('click', async () => {
     if (game.manoJugador.length !== 3 || game.envidoCantado || window.isAwaitingStateSync) return;
     
+    const ptsFalta = game.calcPuntosFalta();
+    const opt = await window.UI.options("Elegí tu toque:", [
+        { label: "Envido (2 pts)", value: "envido", primary: true },
+        { label: "Real Envido (3 pts)", value: "real_envido" },
+        { label: `Falta Envido (${ptsFalta} pts)`, value: "falta_envido", danger: true },
+        { label: "Cancelar", value: "cancel", neutral: true }
+    ], "Toques (Envido)");
+
+    if (opt === "cancel") return;
+
+    let ptsToque = 2;
+    let labelToque = "ENVIDO";
+    if (opt === "real_envido") { ptsToque = 3; labelToque = "REAL ENVIDO"; }
+    if (opt === "falta_envido") { ptsToque = ptsFalta; labelToque = "FALTA ENVIDO"; }
+
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
         game.envidoCantado = true;
         window.audio.play('envido');
-        enviarAccionFirebase('canto', { tipo: 'envido', pts: game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos });
-        await window.UI.alert("🗣️ Tú: ¡Toco Envido!<br>(Esperando la respuesta del rival por la red...)");
+        enviarAccionFirebase('canto', { tipo: opt, pts: game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos, valor_pts: ptsToque });
+        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>(Esperando respuesta del rival...)`);
         renderJuego();
         return;
     }
     
     const oponenteTieneFlor = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).tieneFlor;
     if (oponenteTieneFlor) {
-        await window.UI.alert("🗣️ Tú: ¡Toco Envido!<br>🤖 Rival: ¡Tengo FLOR, papá! (La Flor anula el Toco. La IA embolsa 3 pts automáticos).");
+        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡Tengo FLOR! (Anula tu toque. La IA cobra 3 pts de su Flor).`);
         game.puntosPartido.oponente += 3;
         game.envidoCantado = true;
         game.fase = 'truco';
@@ -624,61 +649,26 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
     }
 
     game.envidoCantado = true;
-    
     const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).puntos;
     const tusPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos;
     
-    let botRespuesta = 'no_quiero';
-    if (misPtos >= 32) botRespuesta = 'falta';
-    else if (misPtos >= 30) botRespuesta = 'real';
-    else if (misPtos >= 28) botRespuesta = 'envido';
-    else if (misPtos >= 24) botRespuesta = 'quiero';
+    // Bot mejorado: Evalúa si quiere el desafío
+    let botQuiero = false;
+    if (opt === 'falta_envido') botQuiero = misPtos >= 30;
+    else if (opt === 'real_envido') botQuiero = misPtos >= 28;
+    else botQuiero = misPtos >= 25;
 
-    let ptsEnJuego = 2; 
-
-    const resolverEnvido = async (ptsJug, ptsOp, premio) => {
-        let msg = `Tus ${ptsJug} contra sus ${ptsOp}.<br>`;
-        if (ptsJug > ptsOp || (ptsJug === ptsOp && game.manoDelPartido === 'jugador')) {
-            await window.UI.alert(msg + `¡Tú ganas este desafío! (+${premio} Pts)`);
-            game.puntosPartido.jugador += premio;
-        } else {
-            await window.UI.alert(msg + `¡Él gana este desafío! (+${premio} Pts)`);
-            game.puntosPartido.oponente += premio;
-        }
-    };
-
-    if (botRespuesta === 'no_quiero') {
-        await window.UI.alert(`🗣️ Tú: ¡Toco!<br>🤖 Rival: Son buenas (NO QUIERO).`);
-        game.puntosPartido.jugador += 1;
-    } else if (botRespuesta === 'quiero') {
-        await window.UI.alert(`🗣️ Tú: ¡Toco!<br>🤖 Rival: ¡QUIERO!`);
-        await resolverEnvido(tusPtos, misPtos, ptsEnJuego);
+    if (!botQuiero) {
+        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: No quiero.`);
+        game.puntosPartido.jugador += 1; // Solo se lleva 1 si no se quiere el primero
     } else {
-        let nombreCanto = '';
-        if (botRespuesta === 'envido') { nombreCanto = 'Envido Envido'; ptsEnJuego = 4; }
-        if (botRespuesta === 'real') { nombreCanto = 'Real Envido'; ptsEnJuego = 5; }
-        if (botRespuesta === 'falta') { 
-            nombreCanto = 'Falta Envido'; 
-            let lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
-            let mitad = Math.floor(game.config.limitePuntos / 2);
-            if (game.puntosPartido.jugador < mitad && game.puntosPartido.oponente < mitad) {
-                ptsEnJuego = game.config.limitePuntos;
-                nombreCanto = "Falta Envido (¡Todo por todo en las MALAS!)";
-            } else {
-                ptsEnJuego = game.config.limitePuntos - lider;
-                if (ptsEnJuego <= 0) ptsEnJuego = 1; 
-                nombreCanto = `Falta Envido (${ptsEnJuego} pts pa' terminar el partido)`;
-            }
-        }
-
-        const quieroSube = await window.UI.confirm(`🗣️ Tú: ¡Toco!<br>🤖 Rival: ¡${nombreCanto}! (${ptsEnJuego} pts en juego)<br><br>¿Te achicás o le das el Quiero?`, "¡El Oponente Retruca en Envido!");
-        
-        if (quieroSube) {
-            await window.UI.alert(`🗣️ Tú: ¡Dale, QUIERO!`);
-            await resolverEnvido(tusPtos, misPtos, ptsEnJuego);
+        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡QUIERO con ${misPtos}!`);
+        if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
+            await window.UI.alert(`Tus ${tusPtos} le ganaron a sus ${misPtos}.<br>¡Cobrás ${ptsToque} Pts!`);
+            game.puntosPartido.jugador += ptsToque;
         } else {
-            await window.UI.alert(`🗣️ Tú: Son buenas.<br>🤖 Rival muerde 2 Pts por hacerte achicar.`);
-            game.puntosPartido.oponente += 2; 
+            await window.UI.alert(`Sus ${misPtos} te durmieron (Tú tenías ${tusPtos}).<br>IA cobra ${ptsToque} Pts.`);
+            game.puntosPartido.oponente += ptsToque;
         }
     }
     

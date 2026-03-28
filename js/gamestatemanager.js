@@ -307,6 +307,13 @@ class GameStateManager {
         return { tieneFlor, puntos: puntosEnvido, tipo: tipoCalculo };
     }
 
+    calcPuntosFalta() {
+        // En Uruguay: "Falta envido son los puntos que le faltan al equipo que va primero para terminar el partido".
+        const maxPts = Math.max(this.puntosPartido.jugador, this.puntosPartido.oponente);
+        const ptsFalta = this.config.limitePuntos - maxPts;
+        return ptsFalta > 0 ? ptsFalta : 1; // Mínimo 1 punto
+    }
+
     // --- LÓGICA DE JUEGO EN MESA (TRUCO) ---
 
     jugarCarta(quien, indexCarta) {
