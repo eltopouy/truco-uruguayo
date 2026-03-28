@@ -1,4 +1,4 @@
-const PALS_SVG = {
+window.PALS_SVG = {
     'Oro': `<svg viewBox="0 0 100 100" class="suit-svg"><circle cx="50" cy="50" r="38" fill="#f1c40f" stroke="#d35400" stroke-width="4"/><circle cx="50" cy="50" r="22" fill="none" stroke="#d35400" stroke-width="3" stroke-dasharray="6,4"/><circle cx="50" cy="50" r="10" fill="#e67e22"/></svg>`,
     'Copa': `<svg viewBox="0 0 100 100" class="suit-svg"><path d="M20,20 Q50,95 80,20 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="3"/><rect x="42" y="65" width="16" height="28" fill="#c0392b" rx="2"/><path d="M25,92 Q50,82 75,92" fill="none" stroke="#c0392b" stroke-width="8" stroke-linecap="round"/></svg>`,
     'Espada': `<svg viewBox="0 0 100 100" class="suit-svg"><path d="M50,2 L64,68 L36,68 Z" fill="#3498db" stroke="#2980b9" stroke-width="2"/><rect x="22" y="68" width="56" height="8" rx="4" fill="#2c3e50"/><rect x="42" y="76" width="16" height="20" rx="3" fill="#2980b9"/><circle cx="50" cy="94" r="5" fill="#2c3e50"/></svg>`,
@@ -106,18 +106,7 @@ window.toggleMarcadorGlobal = function() {
 };
 
 function logJugada(texto, tipo = 'sistema') {
-    const feed = document.getElementById('game-feed');
-    if (!feed) return;
-    const msg = document.createElement('div');
-    msg.className = `feed-msg ${tipo}`;
-    msg.innerText = texto;
-    feed.prepend(msg);
-    
-    setTimeout(() => {
-        msg.style.opacity = '0';
-        msg.style.transform = 'translateX(-20px)';
-        setTimeout(() => msg.remove(), 500);
-    }, 8000);
+    window.UI.toast(texto, tipo);
 }
 
 function iniciarSolo() {
@@ -126,48 +115,6 @@ function iniciarSolo() {
     game.iniciarRonda();
     logJugada("🧉 ¡Suerte en el paño, gurí!", "sistema");
     window.animarReparto();
-}
-
-function crearCartaDOM(carta, oculta = false, isMuestra = false) {
-    const div = document.createElement('div');
-    div.classList.add('card');
-    
-    if (oculta) {
-        div.classList.add('card-facedown');
-    } else {
-        const svg = PALS_SVG[carta.palo];
-        const paloClass = `palo-${carta.palo.toLowerCase()}`;
-        const pintaClass = `pinta-${carta.palo.toLowerCase()}`;
-        
-        let labelText = '';
-        if (carta.valor === 10) labelText = "SOTA";
-        if (carta.valor === 11) labelText = "CABALLO";
-        if (carta.valor === 12) labelText = "REY";
-        
-        div.innerHTML = `
-            <div class="card-inner-frame ${pintaClass}">
-                ${carta.palo === 'Basto' ? '<div class="pinta-basto-mid"></div>' : ''}
-            </div>
-            <div class="card-content ${paloClass}">
-                <div class="card-value-top">
-                    <span>${carta.valor}</span>
-                </div>
-                <div class="card-suit-main">
-                    ${labelText ? `<span class="figura-text">${labelText}</span>` : ''}
-                    ${svg}
-                </div>
-                <div class="card-value-bot">
-                    <span>${carta.valor}</span>
-                </div>
-                ${carta.esPieza ? '<div class="pieza-label">PIEZA</div>' : ''}
-            </div>
-        `;
-        if (carta.esPieza) div.classList.add('pieza-glowing');
-    }
-
-    if(isMuestra) div.classList.add('card-muestra');
-
-    return div;
 }
 
 window.isAnimatingDeal = false;
@@ -189,28 +136,24 @@ window.animarReparto = async function() {
         deckArea.classList.add(game.manoDelPartido === 'oponente' ? 'deck-mi-derecha' : 'deck-su-derecha');
         
         // El mazo visual
-        const mazoDescifrado = crearCartaDOM(null, true);
+        const mazoDescifrado = window.UI.crearCartaDOM(null, false, true);
         mazoDescifrado.classList.remove('card-facedown');
         mazoDescifrado.classList.add('card-deck');
         deckArea.appendChild(mazoDescifrado);
     }
 
     const mano = game.manoDelPartido; // 'jugador' o 'oponente'
-    const totalCartas = 6;
     
     for (let i = 0; i < 3; i++) {
         // Carta al Mano
         window.audio.play('card-deal');
         if (mano === 'jugador') {
             const c = game.manoJugador[i];
-            const cardDOM = crearCartaDOM(c, false);
-            cardDOM.classList.add('animate-deal');
-            cardDOM.addEventListener('click', () => jugarUI(i));
+            const cardDOM = window.UI.crearCartaDOM(c, false, false, () => jugarUI(i));
             plyHandEl.appendChild(cardDOM);
         } else {
             const c = game.manoOponente[i];
-            const cardDOM = crearCartaDOM(c, true);
-            cardDOM.classList.add('animate-deal');
+            const cardDOM = window.UI.crearCartaDOM(c, false, true);
             oppHandEl.appendChild(cardDOM);
         }
         await new Promise(r => setTimeout(r, 400));
@@ -219,14 +162,11 @@ window.animarReparto = async function() {
         window.audio.play('card-deal');
         if (mano === 'jugador') {
             const c = game.manoOponente[i];
-            const cardDOM = crearCartaDOM(c, true);
-            cardDOM.classList.add('animate-deal');
+            const cardDOM = window.UI.crearCartaDOM(c, false, true);
             oppHandEl.appendChild(cardDOM);
         } else {
             const c = game.manoJugador[i];
-            const cardDOM = crearCartaDOM(c, false);
-            cardDOM.classList.add('animate-deal');
-            cardDOM.addEventListener('click', () => jugarUI(i));
+            const cardDOM = window.UI.crearCartaDOM(c, false, false, () => jugarUI(i));
             plyHandEl.appendChild(cardDOM);
         }
         await new Promise(r => setTimeout(r, 400));
@@ -235,13 +175,13 @@ window.animarReparto = async function() {
     // Muestra (Al final, debajo del mazo)
     if (game.muestra && deckArea) {
         window.audio.play('card-play');
-        const muestraDOM = crearCartaDOM(game.muestra, false, true);
+        const muestraDOM = window.UI.crearCartaDOM(game.muestra, true);
         muestraDOM.classList.add('appearing');
         deckArea.insertBefore(muestraDOM, deckArea.firstChild);
     }
 
     window.isAnimatingDeal = false;
-    renderJuego(); // Render final para asegurar estado correcto y listeners
+    renderJuego(); 
 };
 
 window.shakeCards = function() {
@@ -256,147 +196,61 @@ window.shakeCards = function() {
 
 function renderJuego() {
     if (window.isAnimatingDeal) return;
+    
+    // Delegar lógica de estado a UIManager
+    window.UI.renderGameState(game);
+
+    // Renderizar Manos
     const oppHandEl = document.getElementById('opponent-hand');
     oppHandEl.innerHTML = '';
     game.manoOponente.forEach(c => {
-        oppHandEl.appendChild(crearCartaDOM(c, true));
+        oppHandEl.appendChild(window.UI.crearCartaDOM(c, false, true));
     });
 
     const plyHandEl = document.getElementById('player-hand');
-    if(plyHandEl) plyHandEl.innerHTML = '';
-    game.manoJugador.forEach((c, index) => {
-        const cardDOM = crearCartaDOM(c, false);
-        cardDOM.addEventListener('click', () => jugarUI(index));
-        if(plyHandEl) plyHandEl.appendChild(cardDOM);
-    });
-
-    const deckArea = document.querySelector('.deck-area');
-    if(deckArea) {
-        deckArea.innerHTML = '';
-        deckArea.className = 'deck-area';
-        
-        // El mazo va a la derecha del que reparte (el Pie)
-        // Si 'Mano' es oponente, yo soy 'Pie' -> Va a MI derecha
-        if (game.manoDelPartido === 'oponente') {
-            deckArea.classList.add('deck-mi-derecha');
-        } else {
-            // Si 'Mano' soy yo, el rival es 'Pie' -> Va a SU derecha
-            deckArea.classList.add('deck-su-derecha');
-        }
-
-        if(game.muestra) {
-            const muestraDOM = crearCartaDOM(game.muestra, false, true);
-            deckArea.appendChild(muestraDOM);
-        }
-        
-        const mazoDescifrado = crearCartaDOM(null, true);
-        mazoDescifrado.classList.remove('card-facedown');
-        mazoDescifrado.classList.add('card-deck');
-        deckArea.appendChild(mazoDescifrado);
+    if(plyHandEl) {
+        plyHandEl.innerHTML = '';
+        game.manoJugador.forEach((c, index) => {
+            plyHandEl.appendChild(window.UI.crearCartaDOM(c, false, false, () => jugarUI(index)));
+        });
     }
 
+    // Renderizar Mesa
     const mesaOpp = document.getElementById('mesa-oponente');
     const mesaPly = document.getElementById('mesa-jugador');
     if(mesaOpp) mesaOpp.innerHTML = '';
     if(mesaPly) mesaPly.innerHTML = '';
     
-    if (game.mesa.oponente && mesaOpp) mesaOpp.appendChild(crearCartaDOM(game.mesa.oponente));
-    if (game.mesa.jugador && mesaPly) mesaPly.appendChild(crearCartaDOM(game.mesa.jugador));
+    if (game.mesa.oponente && mesaOpp) mesaOpp.appendChild(window.UI.crearCartaDOM(game.mesa.oponente));
+    if (game.mesa.jugador && mesaPly) mesaPly.appendChild(window.UI.crearCartaDOM(game.mesa.jugador));
 
-    const calc = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
-    const envPts = document.getElementById('envido-pts');
-    const florPts = document.getElementById('flor-pts');
-    if(envPts) envPts.innerText = `${calc.puntos} pts (${calc.tipo})`;
-    if(florPts) florPts.innerText = calc.tieneFlor ? `Sí (Obligatorio)` : `No`;
+    // Renderizar Deck y Muestra
+    const deckArea = document.querySelector('.deck-area');
+    if(deckArea) {
+        deckArea.innerHTML = '';
+        deckArea.className = 'deck-area';
+        deckArea.classList.add(game.manoDelPartido === 'oponente' ? 'deck-mi-derecha' : 'deck-su-derecha');
 
-    // Visual: Malas o Buenas en el Marcador
-    const ptsJ = game.puntosPartido.jugador;
-    const ptsO = game.puntosPartido.oponente;
-    const mitad = game.config.limitePuntos / 2;
-    
-    const labelJ = document.getElementById('label-malas-buenas-jugador');
-    const labelO = document.getElementById('label-malas-buenas-oponente');
-    if (labelJ) labelJ.innerText = ptsJ < mitad ? 'MALAS' : 'BUENAS';
-    if (labelO) labelO.innerText = ptsO < mitad ? 'MALAS' : 'BUENAS';
-
-    const btnFlor = document.getElementById('btn-flor');
-    const btnEnvido = document.getElementById('btn-envido');
-    
-    if (btnFlor && btnEnvido) {
-        if (game.manoJugador.length === 3 && !game.envidoCantado) {
-            if (calc.tieneFlor) {
-                btnFlor.style.display = 'block';
-                btnEnvido.style.display = 'none'; 
-            } else {
-                btnFlor.style.display = 'none';
-                btnEnvido.style.display = 'block';
-            }
-        } else {
-            btnFlor.style.display = 'none';
-            btnEnvido.style.display = 'none';
-        }
-    }
-
-    const btnTruco = document.getElementById('btn-truco');
-    if (btnTruco) {
-        if (game.apuestaTruco.turnoCantar === 'oponente' || game.apuestaTruco.estado === 'vale4') {
-            btnTruco.style.opacity = '0.4';
-            btnTruco.style.filter = 'grayscale(100%)';
-            btnTruco.style.pointerEvents = 'none'; // Deshabilita clicks temporalmente
-        } else {
-            btnTruco.style.opacity = '1';
-            btnTruco.style.filter = 'none';
-            btnTruco.style.pointerEvents = 'auto';
+        if(game.muestra) {
+            deckArea.appendChild(window.UI.crearCartaDOM(game.muestra, true));
         }
         
-        // Reflejar texto según el nivel actual
-        if (game.apuestaTruco.estado === 'nada') btnTruco.innerText = '¡TRUCO!';
-        if (game.apuestaTruco.estado === 'truco') btnTruco.innerText = '¡RETRUCO!';
-        if (game.apuestaTruco.estado === 'retruco') btnTruco.innerText = '¡VALE 4!';
+        const mazoVisual = window.UI.crearCartaDOM(null, false, true);
+        mazoVisual.classList.remove('card-facedown');
+        mazoVisual.classList.add('card-deck');
+        deckArea.appendChild(mazoVisual);
     }
 
-    const scoreJugador = document.getElementById('mini-score-yo');
-    const scoreOponente = document.getElementById('mini-score-rival');
-    if(scoreJugador) scoreJugador.innerText = game.puntosPartido.jugador;
-    if(scoreOponente) scoreOponente.innerText = game.puntosPartido.oponente;
-    
-    const lim = game.config.limitePuntos;
-    if ((game.puntosPartido.jugador >= lim || game.puntosPartido.oponente >= lim) && !game.partidoFinalizado) {
-        if (typeof verificarLimitesPartido === 'function') {
-            setTimeout(verificarLimitesPartido, 300);
-        }
-    }
-
-    // Auto-mostrar marcador si hay variación de puntos
-    if (game.puntosPartido.jugador !== lastJugadorPts || game.puntosPartido.oponente !== lastOponentePts) {
-        lastJugadorPts = game.puntosPartido.jugador;
-        lastOponentePts = game.puntosPartido.oponente;
-        if (window.mostrarMarcadorTemporal && game.partidoIniciado) {
-            window.mostrarMarcadorTemporal();
-        }
-    }
-    
-    const nameJugador = document.getElementById('mini-name-yo');
-    const nameOponente = document.getElementById('mini-name-rival');
-    if(nameJugador) nameJugador.innerText = game.config.nombreJugador;
-    if(nameOponente) nameOponente.innerText = game.config.nombreOponente;
-
-    const btnTogglePuntos = document.getElementById('toggle-puntos-btn');
-    if (btnTogglePuntos) {
-        btnTogglePuntos.style.display = game.partidoIniciado ? 'block' : 'none';
-    }
-
-    for(let i=1; i<=3; i++) {
-        const slot = document.getElementById('baza-'+i);
-        if(slot) {
-            slot.className = 'baza-slot';
-            if (game.registroBazas[i-1]) {
-                const b = game.registroBazas[i-1];
-                if (b === 'jugador') slot.classList.add('baza-p');
-                else if (b === 'oponente') slot.classList.add('baza-o');
-                else if (b === 'empate') slot.classList.add('baza-e');
-            }
-        }
+    // Actualizar Texto de Botón Truco
+    const btnTruco = document.getElementById('btn-truco');
+    if (btnTruco) {
+        const labels = { 'nada': '¡TRUCO!', 'truco': '¡RETRUCO!', 'retruco': '¡VALE 4!' };
+        btnTruco.innerText = labels[game.apuestaTruco.estado] || '¡TRUCO!';
+        
+        const canSing = (game.apuestaTruco.turnoCantar !== 'oponente' && game.apuestaTruco.estado !== 'vale4');
+        btnTruco.style.opacity = canSing ? '1' : '0.4';
+        btnTruco.style.filter = canSing ? 'none' : 'grayscale(100%)';
+        btnTruco.style.pointerEvents = canSing ? 'auto' : 'none';
     }
 }
 

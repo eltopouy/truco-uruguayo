@@ -28,41 +28,43 @@
 </head>
 <body>
     <!-- PANTALLA DE INICIO SELECCIÓN -->
-    <div id="pantalla-inicio" style="position: absolute; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Outfit', sans-serif;">
-        <h1 style="color:var(--gold); font-size: 3.5rem; margin-bottom: 20px; text-shadow: 0 5px 15px rgba(0,0,0,0.5);">Truco Uruguayo Premium</h1>
-        <p style="color: #ccc; margin-bottom: 40px; font-size: 1.2rem;">Bienvenido al paño verde. Elige tu rival.</p>
+    <div id="pantalla-inicio" class="screen-overlay">
+        <h1 class="title-main">Truco Uruguayo Premium</h1>
+        <p class="subtitle-main">Bienvenido al paño verde. Elige tu rival.</p>
         
-        <div class="opciones-inicio" style="display: flex; gap: 30px;">
-            <div class="glass" style="text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="iniciarSolo()">
-                <h2 style="font-size: 2rem; margin-bottom: 10px;">🤖 Jugar a Solas</h2>
+        <div class="options-container">
+            <div class="glass card-selection" onclick="iniciarSolo()">
+                <h2>🤖 Jugar a Solas</h2>
                 <p>Torneo contra nuestra super IA</p>
             </div>
-            <div class="glass" style="text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="document.getElementById('menu-multi').style.display='block'; document.getElementById('overlay-custom').style.display='block';">
-                <h2 style="font-size: 2rem; margin-bottom: 10px; color:#1abc9c;">🌐 Jugar Online</h2>
+            <div class="glass card-selection" onclick="document.getElementById('menu-multi').style.display='block'; document.getElementById('overlay-custom').style.display='block';">
+                <h2 style="color:var(--primary);">🌐 Jugar Online</h2>
                 <p>Enfrentar a un amigo real</p>
             </div>
         </div>
         
-        <div id="developer-footer" style="position: absolute; bottom: 20px; text-align: center; width: 100%; color: rgba(255,255,255,0.4); font-size: 0.85rem; z-index: 1;">
-            <p style="margin: 0;">Desarrollado con ♥ por <strong>Andrés Franchi Ugartemendía</strong></p>
-            <p style="margin: 5px 0 0 0;"><a href="https://truco-uruguayo.servicioti.com.uy" style="color: inherit; text-decoration: underline;">truco-uruguayo.servicioti.com.uy</a></p>
+        <div id="developer-footer" class="footer-dev">
+            <p>Desarrollado con ♥ por <strong>Andrés Franchi Ugartemendía</strong></p>
+            <p><a href="https://truco-uruguayo.servicioti.com.uy">truco-uruguayo.servicioti.com.uy</a></p>
         </div>
     </div>
     
     <!-- Modal Multi (Menu Online) -->
-    <div id="menu-multi" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; border: 1px solid #1abc9c; z-index: 10001; min-width: 320px; box-shadow: 0 15px 50px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto;">
-        <div style="text-align: right;"><span style="cursor:pointer; font-size:1.8rem; line-height: 1; color:#aaa; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#aaa'" onclick="document.getElementById('menu-multi').style.display='none'; document.getElementById('overlay-custom').style.display='none';">&times;</span></div>
-        <h2 style="margin-top:0; color:#1abc9c; margin-bottom:20px;">🌐 Jugar Online</h2>
+    <div id="menu-multi" class="glass modal-online" style="display: none;">
+        <div class="modal-close-container">
+            <span class="modal-close" onclick="document.getElementById('menu-multi').style.display='none'; document.getElementById('overlay-custom').style.display='none';">&times;</span>
+        </div>
+        <h2 style="margin-top:0; color:var(--primary); margin-bottom:20px;">🌐 Jugar Online</h2>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-            <button class="btn-primary" style="margin-top:0; border-radius:10px; background: linear-gradient(135deg, #1abc9c, #16a085); font-size: 0.8rem; padding: 10px;" onclick="crearSalaFirebase(false)">Crear Privada</button>
-            <button class="btn-primary" style="margin-top:0; border-radius:10px; background: linear-gradient(135deg, #f39c12, #e67e22); font-size: 0.8rem; padding: 10px;" onclick="crearSalaFirebase(true)">Crear Pública</button>
+        <div class="grid-buttons">
+            <button class="btn-primary" style="margin-top:0; border-radius:10px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); font-size: 0.8rem; padding: 10px;" onclick="crearSalaFirebase(false)">Crear Privada</button>
+            <button class="btn-primary" style="margin-top:0; border-radius:10px; background: linear-gradient(135deg, var(--secondary), var(--secondary-dark)); font-size: 0.8rem; padding: 10px;" onclick="crearSalaFirebase(true)">Crear Pública</button>
         </div>
 
-        <button class="btn-primary" style="margin-top:0; width:100%; border-radius:10px; background: linear-gradient(135deg, #9b59b6, #8e44ad);" onclick="buscarPartidaRapida()">🔍 Búsqueda Rápida</button>
+        <button class="btn-primary" style="margin-top:0; width:100%; border-radius:10px; background: linear-gradient(135deg, var(--accent), #8e44ad);" onclick="buscarPartidaRapida()">🔍 Búsqueda Rápida</button>
         
-        <div style="margin: 20px 0; border-top: 1px solid rgba(255,255,255,0.1); position: relative;">
-            <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #132b1f; padding: 0 10px; font-size: 0.85rem; color:#aaa;">O SUMATE A UNA</span>
+        <div class="separator-text">
+            <span class="separator-label">O SUMATE A UNA</span>
         </div>
 
         <div id="lista-salas-publicas" style="max-height: 180px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
@@ -70,44 +72,44 @@
             <p style="font-size: 0.8rem; color: #888; font-style: italic;">No hay salas públicas activas ahora...</p>
         </div>
         
-        <div style="margin: 20px 0; border-top: 1px solid rgba(255,255,255,0.1); position: relative;">
-            <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #132b1f; padding: 0 10px; font-size: 0.85rem; color:#aaa;">O CÓDIGO PRIVADO</span>
+        <div class="separator-text">
+            <span class="separator-label">O CÓDIGO PRIVADO</span>
         </div>
         
-        <input type="text" id="input-sala" placeholder="CÓDIGO" style="padding: 12px; border-radius: 8px; border:none; outline:none; text-align:center; font-size: 1.1rem; width: 100%; box-sizing: border-box; font-family:inherit; background: rgba(255,255,255,0.9); font-weight:bold; color:#111;">
+        <input type="text" id="input-sala" placeholder="CÓDIGO" class="input-premium">
         
         <button class="btn-action" style="margin-top: 15px; width: 100%; box-sizing: border-box;" onclick="unirseSalaFirebase(document.getElementById('input-sala').value)">Conectar por Código</button>
     </div>
 
 
     <!-- Botón de Ayuda (Arriba Izquierda) -->
-    <div style="position: absolute; top: 15px; left: 15px; z-index: 100;">
-        <button id="btn-senas" class="btn-action" style="background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.4); font-size: 0.9rem; box-shadow: none;">🤨 Señas</button>
+    <div class="hud-btn-left">
+        <button id="btn-senas" class="btn-action hud-btn-action">🤨 Señas</button>
     </div>
 
     <!-- Botón de Configuración (Arriba Derecha) -->
-    <div style="position: absolute; top: 15px; right: 15px; z-index: 100;">
-        <button onclick="abrirConfig()" class="btn-action" style="background: rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.4); font-size: 1.1rem; box-shadow: none;">⚙️</button>
+    <div class="hud-btn-right">
+        <button onclick="abrirConfig()" class="btn-action hud-btn-action">⚙️</button>
     </div>
     
     <!-- Botón Toggle de Puntos / Envido -->
     <div id="toggle-puntos-btn" style="position: absolute; top: 15px; right: 65px; z-index: 100; display: none;">
-        <button onclick="toggleMarcadorGlobal()" class="btn-action" style="background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.4); font-size: 0.9rem; box-shadow: none;">📊 Puntos</button>
+        <button onclick="toggleMarcadorGlobal()" class="btn-action hud-btn-action">📊 Puntos</button>
     </div>
 
     <!-- Botón Abandonar/Salir -->
     <div id="btn-abandonar" style="position: absolute; top: 15px; right: 165px; z-index: 100; display: none;">
-        <button onclick="abandonarSala()" class="btn-action" style="background: rgba(231,76,60,0.2); padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(231,76,60,0.4); font-size: 0.9rem; box-shadow: none;">🚪 Salir</button>
+        <button onclick="abandonarSala()" class="btn-action hud-btn-action hud-btn-danger">🚪 Salir</button>
     </div>
 
     <!-- Barra de Tiempo (Turn Timer) -->
-    <div id="turn-timer-container" style="display:none; position:fixed; top:0; left:0; width:100vw; height:6px; background:rgba(0,0,0,0.5); z-index:10005;">
-        <div id="turn-timer-bar" style="width:100%; height:100%; background:linear-gradient(90deg, #27ae60, #f1c40f, #e74c3c); transition: width 1s linear;"></div>
+    <div id="turn-timer-container" class="timer-container" style="display:none;">
+        <div id="turn-timer-bar" class="timer-bar" style="width:100%;"></div>
     </div>
 
     <!-- Modal de Señas (Oculto por defecto) -->
-    <div id="overlay-senas" style="display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10004; backdrop-filter: blur(8px);"></div>
-    <div id="modal-senas" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10005; min-width: 320px;">
+    <div id="overlay-senas" class="screen-overlay" style="display: none; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);"></div>
+    <div id="modal-senas" class="glass modal-online" style="display: none; text-align: left;">
         <h2 style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">Diccionario Charrúa 🇺🇾</h2>
         <ul style="list-style: none; padding: 0; line-height: 2; font-size: 1.05rem; color: #eee; margin:0;">
             <li><strong style="color:var(--gold);">El Dos (30):</strong> Levantar la dos cejas 🤨</li>
@@ -116,16 +118,16 @@
             <li><strong style="color:var(--gold);">Perico - Rey/Sota (27):</strong> Guiñar ojo derecho 😉</li>
             <li><strong style="color:var(--gold);">Perica - Caballo (27):</strong> Guiñar ojo izquierdo 😜</li>
             <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-            <li><strong style="color:#1abc9c;">Envido Alto:</strong> Inclinar la cabeza 🧐</li>
-            <li><strong style="color:#e74c3c;">Estoy Ciego (sin nada):</strong> Cerrar ambos ojos 😔</li>
+            <li><strong style="color:var(--primary);">Envido Alto:</strong> Inclinar la cabeza 🧐</li>
+            <li><strong style="color:var(--danger);">Estoy Ciego (sin nada):</strong> Cerrar ambos ojos 😔</li>
         </ul>
         <button id="btn-cerrar-senas" class="btn-primary" style="margin-top: 20px; width: 100%;">Entendido, jefe</button>
-        <button id="btn-ver-reglamento" class="btn-action" style="margin-top: 10px; width: 100%; background: linear-gradient(135deg, #1abc9c, #16a085);">📖 Ver Reglamento Completo</button>
+        <button id="btn-ver-reglamento" class="btn-action" style="margin-top: 10px; width: 100%; background: linear-gradient(135deg, var(--primary), var(--primary-dark));">📖 Ver Reglamento Completo</button>
     </div>
 
     <!-- Modal de Reglamento -->
-    <div id="overlay-reglamento" style="display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10006; backdrop-filter: blur(8px);"></div>
-    <div id="modal-reglamento" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10007; min-width: 320px; max-width: 600px; max-height: 80vh; overflow-y: auto; text-align: left;">
+    <div id="overlay-reglamento" class="screen-overlay" style="display: none; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 10006;"></div>
+    <div id="modal-reglamento" class="glass modal-online" style="display: none; max-width: 600px; text-align: left;">
         <h2 style="text-align: center; color: var(--gold); border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">📜 El Gran Libro del Truco Charúa</h2>
         <div style="font-size: 0.95rem; line-height: 1.6; color: #ddd; padding-right: 10px;">
             <p><strong>1. El Objetivo:</strong> Sumá 30 puntitos antes que tu rival. Las malas son hasta el 15, y las buenas del 16 hasta coronar los 30.</p>
@@ -152,8 +154,8 @@
 
         <!-- Área de Juego (Centro Mesa) -->
         <div class="play-area" id="play-area" style="display: flex; gap: 40px; justify-content: center; align-items: center; flex: 1; width: 100%;">
-            <div id="mesa-oponente" style="transform: translateY(-20px);"></div>
-            <div id="mesa-jugador" style="transform: translateY(20px);"></div>
+            <div id="mesa-oponente"></div>
+            <div id="mesa-jugador"></div>
         </div>
 
         <!-- Mano del jugador -->
@@ -162,7 +164,7 @@
         <button id="btn-repartir" class="btn-primary" style="display:none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 220px; font-size: 1.2rem; padding: 15px;">🔄 Repartir Cartas</button>
         
         <!-- Puntos Ayudante Flotante (Oculto por defecto, Toggle manual) -->
-        <div id="ayudante-puntos" class="glass" style="display: none; position: absolute; top: 60px; right: 15px; padding: 15px 20px; border-radius: 12px; flex-direction: column; gap: 8px; z-index: 100; font-size: 1.1rem; min-width: unset; width: auto; border: 1px solid rgba(255,255,255,0.2);">
+        <div id="ayudante-puntos" class="glass ayudante-panel">
             <div><span style="color:#aaa;">Envido:</span> <b id="envido-pts" class="highlight" style="color:var(--gold);">0</b></div>
             <div><span style="color:#aaa;">Flor:</span> <b id="flor-pts" class="highlight" style="color:var(--gold);">No</b></div>
         </div>
@@ -176,35 +178,35 @@
         </div>
 
         <!-- Panel de Acciones y Cantos (Inferior Derecha) -->
-        <div id="actions-panel" class="ui-panel glass" style="position: absolute; bottom: 30px; right: 30px; left: auto; text-align: center; max-width: 200px; z-index: 2000;">
+        <div id="actions-panel" class="glass actions-panel-premium">
             <p style="margin-top:0; color:var(--gold); font-weight:bold;">🗣️ Tus Voces:</p>
-            <div style="display: flex; gap: 8px; flex-direction: column;">
-                <button id="btn-flor" class="btn-action" style="display:none; background: linear-gradient(135deg, #27ae60, #2ecc71); box-shadow: 0 4px 0 #1e8449;">¡FLOR!</button>
+            <div class="actions-grid">
+                <button id="btn-flor" class="btn-action" style="display:none; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); box-shadow: 0 4px 0 var(--primary-dark);">¡FLOR!</button>
                 <button id="btn-envido" class="btn-action">¡ENVIDO!</button>
                 <button id="btn-truco" class="btn-action btn-truco">¡TRUCO!</button>
-                <button id="btn-mazo" class="btn-action" style="background: linear-gradient(135deg, #7f8c8d, #34495e); margin-top: 10px; font-size: 0.9rem; box-shadow: 0 4px 0 #1a252f;">Mazo</button>
+                <button id="btn-mazo" class="btn-action" style="background: linear-gradient(135deg, var(--neutral), var(--neutral-dark)); margin-top: 10px; font-size: 0.9rem; box-shadow: 0 4px 0 var(--neutral-dark);">Mazo</button>
             </div>
         </div>
 
-        <!-- Panel Marcador del Partido (Superior Centro) minimalista oculto por defecto -->
-        <div id="mini-marcador" class="glass" style="position: absolute; top: 15px; left: 50%; padding: 8px 15px; min-width:unset; cursor: pointer; display: flex; gap: 15px; align-items: center; z-index: 1000; border-radius: 30px;">
+        <!-- Panel Marcador del Partido (Superior Centro) -->
+        <div id="mini-marcador" class="glass mini-scoreboard-premium">
             <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                <span style="font-size:0.7rem; color:#aaa;"><span id="mini-name-yo">TÚ</span> (<span id="label-malas-buenas-jugador">MALAS</span>)</span>
-                <b style="color:var(--gold); font-size:1.2rem;" id="mini-score-yo">0</b>
+                <span class="mini-score-label"><span id="mini-name-yo">TÚ</span> (<span id="label-malas-buenas-jugador">MALAS</span>)</span>
+                <b class="mini-score-value" id="mini-score-yo">0</b>
             </div>
             <div style="width: 1px; height: 25px; background: rgba(255,255,255,0.2);"></div>
             <div style="display: flex; flex-direction: column; align-items: flex-start;">
-                <span style="font-size:0.7rem; color:#aaa;"><span id="mini-name-rival">RIVAL</span> (<span id="label-malas-buenas-oponente">MALAS</span>)</span>
-                <b style="color:white; font-size:1.2rem;" id="mini-score-rival">0</b>
+                <span class="mini-score-label"><span id="mini-name-rival">RIVAL</span> (<span id="label-malas-buenas-oponente">MALAS</span>)</span>
+                <b class="mini-score-value" style="color:white;" id="mini-score-rival">0</b>
             </div>
             <div id="ping-container" style="display: none; align-items: center; gap: 5px; margin-left: 10px; font-size: 0.6rem; color: #888;">
-                <div id="ping-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #2ecc71;"></div>
+                <div id="ping-dot" style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary);"></div>
                 <span id="ping-text">45ms</span>
             </div>
         </div>
 
         <!-- Bazas Minimalistas bajo el marcador -->
-        <div id="mini-bazas" style="position: absolute; top: 75px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100;">
+        <div id="mini-bazas" class="bazas-container-premium">
             <div class="baza-slot" id="baza-1"></div>
             <div class="baza-slot" id="baza-2"></div>
             <div class="baza-slot" id="baza-3"></div>
@@ -216,9 +218,9 @@
         </div>
 
         <!-- Chat / Frases Rápidas (Debajo del Feed) -->
-        <div id="chat-container" class="glass" style="position: absolute; bottom: 180px; left: 30px; width: 220px; padding: 10px; display: none;">
+        <div id="chat-container" class="glass chat-box-premium" style="display: none;">
             <p style="margin:0 0 8px 0; font-size: 0.8rem; color: var(--gold);">💬 Chat Rápido</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+            <div class="chat-grid">
                 <button class="btn-action" style="font-size: 0.7rem; padding: 5px;" onclick="enviarChatRed('¡Vamo arriba!')">Vamo'!</button>
                 <button class="btn-action" style="font-size: 0.7rem; padding: 5px;" onclick="enviarChatRed('¡Qué suerte, bo!')">Suerte!</button>
                 <button class="btn-action" style="font-size: 0.7rem; padding: 5px;" onclick="enviarChatRed('¡No tenés nada!')">Nada!</button>
@@ -228,13 +230,26 @@
             <input type="text" id="input-chat" placeholder="Escribí algo..." style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 5px; margin-top: 8px; border-radius: 4px; box-sizing: border-box;">
         </div>
 
-        <!-- Mate visual -->
-        <div class="mate-container">🧉<span class="mate-smoke">💨</span></div>
+        <!-- El Mate (Cebado) -->
+        <div id="mate-container" class="mate-container" onclick="window.audio.play('truco')">
+            <div class="mate-steam">
+                <div class="steam-line" style="animation-delay: 0s;"></div>
+                <div class="steam-line" style="animation-delay: 0.5s;"></div>
+                <div class="steam-line" style="animation-delay: 1.2s;"></div>
+            </div>
+            <svg viewBox="0 0 100 100" width="80" height="80">
+                <path d="M30 40 Q30 85 50 85 Q70 85 70 40 L75 35 L25 35 Z" fill="#4b3621" stroke="#2c1e11" stroke-width="2"/>
+                <path d="M50 85 L50 95 M40 95 L60 95" stroke="#7f8c8d" stroke-width="3" stroke-linecap="round"/>
+                <path d="M60 40 L65 5 L70 5" fill="none" stroke="#bdc3c7" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="50" cy="45" r="18" fill="#2a4d1a"/>
+                <circle cx="52" cy="43" r="3" fill="rgba(255,255,255,0.2)"/>
+            </svg>
+        </div>
     </div>
     
     <!-- Modal Personalizado (Reemplazo de alert/confirm/prompt) -->
-    <div id="overlay-custom" style="display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10000; backdrop-filter: blur(8px);"></div>
-    <div id="modal-custom" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; min-width: 260px; max-width: 90%; text-align: center; border: 1px solid var(--gold);">
+    <div id="overlay-custom" class="screen-overlay" style="display: none; background:rgba(0,0,0,0.8); backdrop-filter: blur(8px);"></div>
+    <div id="modal-custom" class="glass modal-online" style="display: none; border: 1px solid var(--gold);">
         <h2 id="modal-title" style="margin-bottom: 10px;">Atención</h2>
         <p id="modal-message" style="margin-bottom: 20px; font-size: 1.1rem; line-height: 1.5; color: #fff;"></p>
         <div id="modal-buttons" style="display: flex; flex-direction: column; gap: 10px;">
@@ -243,15 +258,15 @@
     </div>
     
     <!-- Overlay de Reconexión (Bulletproof) -->
-    <div id="overlay-reconnecting" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 100000; backdrop-filter: blur(10px); color: white; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+    <div id="overlay-reconnecting" class="reconnect-overlay-premium" style="display: none;">
         <div class="loader" style="margin-bottom: 20px;"></div>
         <h2 style="color: var(--gold); margin-bottom: 10px;">🔌 ¡Ups! Conexión Inestable</h2>
         <p id="reconnecting-msg" style="max-width: 300px; font-size: 1.1rem; line-height: 1.4;">Esperando a que el rival vuelva al paño...<br><span style="font-size: 0.8rem; color: #888;">Intentando reconexión automática</span></p>
-        <button class="btn-primary" style="margin-top: 30px; background: #c0392b; font-size: 0.9rem;" onclick="location.reload()">Salir al Menú</button>
+        <button class="btn-primary" style="margin-top: 30px; background: var(--danger-dark); font-size: 0.9rem;" onclick="location.reload()">Salir al Menú</button>
     </div>
     
     <!-- Modal de Configuración -->
-    <div id="modal-config" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; min-width: 280px; text-align: left; border: 1px solid #1abc9c;">
+    <div id="modal-config" class="glass config-modal-premium" style="display: none; border: 1px solid var(--primary);">
         <h2 style="text-align: center; margin-bottom: 20px;">⚙️ Ajustes</h2>
         
         <label style="color:#aaa; font-size:0.8rem;">Tu Nombre:</label>

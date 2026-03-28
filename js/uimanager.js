@@ -123,5 +123,131 @@ window.UI = {
                 this.buttonsContainer.appendChild(btn);
             });
         });
+    },
+
+    /**
+     * Renderizado Premium del Estado del Juego
+     * Centraliza todas las actualizaciones del DOM para evitar redundancia en app.js
+     */
+    renderGameState: function(game) {
+        if (!game) return;
+
+        // 1. Actualizar Marcador
+        const scoreJugador = document.getElementById('mini-score-yo');
+        const scoreOponente = document.getElementById('mini-score-rival');
+        if(scoreJugador) scoreJugador.innerText = game.puntosPartido.jugador;
+        if(scoreOponente) scoreOponente.innerText = game.puntosPartido.oponente;
+        
+        // Etiquetas Malas/Buenas
+        const labelJugador = document.getElementById('label-malas-buenas-jugador');
+        const labelOponente = document.getElementById('label-malas-buenas-oponente');
+        if(labelJugador) labelJugador.innerText = game.puntosPartido.jugador < 15 ? 'MALAS' : 'BUENAS';
+        if(labelOponente) labelOponente.innerText = game.puntosPartido.oponente < 15 ? 'MALAS' : 'BUENAS';
+
+        // 2. Actualizar Bazas
+        for(let i=1; i<=3; i++) {
+            const slot = document.getElementById('baza-'+i);
+            if(slot) {
+                slot.className = 'baza-slot';
+                if (game.registroBazas[i-1]) {
+                    const b = game.registroBazas[i-1];
+                    if (b === 'jugador') slot.classList.add('baza-p');
+                    else if (b === 'oponente') slot.classList.add('baza-o');
+                    else if (b === 'empate') slot.classList.add('baza-e');
+                }
+            }
+        }
+
+        // 3. Actualizar Ayudante de Puntos
+        const envidoPts = document.getElementById('envido-pts');
+        const florPts = document.getElementById('flor-pts');
+        if(envidoPts) envidoPts.innerText = game.puntosEnvidoJugador || 0;
+        if(florPts) florPts.innerText = game.tieneFlorJugador ? 'SÍ' : 'No';
+
+        // 4. Panel de Acciones (Visualización dinámica)
+        const actionsPanel = document.getElementById('actions-panel');
+        if (actionsPanel) {
+            const isMyTurn = (game.turno === 'jugador' && !game.rondaTerminada && game.partidoIniciado);
+            actionsPanel.style.opacity = isMyTurn ? '1' : '0.5';
+            actionsPanel.style.pointerEvents = isMyTurn ? 'auto' : 'none';
+            
+            // Botón Flor
+            const btnFlor = document.getElementById('btn-flor');
+            if(btnFlor) btnFlor.style.display = game.tieneFlorJugador && !game.envidoCantado ? 'block' : 'none';
+        }
+
+        // 5. Botón Repartir
+        const btnRepartir = document.getElementById('btn-repartir');
+        if(btnRepartir) {
+            btnRepartir.style.display = (game.rondaTerminada && !game.partidoFinalizado && game.partidoIniciado) ? 'block' : 'none';
+        }
+    },
+
+    /**
+     * Crea el elemento DOM para una carta con diseño Premium
+     */
+    crearCartaDOM: function(carta, esMuestra = false, oculta = false, callback = null) {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = esMuestra ? 'card card-muestra' : 'card animate-deal';
+        
+        if (oculta) {
+            cardDiv.classList.add('card-facedown');
+            return cardDiv;
+        }
+
+        // Diseño Premium con SVG y Pintas Españolas
+        const paloClass = 'palo-' + carta.palo.toLowerCase();
+        const tienePinta = ['Copa', 'Espada', 'Basto'].includes(carta.palo);
+        const pintaClass = tienePinta ? 'pinta-' + carta.palo.toLowerCase() : '';
+
+        cardDiv.innerHTML = `
+            <div class="card-inner-frame ${pintaClass}"></div>
+            <div class="card-content ${paloClass}">
+                <div class="card-value-top">${carta.valor}</div>
+                <div class="card-suit-main">
+                    ${window.PALS_SVG[carta.palo] || ''}
+                    ${carta.valor >= 10 ? `<span class="figura-text">${this._getFiguraName(carta.valor)}</span>` : ''}
+                </div>
+                <div class="card-value-bot">${carta.valor}</div>
+            </div>
+        `;
+
+        if (carta.esPieza) {
+            cardDiv.classList.add('pieza-glowing');
+            const label = document.createElement('span');
+            label.className = 'pieza-label';
+            label.innerText = carta.piezaNombre || 'PIEZA';
+            cardDiv.appendChild(label);
+        }
+
+        if (callback) cardDiv.onclick = callback;
+        return cardDiv;
+    },
+
+    _getFiguraName: function(v) {
+        if (v === 10) return 'Sota';
+        if (v === 11) return 'Caballo';
+        if (v === 12) return 'Rey';
+        return '';
+    },
+
+    /**
+     * Notificación efímera (Toast) para eventos del juego
+     */
+    toast: function(msg, type = 'sistema') {
+        const feed = document.getElementById('game-feed');
+        if (!feed) return;
+
+        const div = document.createElement('div');
+        div.className = 'feed-msg ' + type;
+        div.innerHTML = msg;
+        feed.prepend(div);
+
+        // Auto-eliminar después de 6 segundos para no saturar el HUD
+        setTimeout(() => {
+            div.style.opacity = '0';
+            div.style.transform = 'translateX(-20px)';
+            setTimeout(() => div.remove(), 500);
+        }, 6000);
     }
 };
