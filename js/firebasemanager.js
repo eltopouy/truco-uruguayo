@@ -388,6 +388,9 @@ window.sincronizarEstadoMotor = function(extraData = {}) {
     db.ref('salas/' + codigoSalaActual).update({ 
         estado_maestro: snap,
         lastUpdate: Date.now()
+    }).then(() => {
+        // Liberar UI del Host localmente después de sincronizar exitosamente
+        desbloquearSyncLocal();
     });
 };
 
@@ -403,8 +406,18 @@ window.enviarAccionFirebase = function(tipoAccion, payload) {
     });
 };
 
+window.desbloquearSyncLocal = function() {
+    window.isAwaitingStateSync = false;
+    if (window.syncTimeout) {
+        clearTimeout(window.syncTimeout);
+        window.syncTimeout = null;
+    }
+    renderJuego();
+};
+
 window.finalizarSalaFirebase = function() {
     if (modoJuego !== 'multiplayer' || !codigoSalaActual) return;
+    detenerHeartbeat();
     db.ref('salas/' + codigoSalaActual).update({
         estado: 'finalizado',
         finTs: Date.now()
@@ -494,6 +507,7 @@ async function procesarAccionRed(snap) {
         window.audio.play('win-baza'); 
     }
     else if (t === 'abandonar_sala' || t === 'jugador_desconectado' || t === 'ganar_por_abandono') {
+        detenerHeartbeat();
         const msg = t === 'abandonar_sala' ? "El oponente ha abandonado la partida." : (t === 'ganar_por_abandono' ? "Has ganado porque el rival no respondió a tiempo." : "El oponente se ha desconectado.");
         await window.UI.alert(`${msg} 🏆 ¡Victoria por abandono!`, "Fin de Partida");
         location.reload(); 
@@ -567,9 +581,27 @@ async function resolverEnvidoRed(mis, sus, premio) {
         else game.puntosPartido.oponente += premio;
         game.fase = 'truco';
         sincronizarEstadoMotor();
+    } else {
+        game.fase = 'truco'; // Sincronización local para el invitado
     }
+    desbloquearSyncLocal();
     await window.UI.alert(yoGano ? `¡Ganaste el Envido! (${mis} vs ${sus})` : `Perdiste el Envido (${mis} vs ${sus})`);
+    setTimeout(() => { if (window.UI.modal.style.display === 'block') window.UI._hide(); }, 3000);
     renderJuego();
+}
+
+function detenerHeartbeat() {
+    if (window.heartbeatInterval) {
+        clearInterval(window.heartbeatInterval);
+        window.heartbeatInterval = null;
+    }
+    if (window.rivalPresenceSubscription) {
+        const rivalPresenceRef = db.ref(`salas/${codigoSalaActual}/presence/${miRol === 'creador' ? 'invitado' : 'creador'}`);
+        rivalPresenceRef.off('value', window.rivalPresenceSubscription);
+        window.rivalPresenceSubscription = null;
+    }
+    const reconnectingOverlay = document.getElementById('overlay-reconnecting');
+    if (reconnectingOverlay) reconnectingOverlay.style.display = 'none';
 }
 
 function reiniciarPartidoLocal() {
@@ -683,11 +715,13 @@ async function procesarRespuestaCantoRed(d) {
         } else if (d.resp === 'no_quiero') {
             const pts = d.ptsRival || 1;
             await window.UI.alert(`🌐 El rival se achicó. (+${pts} pt para ti)`);
+            setTimeout(() => { if (window.UI.modal.style.display === 'block') window.UI._hide(); }, 3000);
             if (miRol === 'creador') {
                 game.puntosPartido.jugador += pts;
                 game.fase = 'truco';
                 sincronizarEstadoMotor();
             }
+            desbloquearSyncLocal();
         } else if (d.resp === 'con_flor_me_achico') {
             await window.UI.alert("🌐 Rival: 'Con Flor me Achico'. Ganás 3 Pts.");
             if (miRol === 'creador') {
@@ -713,6 +747,7 @@ async function procesarRespuestaCantoRed(d) {
     } else if (d.tipo === 'truco') {
         if (d.resp === 'quiero') {
             await window.UI.alert("🌐 Rival ACEPTÓ el Truco. ¡Seguimos!");
+            setTimeout(() => { if (window.UI.modal.style.display === 'block') window.UI._hide(); }, 3000);
             if (miRol === 'creador') {
                 if (game.apuestaTruco.estado === 'nada') {
                     game.apuestaTruco.valor = 2;
@@ -727,13 +762,16 @@ async function procesarRespuestaCantoRed(d) {
                 game.apuestaTruco.turnoCantar = 'oponente'; 
                 sincronizarEstadoMotor();
             }
+            desbloquearSyncLocal();
         } else {
             await window.UI.alert("🌐 Rival SE ACHICÓ en el Truco. Ronda para ti.");
+            setTimeout(() => { if (window.UI.modal.style.display === 'block') window.UI._hide(); }, 3000);
             if (miRol === 'creador') {
                 game.puntosPartido.jugador += game.apuestaTruco.valor;
                 game.rondaTerminada = true;
                 sincronizarEstadoMotor();
             }
+            desbloquearSyncLocal();
             game.rondaTerminada = true; // Forzar local para UI freeze fix
             await window.manejarFinDeRondaUI();
         }
@@ -821,8 +859,12 @@ async function resolverFlorRed(mis, sus, alResto) {
         else game.puntosPartido.oponente += premio;
         game.fase = 'truco';
         sincronizarEstadoMotor();
+    } else {
+        game.fase = 'truco';
     }
+    desbloquearSyncLocal();
     await window.UI.alert(yoGano ? `¡Tu Flor destrozó la de él! (+${premio} pts)` : `Su Flor te partió al medio (+${premio} pts)`);
+    setTimeout(() => { if (window.UI.modal.style.display === 'block') window.UI._hide(); }, 3000);
     renderJuego();
 }
 

@@ -403,7 +403,7 @@ function renderJuego() {
 
 window.isAwaitingStateSync = false;
 window.syncTimeout = null;
-window.startSyncTimeout = function(ms = 10000) {
+window.startSyncTimeout = function(ms = 4000) {
     if (window.syncTimeout) clearTimeout(window.syncTimeout);
     window.syncTimeout = setTimeout(() => {
         if (window.isAwaitingStateSync) {
