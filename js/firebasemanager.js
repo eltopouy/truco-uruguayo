@@ -290,6 +290,16 @@ function asignarEstadoDesdeRed(dataStr) {
 
     renderJuego();
     
+    // Si la mano cambió (nueva ronda), aseguramos limpiar mensajes de espera
+    if (data.rondaTerminada === false && game.manoJugador.length === 3 && !game.mesa.jugador && !game.mesa.oponente) {
+        if (window.UI.modal && window.UI.modal.style.display === 'block') {
+            // No cerramos si es un modal de decisión crítica (Truco/Envido), solo avisos
+            if (window.UI.title.innerText.includes("Esperando") || window.UI.title.innerText.includes("Atención")) {
+                window.UI._hide();
+            }
+        }
+    }
+    
     if (game.puntosPartido.jugador >= game.config.limitePuntos || game.puntosPartido.oponente >= game.config.limitePuntos) {
         if (!game.partidoFinalizado && typeof verificarLimitesPartido === 'function') {
             setTimeout(verificarLimitesPartido, 500);
@@ -356,7 +366,6 @@ async function procesarAccionRed(snap) {
         window.resetTimer();
         if (d.tipo === 'envido') {
             game.envidoCantado = true;
-            // ... (Lógica de envido similar a la anterior pero asegurando sincronización)
             procesarCantoEnvidoRed(d);
         }
         else if (d.tipo === 'truco') {
@@ -368,7 +377,9 @@ async function procesarAccionRed(snap) {
         procesarCantoSubidaRed(d);
     }
     else if (t === 'respuesta_canto') {
+        window.resetTimer();
         procesarRespuestaCantoRed(d);
+        if (miRol === 'creador') sincronizarEstadoMotor();
     }
     else if (t === 'accion') {
         if (d.tipo === 'mazo') {
@@ -397,7 +408,8 @@ async function procesarAccionRed(snap) {
         window.audio.play('win-baza'); 
     }
     else if (t === 'abandonar_sala' || t === 'jugador_desconectado') {
-        await window.UI.alert("El oponente ha abandonado la partida. Has ganado por abandono.", "¡Victoria!");
+        const msg = t === 'abandonar_sala' ? "El oponente ha abandonado la partida." : "El oponente se ha desconectado.";
+        await window.UI.alert(`${msg} Has ganado por abandono.`, "¡Victoria!");
         location.reload(); 
     }
     else if (t === 'pedir_revancha') {
