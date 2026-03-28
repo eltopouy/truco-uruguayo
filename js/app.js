@@ -22,24 +22,36 @@ window.resetTimer = function() {
     if(bar) bar.style.width = '100%';
 };
 
-window.startTurnTimer = function() {
+window.startTurnTimer = function(syncStartTime) {
     window.resetTimer();
     if (window.modoJuego !== 'multiplayer') return;
     
     // Solo si el juego está en curso y es turno del jugador
     if (game.turno === 'jugador' && !game.rondaTerminada && game.partidoIniciado) {
-        let timeLeft = TURN_TIME;
+        const now = Date.now();
+        const startTime = syncStartTime || now;
+        
+        // Calcular tiempo restante basado en cuándo empezó el turno realmente
+        let elapsed = Math.floor((now - startTime) / 1000);
+        let timeLeft = TURN_TIME - elapsed;
+        
+        if (timeLeft <= 0) timeLeft = 0;
+
         const container = document.getElementById('turn-timer-container');
         const bar = document.getElementById('turn-timer-bar');
         
         if (container) container.style.display = 'block';
         if (bar) {
+            const percentage = (timeLeft / TURN_TIME) * 100;
             bar.style.transition = 'none';
-            bar.style.width = '100%';
-            setTimeout(() => {
-                bar.style.transition = `width ${TURN_TIME}s linear`;
-                bar.style.width = '0%';
-            }, 50); // Pequeño delay para que el CSS reset tome efecto
+            bar.style.width = `${percentage}%`;
+            
+            if (timeLeft > 0) {
+                setTimeout(() => {
+                    bar.style.transition = `width ${timeLeft}s linear`;
+                    bar.style.width = '0%';
+                }, 50);
+            }
         }
         
         turnTimerInterval = setInterval(() => {
@@ -309,7 +321,7 @@ async function jugarUI(indexCarta) {
     
     if (window.modoJuego === 'multiplayer') {
         enviarAccionFirebase('jugar_carta', { index: indexCarta });
-        sincronizarEstadoMotor();
+        sincronizarEstadoMotor({ timerStartTime: Date.now() });
     }
     
     renderJuego();
@@ -320,7 +332,7 @@ async function jugarUI(indexCarta) {
         }
     } else {
         await verificarResolucionMesa();
-        if (window.modoJuego === 'multiplayer') sincronizarEstadoMotor();
+        if (window.modoJuego === 'multiplayer') sincronizarEstadoMotor({ timerStartTime: Date.now() });
     }
 }
 
@@ -488,7 +500,7 @@ async function verificarResolucionMesa() {
             const txt = result.ganadorRonda === 'jugador' ? `¡Esa mano es tuya, papá! 🏆 (+${ptsJuego} Pts)` : (result.ganadorRonda === 'empate' ? `¡Parda! Quedamos feos pa' la foto.<br>Si hubo truco se esfuma.` : `Marchaste al spiedo en esta mano 💀 (+${ptsJuego} Pts pa' la IA)`);
             
             if (window.modoJuego === 'multiplayer' && typeof window.sincronizarEstadoMotor === 'function') {
-                window.sincronizarEstadoMotor();
+                window.sincronizarEstadoMotor({ timerStartTime: Date.now() });
             }
             
             if(await verificarLimitesPartido()) return;

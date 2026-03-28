@@ -21,6 +21,17 @@ let miRol = null;
 let codigoSalaActual = null;
 let roomSubscription = null;
 
+// Persistencia de Sesión
+function guardarSesionLocal(codigo, rol) {
+    localStorage.setItem('truco_room_code', codigo);
+    localStorage.setItem('truco_role', rol);
+}
+
+function borrarSesionLocal() {
+    localStorage.removeItem('truco_room_code');
+    localStorage.removeItem('truco_role');
+}
+
 // Escuchar salas públicas en tiempo real
 db.ref('salas').orderByChild('estado').equalTo('esperando').on('value', (snap) => {
     const container = document.getElementById('lista-salas-publicas');
@@ -131,6 +142,7 @@ window.crearSalaFirebase = async function(isPublica = false) {
             limitePuntos: game.config.limitePuntos
         }
     }).then(() => {
+        guardarSesionLocal(codigoSalaActual, miRol);
         mostrarLobbyEspera(codigoSalaActual, isPublica);
         
         // Escuchar cuando alguien se une
@@ -224,6 +236,7 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
             estado: 'conectado',
             invitadoName: game.config.nombreJugador
         }).then(() => {
+            guardarSesionLocal(codigoSalaActual, miRol);
             quitarLobbyEspera();
             document.getElementById('pantalla-inicio').style.display = 'none';
             document.getElementById('chat-container').style.display = 'block';
@@ -310,15 +323,24 @@ function asignarEstadoDesdeRed(dataStr) {
     
     // Iniciar temporizador si me toca a mí
     if (game.turno === 'jugador' && !game.rondaTerminada) {
-        window.startTurnTimer();
+        window.startTurnTimer(data.timerStartTime);
     } else {
         window.resetTimer();
+        if (!game.rondaTerminada && window.modoJuego === 'multiplayer') {
+            mostrarEstadoRival("Rival está pensando...");
+        } else {
+            removerEstadoRival();
+        }
     }
 }
 
-window.sincronizarEstadoMotor = function() {
+window.sincronizarEstadoMotor = function(extraData = {}) {
     if (modoJuego !== 'multiplayer' || miRol !== 'creador') return;
-    const snap = JSON.stringify(game);
+    
+    const snapObj = { ...game };
+    if (extraData.timerStartTime) snapObj.timerStartTime = extraData.timerStartTime;
+    
+    const snap = JSON.stringify(snapObj);
     db.ref('salas/' + codigoSalaActual).update({ 
         estado_maestro: snap,
         lastUpdate: Date.now()
@@ -354,10 +376,10 @@ async function procesarAccionRed(snap) {
         renderJuego();
         
         if (miRol === 'creador') {
-            sincronizarEstadoMotor(); 
+            sincronizarEstadoMotor({ timerStartTime: Date.now() }); 
             if (game.mesa.jugador && game.mesa.oponente) {
                 await verificarResolucionMesa(); 
-                sincronizarEstadoMotor();
+                sincronizarEstadoMotor({ timerStartTime: Date.now() });
             }
         }
     }
@@ -400,7 +422,7 @@ async function procesarAccionRed(snap) {
             procesarRespuestaFlorRed(d);
         } else if (d.tipo === 'repartir' && miRol === 'creador') {
             game.iniciarRonda();
-            sincronizarEstadoMotor();
+            sincronizarEstadoMotor({ timerStartTime: Date.now() });
         }
     }
     else if (t === 'chat') {
@@ -529,7 +551,10 @@ function crearElementoLobby() {
         <div style="font-size: 3rem; font-weight: bold; color: var(--gold); letter-spacing: 5px;" id="lobby-codigo">---</div>
         <p>Compartí este código con tu oponente para que se una.</p>
         <div class="loader"></div>
-        <button class="btn-primary" style="background: #c0392b;" onclick="location.reload()">Cancelar Búsqueda</button>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button class="btn-primary" style="background: var(--gold); color: black;" onclick="window.copyRoomLink()">Copiar Enlace Directo</button>
+            <button class="btn-primary" style="background: #c0392b;" onclick="location.reload()">Cancelar Búsqueda</button>
+        </div>
     `;
     document.body.appendChild(div);
     return div;
@@ -748,12 +773,102 @@ window.enviarChatRed = function(texto) {
     logJugada(`💬 Tú: ${texto}`, 'propio');
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    const ipt = document.getElementById('input-chat');
-    if (ipt) {
-        ipt.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') window.enviarChatRed();
+function mostrarEstadoRival(texto) {
+    let el = document.getElementById('estado-rival');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'estado-rival';
+        el.className = 'glass';
+        el.style.position = 'absolute';
+        el.style.top = '140px';
+        el.style.left = '50%';
+        el.style.transform = 'translateX(-50%)';
+        el.style.padding = '5px 15px';
+        el.style.borderRadius = '20px';
+        el.style.fontSize = '0.8rem';
+        el.style.color = '#aaa';
+        el.style.zIndex = '100';
+        el.style.border = '1px solid rgba(255,255,255,0.1)';
+        document.querySelector('.table').appendChild(el);
+    }
+    el.innerText = texto;
+    el.style.display = 'block';
+}
+
+function removerEstadoRival() {
+    const el = document.getElementById('estado-rival');
+    if (el) el.style.display = 'none';
+}
+
+/**
+ * Restaura la sesión si existe una activa en localStorage
+ */
+window.checkExistingSession = async function() {
+    const savedCode = localStorage.getItem('truco_room_code');
+    const savedRole = localStorage.getItem('truco_role');
+    
+    if (savedCode && savedRole) {
+        console.log("Reconectando a sesión previa:", savedCode);
+        codigoSalaActual = savedCode;
+        miRol = savedRole;
+        window.modoJuego = 'multiplayer';
+        
+        const roomRef = db.ref('salas/' + codigoSalaActual);
+        roomRef.once('value', (snap) => {
+            if (snap.exists() && snap.val().estado !== 'finalizado') {
+                // Reconectar listeners
+                if (miRol === 'creador') {
+                    // Host reconecta
+                    document.getElementById('pantalla-inicio').style.display = 'none';
+                    document.getElementById('chat-container').style.display = 'block';
+                    document.getElementById('btn-abandonar').style.display = 'block';
+                    
+                    roomRef.child('estado').on('value', (s) => {
+                        if (s.val() === 'conectado') {
+                            roomRef.onDisconnect().cancel();
+                            roomRef.child('estado').onDisconnect().set('jugador_desconectado');
+                            quitarLobbyEspera();
+                        }
+                    });
+                    roomRef.child('acciones_in').on('child_added', procesarAccionRed);
+                    renderJuego();
+                } else {
+                    // Invitado reconecta
+                    document.getElementById('pantalla-inicio').style.display = 'none';
+                    document.getElementById('chat-container').style.display = 'block';
+                    document.getElementById('btn-abandonar').style.display = 'block';
+                    
+                    roomRef.child('estado_maestro').on('value', (s) => {
+                        const data = s.val();
+                        if (data) asignarEstadoDesdeRed(data);
+                    });
+                    roomRef.child('acciones_host').on('child_added', procesarAccionRed);
+                }
+            } else {
+                borrarSesionLocal();
+            }
         });
+    }
+};
+
+window.copyRoomLink = function() {
+    const url = new URL(window.location.href);
+    url.hash = codigoSalaActual;
+    navigator.clipboard.writeText(url.toString()).then(() => {
+        logJugada("📋 ¡Enlace copiado al portapapeles!", "sistema");
+    });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.checkExistingSession();
+    
+    // Auto-unirse si hay hash en la URL
+    const hash = window.location.hash.substring(1);
+    if (hash && hash.length === 6 && !localStorage.getItem('truco_room_code')) {
+        document.getElementById('input-sala').value = hash;
+        setTimeout(() => {
+            unirseSalaFirebase(hash);
+        }, 500);
     }
 });
 
