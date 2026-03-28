@@ -899,6 +899,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
     game.registrarAccionRival('canto', 'truco');
     const poderMano = game.evaluarPoderMano(game.manoOponente);
     const rivalEsMentiroso = game.perfilRival.bluffsDetectados > 1;
+    const sospechaRapidez = (window.lastPlayerPlayTime && (Date.now() - window.lastPlayerPlayTime < 1500)) ? 10 : 0;
 
     let decision = 'no'; // 'no', 'si', 'voto'
     if (poderMano > 80) decision = 'voto';
