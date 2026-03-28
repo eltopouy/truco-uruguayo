@@ -264,6 +264,12 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
 
 function plainToCarta(obj) {
     if (!obj) return null;
+    if (obj.oculto) {
+        // Carta "Ciega" para el rival (Anti-Cheat)
+        let c = new Carta(0, 'Reverso');
+        c.oculto = true;
+        return c;
+    }
     let c = new Carta(obj.valor, obj.palo);
     c.esPieza = obj.esPieza;
     c.poder = obj.poder;
@@ -345,7 +351,22 @@ function asignarEstadoDesdeRed(dataStr) {
 window.sincronizarEstadoMotor = function(extraData = {}) {
     if (modoJuego !== 'multiplayer' || miRol !== 'creador') return;
     
-    const snapObj = { ...game };
+    // ANTI-CHEAT: Sanitización de datos sensibles antes de enviarlos a Firebase
+    const snapObj = JSON.parse(JSON.stringify(game)); // Clon profundo
+
+    // El invitado NO debe saber mis cartas (manoJugador del Host)
+    if (snapObj.manoJugador) {
+        snapObj.manoJugador = snapObj.manoJugador.map(() => ({ oculto: true }));
+    }
+    if (snapObj.manoInicialJugador) {
+        snapObj.manoInicialJugador = snapObj.manoInicialJugador.map(() => ({ oculto: true }));
+    }
+
+    // El invitado NO debe saber el resto del mazo (Anti-Cheat)
+    if (snapObj.mazo) {
+        snapObj.mazo = snapObj.mazo.map(() => ({ oculto: true }));
+    }
+
     if (extraData.timerStartTime) snapObj.timerStartTime = extraData.timerStartTime;
     
     const snap = JSON.stringify(snapObj);
