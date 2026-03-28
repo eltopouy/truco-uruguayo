@@ -399,6 +399,28 @@ function renderJuego() {
             }
         }
     }
+
+    // --- LÓGICA DE TURNO CENTRALIZADA (Timer vs Rival Pensando) ---
+    if (game.partidoIniciado && !game.partidoFinalizado && !game.rondaTerminada && window.modoJuego === 'multiplayer') {
+        if (game.turno === 'jugador') {
+            if (typeof window.resetTimer === 'function') window.resetTimer();
+            if (typeof window.startTurnTimer === 'function') {
+                // El serverTimeOffset ayuda a que el timer sea preciso tras sincronizar
+                const timerStart = (window.lastServerData && window.lastServerData.timerStartTime) ? window.lastServerData.timerStartTime : Date.now();
+                window.startTurnTimer(timerStart);
+            }
+            if (typeof removerEstadoRival === 'function') removerEstadoRival();
+        } else {
+            if (typeof window.resetTimer === 'function') window.resetTimer();
+            if (typeof mostrarEstadoRival === 'function') {
+                const nombreRival = (game.config.nombreOponente && game.config.nombreOponente !== 'RIVAL') ? game.config.nombreOponente : 'Rival';
+                mostrarEstadoRival(`${nombreRival} está pensando...`);
+            }
+        }
+    } else {
+        if (typeof window.resetTimer === 'function') window.resetTimer();
+        if (typeof removerEstadoRival === 'function') removerEstadoRival();
+    }
 }
 
 window.isAwaitingStateSync = false;

@@ -287,6 +287,7 @@ function asignarEstadoDesdeRed(dataStr) {
         return;
     }
     const data = miRol === 'invitado' ? aislarManoParaInvitado(rawData) : rawData;
+    window.lastServerData = data; // Guardamos para el renderJuego
     
     if (!data) return;
 
@@ -348,18 +349,6 @@ function asignarEstadoDesdeRed(dataStr) {
         }
     } else if (game.rondaTerminada && typeof window.manejarFinDeRondaUI === 'function') {
         setTimeout(window.manejarFinDeRondaUI, 500);
-    }
-    
-    // Iniciar temporizador si me toca a mí
-    if (game.turno === 'jugador' && !game.rondaTerminada) {
-        window.startTurnTimer(data.timerStartTime);
-    } else {
-        window.resetTimer();
-        if (!game.rondaTerminada && window.modoJuego === 'multiplayer') {
-            mostrarEstadoRival("Rival está pensando...");
-        } else {
-            removerEstadoRival();
-        }
     }
 }
 
