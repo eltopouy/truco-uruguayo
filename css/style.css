@@ -1,27 +1,10 @@
 :root {
-    /* Colores Base */
     --bg-color: #0b1f14;
     --table-color: radial-gradient(circle at center, #1a4d33 0%, #06140c 100%);
     --card-width: 100px;
     --card-height: 155px;
     --gold: #f1c40f;
-    --gold-subtle: rgba(241, 196, 15, 0.4);
-    --gold-dark: #d35400;
-    --primary: #1abc9c;
-    --primary-dark: #16a085;
-    --secondary: #f39c12;
-    --secondary-dark: #e67e22;
-    --accent: #9b59b6;
-    --danger: #e74c3c;
-    --danger-dark: #c0392b;
-    --neutral: #7f8c8d;
-    --neutral-dark: #34495e;
-    
-    /* Texturas y Efectos */
     --felt-texture: url("https://www.transparenttextures.com/patterns/felt.png");
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 body, html {
@@ -234,15 +217,14 @@ body, html {
 
 /* Panel de UI en Glassmorphism moderno */
 .glass {
-    background: var(--glass-bg);
+    background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 25px;
     border-radius: 16px;
-    box-shadow: var(--glass-shadow);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     min-width: 250px;
-    transition: all 0.3s ease;
 }
 
 .glass h2 {
@@ -265,7 +247,7 @@ body, html {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, #1abc9c, #16a085);
     border: none;
     padding: 12px 24px;
     border-radius: 8px;
@@ -275,24 +257,18 @@ body, html {
     cursor: pointer;
     width: 100%;
     margin-top: 20px;
-    transition: transform 0.2s, filter 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, filter 0.2s;
     font-family: inherit;
     text-transform: uppercase;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.1);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-}
-
-.btn-primary:active {
-    transform: translateY(0);
+    transform: translateY(-3px);
+    filter: brightness(1.2);
 }
 
 .btn-action {
-    background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+    background: linear-gradient(135deg, #e67e22, #d35400);
     border: none;
     padding: 12px;
     border-radius: 8px;
@@ -302,34 +278,22 @@ body, html {
     font-family: inherit;
     transition: all 0.2s;
     font-size: 1.1rem;
-    box-shadow: 0 4px 0 var(--secondary-dark), 0 8px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 0 #a34100, 0 8px 15px rgba(0,0,0,0.3);
     text-transform: uppercase;
 }
-
-.btn-action:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-}
-
 .btn-action:active {
     transform: translateY(2px);
-    box-shadow: 0 2px 0 var(--secondary-dark), 0 4px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 0 #a34100, 0 4px 10px rgba(0,0,0,0.3);
 }
-
+.btn-action:hover {
+    filter: brightness(1.1);
+}
 .btn-truco {
-    background: linear-gradient(135deg, var(--accent), #8e44ad);
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
     box-shadow: 0 4px 0 #5b2c6f, 0 8px 15px rgba(0,0,0,0.3);
 }
 .btn-truco:active {
     box-shadow: 0 2px 0 #5b2c6f, 0 4px 10px rgba(0,0,0,0.3);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
-    box-shadow: 0 4px 0 #922b21, 0 8px 15px rgba(0,0,0,0.3);
-}
-.btn-danger:active {
-    box-shadow: 0 2px 0 #922b21, 0 4px 10px rgba(0,0,0,0.3);
 }
 
 .card-content {
@@ -770,6 +734,3 @@ body, html {
     background: var(--gold);
     border-radius: 10px;
 }
-$content
-$content
-$content

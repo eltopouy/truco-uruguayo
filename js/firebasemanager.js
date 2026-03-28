@@ -46,13 +46,21 @@ db.ref('salas').orderByChild('estado').equalTo('esperando').on('value', (snap) =
             if (data.publica) {
                 count++;
                 const item = document.createElement('div');
-                item.className = 'room-item';
+                item.className = 'glass';
+                item.style.padding = '10px';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.style.marginBottom = '5px';
+                item.style.background = 'rgba(255,255,255,0.05)';
+                item.style.border = '1px solid rgba(26, 188, 156, 0.3)';
+                item.style.cursor = 'pointer';
                 item.onclick = () => unirseSalaFirebase(child.key, true);
                 
                 item.innerHTML = `
-                    <div class="room-info">
-                        <span class="room-code">${child.key}</span><br>
-                        <span class="room-host">Anfitrión: ${data.creadorName || 'Jugador'}</span>
+                    <div style="text-align: left;">
+                        <span style="color: var(--gold); font-weight: bold;">${child.key}</span><br>
+                        <span style="font-size: 0.7rem; color: #aaa;">Host: ${data.creadorName || 'Jugador'}</span>
                     </div>
                     <button class="btn-action" style="padding: 5px 10px; font-size: 0.7rem;">UNIRSE</button>
                 `;
@@ -584,18 +592,26 @@ function quitarLobbyEspera() {
 function crearElementoLobby() {
     const div = document.createElement('div');
     div.id = 'lobby-espera';
-    div.className = 'glass lobby-panel';
-    div.innerHTML = `
-        <div class="loader" style="margin: 0 auto 20px auto;"></div>
-        <h2 style="color:var(--gold); margin-bottom:5px;">Sala de Espera</h2>
-        <p id="lobby-tipo" style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Esperando oponente...</p>
-        
-        <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.2);">
-            <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Código de Sala</p>
-            <h1 id="lobby-codigo" style="font-size: 3rem; margin: 0; color: white; letter-spacing: 5px;">------</h1>
-        </div>
+    div.className = 'glass';
+    div.style.position = 'fixed';
+    div.style.top = '50%';
+    div.style.left = '50%';
+    div.style.transform = 'translate(-50%, -50%)';
+    div.style.zIndex = '10005';
+    div.style.textAlign = 'center';
+    div.style.flexDirection = 'column';
+    div.style.gap = '20px';
+    div.style.minWidth = '300px';
 
-        <button class="btn-primary" style="margin-top: 20px; background: var(--danger-dark);" onclick="location.reload()">Cancelar</button>
+    div.innerHTML = `
+        <h2 id="lobby-tipo">Esperando Rival</h2>
+        <div style="font-size: 3rem; font-weight: bold; color: var(--gold); letter-spacing: 5px;" id="lobby-codigo">---</div>
+        <p>Compartí este código con tu oponente para que se una.</p>
+        <div class="loader"></div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button class="btn-primary" style="background: var(--gold); color: black;" onclick="window.copyRoomLink()">Copiar Enlace Directo</button>
+            <button class="btn-primary" style="background: #c0392b;" onclick="location.reload()">Cancelar Búsqueda</button>
+        </div>
     `;
     document.body.appendChild(div);
     return div;
