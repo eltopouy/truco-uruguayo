@@ -1,0 +1,708 @@
+:root {
+    --bg-color: #0b1f14;
+    --table-color: radial-gradient(circle at center, #1a4d33 0%, #06140c 100%);
+    --card-width: 100px;
+    --card-height: 155px;
+    --gold: #f1c40f;
+    --felt-texture: url("https://www.transparenttextures.com/patterns/felt.png");
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg-color);
+    color: white;
+    overflow: hidden;
+}
+
+.table {
+    width: 100vw;
+    height: 100vh;
+    background: var(--table-color);
+    background-image: var(--felt-texture);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+    cursor: default;
+}
+
+/* Mate Flotante */
+.mate-container {
+    position: absolute;
+    bottom: 20px;
+    right: 250px;
+    font-size: 3rem;
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
+    animation: float-mate 4s ease-in-out infinite;
+    z-index: 5;
+    pointer-events: none;
+}
+
+@keyframes float-mate {
+    0%, 100% { transform: translateY(0) rotate(5deg); }
+    50% { transform: translateY(-15px) rotate(-5deg); }
+}
+
+.mate-smoke {
+    position: absolute;
+    top: -20px;
+    left: 20px;
+    font-size: 1.5rem;
+    opacity: 0;
+    animation: smoke 3s linear infinite;
+}
+
+@keyframes smoke {
+    0% { transform: translateY(0) scale(1); opacity: 0.5; }
+    100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+}
+
+.card {
+    width: var(--card-width);
+    height: var(--card-height);
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    position: relative;
+    user-select: none;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #111;
+    border: 1px solid #ddd;
+    overflow: hidden;
+}
+
+/* Animación de entrada al repartir */
+@keyframes dealing {
+    from {
+        opacity: 0;
+        transform: translate(200px, -200px) rotate(45deg) scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0) scale(1);
+    }
+}
+
+.card.animate-deal {
+    animation: dealing 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Dorso de la baraja española */
+.card-deck, .card-facedown {
+    background: linear-gradient(135deg, #b71234 25%, transparent 25%) -25px 0, 
+                linear-gradient(225deg, #b71234 25%, transparent 25%) -25px 0, 
+                linear-gradient(315deg, #b71234 25%, transparent 25%), 
+                linear-gradient(45deg, #b71234 25%, transparent 25%);	
+    background-size: 50px 50px;
+    background-color: #8b0a24;
+    border: 5px solid white;
+}
+
+/* Disposición del mazo: Se define dinámicamente con clases (.deck-mi-derecha / .deck-su-derecha) */
+.deck-area {
+    display: flex;
+    align-items: center;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Movimiento suave */
+}
+
+/* El mazo a la derecha del Jugador (Abajo Derecha) */
+.deck-mi-derecha {
+    position: absolute;
+    bottom: 25%;
+    right: 15%;
+    transform: scale(1.3);
+    z-index: 1;
+}
+
+/* El mazo a la derecha del Rival (Arriba Izquierda) */
+.deck-su-derecha {
+    position: absolute;
+    top: 25%;
+    left: 15%;
+    transform: scale(1.3);
+    z-index: 1;
+}
+
+.card-deck {
+    z-index: 5; /* Mazo siempre arriba */
+    position: relative;
+    /* Efecto visual de Cartas Apiladas */
+    box-shadow: 
+        1px 1px 0 #fff, 
+        2px 2px 0 #7f8c8d, 
+        3px 3px 0 #fff, 
+        4px 4px 0 #7f8c8d, 
+        5px 5px 0 #fff, 
+        6px 6px 0 #7f8c8d, 
+        7px 7px 0 #fff, 
+        8px 8px 0 #7f8c8d, 
+        12px 12px 20px rgba(0,0,0,0.7) !important;
+}
+
+.card-muestra {
+    z-index: 1; /* Muestra enterrada debajo del mazo */
+    position: absolute;
+    top: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+}
+
+/* La Muestra asoma hacia el centro de la mesa dependiendo de dónde esté el mazo */
+.deck-mi-derecha .card-muestra {
+    left: -55px;
+    transform: rotate(-18deg);
+}
+
+.deck-su-derecha .card-muestra {
+    left: 55px;
+    transform: rotate(18deg);
+}
+
+/* Manos de jugadores */
+.player-hand, .opponent-hand {
+    display: flex;
+    gap: 15px;
+    padding: 30px;
+    perspective: 1000px;
+}
+
+.player-hand .card {
+    cursor: pointer;
+}
+
+.player-hand .card:hover {
+    transform: translateY(-20px) scale(1.05);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+}
+
+.pieza-glowing {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 20px rgba(241, 196, 15, 0.8) !important;
+}
+
+/* Panel de UI en Glassmorphism moderno */
+.glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    min-width: 250px;
+}
+
+.glass h2 {
+    margin: 0 0 15px 0;
+    color: var(--gold);
+    font-size: 1.4rem;
+    letter-spacing: 1px;
+}
+
+.glass p {
+    margin: 8px 0;
+    font-size: 1rem;
+    color: #ddd;
+}
+
+.highlight {
+    color: #fff;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #1abc9c, #16a085);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 20px;
+    transition: transform 0.2s, filter 0.2s;
+    font-family: inherit;
+    text-transform: uppercase;
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    filter: brightness(1.2);
+}
+
+.btn-action {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 0 #a34100, 0 8px 15px rgba(0,0,0,0.3);
+    text-transform: uppercase;
+}
+.btn-action:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #a34100, 0 4px 10px rgba(0,0,0,0.3);
+}
+.btn-action:hover {
+    filter: brightness(1.1);
+}
+.btn-truco {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    box-shadow: 0 4px 0 #5b2c6f, 0 8px 15px rgba(0,0,0,0.3);
+}
+.btn-truco:active {
+    box-shadow: 0 2px 0 #5b2c6f, 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.card-content {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+    padding: 2px 6px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    /* Patrón de fondo sutil para las cartas españolas */
+    background: 
+        radial-gradient(circle at 50% 50%, rgba(0,0,0,0.02) 0%, transparent 70%),
+        linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9));
+}
+
+/* El marco característico de la baraja española (las "pintas") */
+.card-inner-frame {
+    position: absolute;
+    top: 4px; left: 4px; right: 4px; bottom: 4px;
+    border: 2px solid #222;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Recreando los cortes de las pintas nativamente con CSS Pseudo-Elements */
+/* Oro no tiene cortes en la baraja española */
+.pinta-copa::before {
+    content: ""; position: absolute;
+    top: -4px; left: 50%; transform: translateX(-50%);
+    width: 20%; height: 4px; background: #fff;
+}
+.pinta-espada::before {
+    content: ""; position: absolute;
+    top: -4px; left: 20%; width: 12%; height: 4px; background: #fff;
+}
+.pinta-espada::after {
+    content: ""; position: absolute;
+    top: -4px; right: 20%; width: 12%; height: 4px; background: #fff;
+}
+.pinta-basto::before {
+    content: ""; position: absolute;
+    top: -4px; left: 15%; width: 15%; height: 4px; background: #fff;
+}
+.pinta-basto::after {
+    content: ""; position: absolute;
+    top: -4px; right: 15%; width: 15%; height: 4px; background: #fff;
+}
+.pinta-basto-mid {
+    position: absolute;
+    top: -4px; left: 50%; transform: translateX(-50%);
+    width: 15%; height: 4px; background: #fff;
+}
+
+.card-value-top, .card-value-bot {
+    font-size: 1.3rem; margin:0; padding:0;
+    font-weight: 800;
+    line-height: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.card-value-top { align-self: flex-start; }
+.card-value-bot { align-self: flex-end; transform: rotate(180deg); }
+
+.card-suit-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 55%;
+    position: relative;
+    max-height: 60%;
+}
+
+.suit-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.3));
+    object-fit: contain;
+}
+
+.figura-text {
+    position: absolute;
+    top: -10px;
+    font-size: clamp(0.55rem, 2vw, 0.70rem);
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: rgba(0,0,0,0.5);
+    text-transform: uppercase;
+}
+
+/* Clases específicas por palo para estilo Premium */
+.palo-espada { color: #2c3e50; }
+.palo-basto { color: #27ae60; }
+.palo-oro { color: #d35400; }
+.palo-copa { color: #c0392b; }
+
+.pieza-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 0.6rem;
+    background: var(--gold);
+    color: black;
+    padding: 2px 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    opacity: 0.4;
+    white-space: nowrap;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* UI Registro de Bazas */
+.baza-slot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    background: transparent;
+    transition: all 0.3s;
+}
+.baza-p { background: #1abc9c; border-color: #16a085; } /* Jugador gana */
+.baza-o { background: #e74c3c; border-color: #c0392b; } /* Oponente gana */
+.baza-e { background: #f1c40f; border-color: #f39c12; } /* Empate parada */
+
+/* --- MARCADOR GLOBAL (AUTO-OCULTO) --- */
+#mini-marcador {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: translateX(-50%) translateY(-20px) scale(0.9) !important;
+}
+#mini-marcador.show-score {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1) !important;
+}
+
+/* --- RESPONSIVIDAD PARA CELULARES --- */
+@media (max-width: 768px) {
+    :root {
+        --card-width: 58px;
+        --card-height: 90px;
+    }
+    
+    .table {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        height: 100svh;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .opciones-inicio {
+        flex-direction: column !important;
+        align-items: center;
+        gap: 15px !important;
+        width: 90%;
+    }
+
+    .opponent-hand {
+        position: absolute !important;
+        top: 100px !important;
+        left: 50% !important;
+        transform: translateX(-50%) scale(0.8) !important;
+        padding: 0 !important;
+        width: auto;
+        z-index: 5;
+    }
+
+    .deck-mi-derecha {
+        bottom: 28%;
+        right: 5px;
+        left: auto;
+        top: auto;
+        transform: scale(0.85);
+        transform-origin: right center;
+    }
+
+    .deck-su-derecha {
+        top: 28%;
+        left: 5px;
+        right: auto;
+        bottom: auto;
+        transform: scale(0.85);
+        transform-origin: left center;
+    }
+
+    .play-area {
+        position: absolute;
+        top: 45%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        display: flex;
+        flex-direction: row !important; /* Mantener horizontal para que no ocupe tanto alto */
+        gap: 10px !important;
+        z-index: 2;
+    }
+
+    .player-hand {
+        position: absolute !important;
+        bottom: 60px !important; 
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        padding: 0 !important;
+        width: 100vw;
+        justify-content: center;
+        gap: 5px !important;
+        z-index: 100;
+        margin: 0;
+    }
+
+    .player-hand .card:hover {
+        transform: none !important;
+    }
+    
+    .card-value-top, .card-value-bot {
+        font-size: 0.9rem;
+    }
+    
+    .card-suit {
+        font-size: 2.2rem;
+    }
+
+    /* Paneles Glass Punteo */
+    .glass {
+        padding: 10px;
+        min-width: unset;
+    }
+    
+    /* Panel de Chat en celular */
+    #chat-container {
+        bottom: 170px !important;
+        left: 5px !important;
+        transform: scale(0.7);
+        transform-origin: bottom left;
+        width: 200px !important;
+        z-index: 1999;
+    }
+
+    /* Modificador del auto-ocultable para Celular */
+    #mini-marcador {
+        top: 5px !important;
+        padding: 8px 15px !important;
+        transform: translateX(-50%) translateY(-20px) scale(0.7) !important;
+    }
+    
+    #mini-marcador.show-score {
+        transform: translateX(-50%) translateY(0) scale(0.8) !important;
+    }
+
+    /* Panel Tus Voces: Fijo abajo del todo */
+    #actions-panel {
+        top: auto !important;
+        bottom: 0px !important;
+        left: 0 !important;
+        right: 0 !important;
+        transform: none !important;
+        width: 100vw !important;
+        height: 60px !important;
+        max-width: none !important;
+        border-radius: 0 !important;
+        background: rgba(0,0,0,0.8) !important;
+        padding: 5px 10px !important;
+        z-index: 2000 !important;
+        position: fixed !important;
+    }
+    
+    #actions-panel > p {
+        display: none !important; /* Ocultar el título '🗣️ Tus Voces:' */
+    }
+    
+    #actions-panel > div {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        width: 100%;
+    }
+
+    .btn-action {
+        padding: 8px 10px !important;
+        font-size: 0.85rem !important;
+        margin: 0 !important;
+        flex: 1; /* Todos ocupan igual ancho */
+    }
+
+    /* Panel Puntos y Manos Inferior (Ubicación flotante lateral) */
+    .ui-panel:not(#actions-panel) {
+        position: absolute !important;
+        top: 70px !important;
+        right: 0 !important;
+        left: auto !important;
+        transform: scale(0.6);
+        transform-origin: right top;
+        z-index: 100;
+        pointer-events: none;
+        min-width: unset;
+        width: 220px;
+    }
+    
+    .ui-panel:not(#actions-panel) h2 {
+        display: none;
+    }
+}
+
+/* --- FEED DE JUGADAS --- */
+#game-feed {
+    position: absolute; 
+    top: 100px; 
+    left: 30px; 
+    width: 240px; 
+    max-height: 45vh; 
+    overflow-y: hidden; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    pointer-events: none; 
+    z-index: 10;
+}
+
+.feed-msg {
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-left: 5px solid var(--gold);
+    padding: 12px 18px;
+    border-radius: 4px 15px 15px 4px;
+    font-size: 0.95rem;
+    color: #fff;
+    animation: slideInLeft 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+    opacity: 0;
+    transition: all 0.5s;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.feed-msg.rival {
+    border-left-color: #e74c3c;
+    background: rgba(192, 57, 43, 0.25);
+}
+
+.feed-msg.propio {
+    border-left-color: #3498db;
+    background: rgba(52, 152, 219, 0.25);
+}
+
+.feed-msg.sistema {
+    border-left-color: #1abc9c;
+    font-style: italic;
+}
+
+@keyframes slideInLeft {
+    from { transform: translateX(-40px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+    #game-feed {
+        top: 70px !important;
+        left: 5px !important;
+        width: 160px !important;
+        transform: scale(0.8);
+        transform-origin: left top;
+    }
+    
+    .feed-msg {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+}
+/* --- LOBBY MULTIJUGADOR --- */
+#lobby-espera {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10005;
+    text-align: center;
+    flex-direction: column;
+    gap: 30px;
+    min-width: 320px;
+    padding: 40px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+#lobby-codigo {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: var(--gold);
+    letter-spacing: 8px;
+    text-shadow: 0 0 20px rgba(241, 196, 15, 0.4);
+    margin: 10px 0;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -45%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.loader {
+    border: 4px solid rgba(255,255,255,0.05);
+    border-left: 4px solid var(--gold);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    margin: 10px auto;
+    filter: drop-shadow(0 0 10px var(--gold));
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Scrollbar personalizada para la lista de salas */
+#lista-salas-publicas::-webkit-scrollbar {
+    width: 6px;
+}
+#lista-salas-publicas::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.1);
+}
+#lista-salas-publicas::-webkit-scrollbar-thumb {
+    background: var(--gold);
+    border-radius: 10px;
+}
