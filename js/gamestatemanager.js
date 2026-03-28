@@ -59,6 +59,7 @@ class GameStateManager {
         this.mazo = [];
         this.manoJugador = [];
         this.manoOponente = [];
+        this.idRonda = 0; // Identificador único para disparar animaciones de reparto
         this.manoInicialJugador = [];
         this.manoInicialOponente = [];
         this.muestra = null;
@@ -111,6 +112,7 @@ class GameStateManager {
     }
 
     iniciarRonda() {
+        this.idRonda++;
         if (this.partidoIniciado) {
             this.manoDelPartido = this.manoDelPartido === 'jugador' ? 'oponente' : 'jugador';
         } else {

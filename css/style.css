@@ -79,11 +79,11 @@ body, html {
     overflow: hidden;
 }
 
-/* Animación de entrada al repartir */
+/* Animación de entrada al repartir (Premium) */
 @keyframes dealing {
     from {
         opacity: 0;
-        transform: translate(200px, -200px) rotate(45deg) scale(0.5);
+        transform: translate(calc(100vw * 0.2), calc(-100vh * 0.2)) rotate(180deg) scale(0.3);
     }
     to {
         opacity: 1;
@@ -92,7 +92,16 @@ body, html {
 }
 
 .card.animate-deal {
-    animation: dealing 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation: dealing 0.7s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+.card.appearing {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 /* Dorso de la baraja española */

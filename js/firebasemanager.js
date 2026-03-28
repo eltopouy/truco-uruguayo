@@ -298,6 +298,10 @@ function asignarEstadoDesdeRed(dataStr) {
     game.manosGanadas = data.manosGanadas || { jugador:0, oponente:0, empates:0 };
     game.puntosPartido = data.puntosPartido || { jugador:0, oponente:0 };
     
+    // Detectar nueva ronda para disparar animación de reparto
+    const isNewRound = data.idRonda > (game.idRonda || 0);
+    game.idRonda = data.idRonda;
+    
     game.fase = data.fase;
     game.turno = data.turno;
     game.envidoCantado = data.envidoCantado;
@@ -315,7 +319,11 @@ function asignarEstadoDesdeRed(dataStr) {
         game.config.limitePuntos = data.config.limitePuntos;
     }
 
-    renderJuego();
+    if (isNewRound) {
+        window.animarReparto();
+    } else {
+        renderJuego();
+    }
     
     // Si la mano cambió (nueva ronda), aseguramos limpiar mensajes de espera
     if (data.rondaTerminada === false && game.manoJugador.length === 3 && !game.mesa.jugador && !game.mesa.oponente) {

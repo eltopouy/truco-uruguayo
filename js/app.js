@@ -125,8 +125,7 @@ function iniciarSolo() {
     window.modoJuego = 'singleplayer';
     game.iniciarRonda();
     logJugada("🧉 ¡Suerte en el paño, gurí!", "sistema");
-    window.audio.play('card-deal');
-    renderJuego();
+    window.animarReparto();
 }
 
 function crearCartaDOM(carta, oculta = false, isMuestra = false) {
@@ -171,7 +170,82 @@ function crearCartaDOM(carta, oculta = false, isMuestra = false) {
     return div;
 }
 
+window.isAnimatingDeal = false;
+
+window.animarReparto = async function() {
+    if (window.isAnimatingDeal) return;
+    window.isAnimatingDeal = true;
+    
+    const oppHandEl = document.getElementById('opponent-hand');
+    const plyHandEl = document.getElementById('player-hand');
+    const deckArea = document.querySelector('.deck-area');
+    
+    // Limpieza inicial para la animación
+    if (oppHandEl) oppHandEl.innerHTML = '';
+    if (plyHandEl) plyHandEl.innerHTML = '';
+    if (deckArea) {
+        deckArea.innerHTML = '';
+        deckArea.className = 'deck-area';
+        deckArea.classList.add(game.manoDelPartido === 'oponente' ? 'deck-mi-derecha' : 'deck-su-derecha');
+        
+        // El mazo visual
+        const mazoDescifrado = crearCartaDOM(null, true);
+        mazoDescifrado.classList.remove('card-facedown');
+        mazoDescifrado.classList.add('card-deck');
+        deckArea.appendChild(mazoDescifrado);
+    }
+
+    const mano = game.manoDelPartido; // 'jugador' o 'oponente'
+    const totalCartas = 6;
+    
+    for (let i = 0; i < 3; i++) {
+        // Carta al Mano
+        window.audio.play('card-deal');
+        if (mano === 'jugador') {
+            const c = game.manoJugador[i];
+            const cardDOM = crearCartaDOM(c, false);
+            cardDOM.classList.add('animate-deal');
+            cardDOM.addEventListener('click', () => jugarUI(i));
+            plyHandEl.appendChild(cardDOM);
+        } else {
+            const c = game.manoOponente[i];
+            const cardDOM = crearCartaDOM(c, true);
+            cardDOM.classList.add('animate-deal');
+            oppHandEl.appendChild(cardDOM);
+        }
+        await new Promise(r => setTimeout(r, 400));
+
+        // Carta al Pie
+        window.audio.play('card-deal');
+        if (mano === 'jugador') {
+            const c = game.manoOponente[i];
+            const cardDOM = crearCartaDOM(c, true);
+            cardDOM.classList.add('animate-deal');
+            oppHandEl.appendChild(cardDOM);
+        } else {
+            const c = game.manoJugador[i];
+            const cardDOM = crearCartaDOM(c, false);
+            cardDOM.classList.add('animate-deal');
+            cardDOM.addEventListener('click', () => jugarUI(i));
+            plyHandEl.appendChild(cardDOM);
+        }
+        await new Promise(r => setTimeout(r, 400));
+    }
+
+    // Muestra (Al final, debajo del mazo)
+    if (game.muestra && deckArea) {
+        window.audio.play('card-play');
+        const muestraDOM = crearCartaDOM(game.muestra, false, true);
+        muestraDOM.classList.add('appearing');
+        deckArea.insertBefore(muestraDOM, deckArea.firstChild);
+    }
+
+    window.isAnimatingDeal = false;
+    renderJuego(); // Render final para asegurar estado correcto y listeners
+};
+
 function renderJuego() {
+    if (window.isAnimatingDeal) return;
     const oppHandEl = document.getElementById('opponent-hand');
     oppHandEl.innerHTML = '';
     game.manoOponente.forEach(c => {
