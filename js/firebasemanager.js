@@ -22,7 +22,8 @@ let codigoSalaActual = null;
 let roomSubscription = null;
 window.myActionSeq = 0;
 window.expectedRivalSeq = 0;
-window.actionQueue = []; // Para procesar fuera de orden si hay lag
+window.actionQueue = []; 
+window.esperandoRespuestaRevancha = false;
 
 // Persistencia de Sesión
 function guardarSesionLocal(codigo, rol) {
@@ -306,6 +307,11 @@ function asignarEstadoDesdeRed(dataStr) {
     const data = miRol === 'invitado' ? aislarManoParaInvitado(rawData) : rawData;
     window.lastServerData = data; // Guardamos para el renderJuego
     
+    // SINCRONIZACIÓN DE SECUENCIA (Para evitar bloqueos de ID perdidos)
+    if (data && typeof data.lastSeq !== 'undefined') {
+        window.expectedRivalSeq = Math.max(window.expectedRivalSeq || 0, data.lastSeq);
+    }
+    
     if (!data) return;
 
     game.mazo = (data.mazo || []).map(plainToCarta);
@@ -346,7 +352,7 @@ function asignarEstadoDesdeRed(dataStr) {
 
     if (isNewRound) {
         window.animarReparto();
-    } else {
+    } else if (!window.isAnimatingDeal) {
         renderJuego();
     }
     
@@ -642,6 +648,49 @@ function reiniciarPartidoLocal() {
     renderJuego();
     document.getElementById('btn-repartir').style.display = 'none';
 }
+
+window.finalizarSalaFirebase = function() {
+    if (modoJuego !== 'multiplayer' || !codigoSalaActual) return;
+    
+    detenerHeartbeat();
+    if (miRol === 'creador') {
+        db.ref('salas/' + codigoSalaActual).update({ estado: 'finalizado' });
+    }
+    
+    // Mostrar controles de post-partida
+    const btnRevancha = document.createElement('button');
+    btnRevancha.className = 'btn-primary';
+    btnRevancha.style.background = 'var(--gold)';
+    btnRevancha.style.color = 'black';
+    btnRevancha.innerText = "🔄 Pedir Revancha";
+    btnRevancha.onclick = () => {
+        window.esperandoRespuestaRevancha = true;
+        enviarAccionFirebase('pedir_revancha');
+        btnRevancha.disabled = true;
+        btnRevancha.innerText = "Esperando al rival...";
+    };
+
+    const btnLobby = document.createElement('button');
+    btnLobby.className = 'btn-primary';
+    btnLobby.style.background = '#c0392b';
+    btnLobby.innerText = "🚪 Salir al Lobby";
+    btnLobby.onclick = () => {
+        borrarSesionLocal();
+        location.reload();
+    };
+
+    const feed = document.getElementById('game-feed');
+    if (feed) {
+        const div = document.createElement('div');
+        div.style.padding = '20px';
+        div.style.display = 'flex';
+        div.style.flexDirection = 'column';
+        div.style.gap = '10px';
+        div.appendChild(btnRevancha);
+        div.appendChild(btnLobby);
+        feed.prepend(div);
+    }
+};
 
 function mostrarLobbyEspera(codigo, isPublica) {
     const lobby = document.getElementById('lobby-espera') || crearElementoLobby();
@@ -1051,8 +1100,7 @@ function iniciarHeartbeat(roomCode, myRole, rivalRole) {
     const rivalPresenceRef = db.ref(`salas/${roomCode}/presence/${rivalRole}`);
     
     // Limpiar previo
-    if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
-    if (window.rivalPresenceSubscription) rivalPresenceRef.off('value', window.rivalPresenceSubscription);
+    detenerHeartbeat();
     window.modalAbandonoMostrado = false;
 
     document.getElementById('ping-container').style.display = 'flex';
