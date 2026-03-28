@@ -1055,6 +1055,7 @@ document.getElementById('btn-mazo').addEventListener('click', async () => {
 
 document.getElementById('btn-repartir').addEventListener('click', () => {
     document.getElementById('btn-repartir').style.display = 'none';
+    if (autoRepartirInterval) clearInterval(autoRepartirInterval);
     document.getElementById('btn-truco').innerText = "Gritar Truco";
     
     if (window.modoJuego === 'multiplayer') {
@@ -1152,6 +1153,11 @@ window.guardarConfig = function() {
     document.getElementById('modal-config').style.display = 'none';
     document.getElementById('overlay-custom').style.display = 'none';
     
+    // SINCRONIZACIÓN MULTIJUGADOR (Critical Bugfix)
+    if (window.modoJuego === 'multiplayer' && typeof miRol !== 'undefined' && miRol === 'creador') {
+        sincronizarEstadoMotor();
+    }
+
     renderJuego();
 };
 

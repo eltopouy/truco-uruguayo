@@ -45,7 +45,7 @@ class SoundManager {
         utterance.lang = 'es-AR'; // Acento rioplatense (lo más cercano a UY)
         utterance.rate = 1.2;
         utterance.pitch = 0.8;
-        // window.speechSynthesis.speak(utterance); // Desactivado por ahora para no molestar, se puede activar a pedido
+        window.speechSynthesis.speak(utterance);
     }
 }
 

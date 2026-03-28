@@ -115,6 +115,11 @@ function aislarManoParaInvitado(gameObj) {
         apuestaTruco: {
             ...gameObj.apuestaTruco,
             turnoCantar: gameObj.apuestaTruco?.turnoCantar === 'jugador' ? 'oponente' : (gameObj.apuestaTruco?.turnoCantar === 'oponente' ? 'jugador' : 'ambos')
+        },
+        config: {
+            ...gameObj.config,
+            nombreJugador: gameObj.config?.nombreOponente || "RIVAL",
+            nombreOponente: gameObj.config?.nombreJugador || "TÚ"
         }
     };
 }
