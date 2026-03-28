@@ -101,6 +101,17 @@ class GameStateManager {
             piezaDeducida: null, 
             cartasJugadasRival: []
         };
+
+        // Perfil persistente del rival durante el PARTIDO
+        this.perfilRival = {
+            frecuenciaTruco: 0,
+            bluffsDetectados: 0,
+            agresividad: 0.5, // 0 asustado - 1 agresivo
+            totalCantos: 0
+        };
+
+        // Memoria de palos quemados para deducción probabilística
+        this.memoriaPalos = { Espada: 0, Basto: 0, Oro: 0, Copa: 0 };
     }
 
     crearMazo() {
@@ -148,6 +159,7 @@ class GameStateManager {
             piezaDeducida: null,
             cartasJugadasRival: []
         };
+        this.memoriaPalos = { Espada: 0, Basto: 0, Oro: 0, Copa: 0 };
         
         // Formato inicial de apuesta 'no cantada = 1 pt'
         this.apuestaTruco = { valor: 1, estado: 'nada', turnoCantar: 'ambos' };
@@ -343,6 +355,7 @@ class GameStateManager {
         if (quien === 'jugador') {
             carta = this.manoJugador.splice(indexCarta, 1)[0];
             this.mesa.jugador = carta;
+            this.registrarAccionRival('carta', carta);
             this.turno = 'oponente';
         } else {
             carta = this.manoOponente.splice(indexCarta, 1)[0];
@@ -462,5 +475,22 @@ class GameStateManager {
         else if (puntos === 28) this.memoriaRival.piezaProbable = 5;
         else if (puntos === 27) this.memoriaRival.piezaProbable = 11; // Perico/a
         else if (puntos > 30) this.memoriaRival.piezaProbable = 'fuerte'; // Pieza + carta alta
+    }
+
+    registrarAccionRival(tipo, data) {
+        if (tipo === 'canto') {
+            this.perfilRival.totalCantos++;
+            if (data === 'truco') this.perfilRival.frecuenciaTruco++;
+        }
+        if (tipo === 'carta') {
+            this.memoriaPalos[data.palo]++;
+        }
+    }
+
+    analizarBluff(puntosRival, cantado) {
+        if (cantado && puntosRival < 20) {
+            this.perfilRival.bluffsDetectados++;
+            this.perfilRival.agresividad += 0.1;
+        }
     }
 }

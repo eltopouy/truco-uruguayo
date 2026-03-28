@@ -403,6 +403,7 @@ function renderJuego() {
 async function jugarUI(indexCarta) {
     if (game.turno !== 'jugador' || game.rondaTerminada || window.isAwaitingStateSync) return;
     
+    window.lastPlayerPlayTime = Date.now(); // ESTRATEGIA 18: IA mide la rapidez
     const c = game.manoJugador[indexCarta];
     const nombre= c.getNombreCriollo(game.paloMuestra, game.piezasActivas);
     
@@ -498,9 +499,11 @@ async function jugarBot() {
         indicator.style.display = 'block';
     }
     
-    // Espera aleatoria para simular decisión humana
-    await new Promise(r => setTimeout(r, 1000 + Math.random() * 800));
-    if (indicator) indicator.style.display = 'none';
+    // -- ESTRATEGIA 18: LECTURA DE TIEMPO (SOSPECHA POR RAPIDEZ) --
+    let sospechaRapidez = 0;
+    if (window.lastPlayerPlayTime && (Date.now() - window.lastPlayerPlayTime < 1500)) {
+        sospechaRapidez = 10; // Si el humano tira instantáneo, el bot sospecha
+    }
 
     // -- EVALUACIÓN DE MANO Y FACTORES PSICOLÓGICOS --
     const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
@@ -512,10 +515,21 @@ async function jugarBot() {
     const soyMano = (game.manoDelPartido === 'oponente');
     const bazasGanadas = game.manosGanadas.oponente;
     const bazasPerdidas = game.manosGanadas.jugador;
+    
+    // -- ESTRATEGIA 8: CONSERVADURISMO (MARCADOR CRÍTICO) --
+    const esFinalPartido = (game.puntosPartido.oponente >= (game.config.limitePuntos - 3));
+    const probBluffFinal = esFinalPartido ? 0 : (probBluff ? 0.15 : 0);
+
+    // -- ESTRATEGIA 7: PROFILING (BLUFF CATCHER) --
+    const rivalEsMentiroso = game.perfilRival.bluffsDetectados > 1;
 
     // -- 1. LÓGICA DE CANTOS (FLOR / ENVIDO) --
     if (game.manoOponente.length === 3 && !game.envidoCantado) {
-        if (objIA.tieneFlor) {
+        // ESTRATEGIA 11: FLOR ESCONDIDA (Pie espera al Envido)
+        let cantarFlorAhora = true;
+        if (!soyMano && objIA.tieneFlor && Math.random() < 0.3) cantarFlorAhora = false; // 30% decide esperar
+
+        if (objIA.tieneFlor && cantarFlorAhora) {
             game.envidoCantado = true;
             if (objJG.tieneFlor) {
                 // Choque de flores
@@ -550,6 +564,7 @@ async function jugarBot() {
             
             if (quiereEnv) {
                 game.recordarPuntosRival(objJG.puntos, false);
+                game.analizarBluff(objJG.puntos, true);
                 window.shakeCards();
                 await window.UI.alert(`🤖 IA muestra: ${objIA.puntos} pts.`);
                 if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
@@ -600,30 +615,50 @@ async function jugarBot() {
         return;
     }
 
-    // -- 3. SELECCIÓN DE CARTA ESTRATÉGICA --
+    // -- 3. SELECCIÓN DE CARTA ESTRATÉGICA (20 CAPAS) --
     let cartaElegida = null;
     let indexElegido = 0;
 
+    const tienePieza = game.manoOponente.some(c => c.esPieza);
+
     if (game.mesa.jugador) {
-        // ¿Sabemos que el rival tiene una pieza basada en el Envido?
-        let rivalTienePiezaDeducida = game.memoriaRival.piezaProbable !== null;
+        // ESTRATEGIA 14: DEDUCCIÓN DE PALO
+        game.registrarAccionRival('carta', game.mesa.jugador);
         
-        // Si el rival ya tiró una pieza, ya no nos preocupa "esa" pieza deducida
+        let rivalTienePiezaDeducida = game.memoriaRival.piezaProbable !== null;
         if (game.mesa.jugador.esPieza) rivalTienePiezaDeducida = false;
 
-        // El jugador ya tiró, el Bot busca la respuesta óptima
-        cartaElegida = game.obtenerMejorRespuesta(game.manoOponente, game.mesa.jugador.poder);
-    } else {
-        // El Bot empieza. Estrategia según ronda.
-        let rivalTienePiezaDeducida = game.memoriaRival.piezaProbable !== null;
-
-        if (game.manoOponente.length === 3) {
-            // Primera mano: Tirar algo medio para asustar o bajo para baitear
-            const sorted = [...game.manoOponente].sort((a, b) => a.poder - b.poder);
-            // Si el rival tiene pieza deducida, el bot tira lo más bajo posible para no quemar nada
-            cartaElegida = rivalTienePiezaDeducida ? sorted[0] : (sorted[1] || sorted[0]);
+        // ESTRATEGIA 15: AHORRO DE PIEZA (No usarla si una mata común alcanza)
+        const mejorMataComun = game.manoOponente.filter(c => !c.esPieza && c.poder > game.mesa.jugador.poder).sort((a,b) => a.poder - b.poder)[0];
+        if (mejorMataComun && !rivalTienePiezaDeducida) {
+            cartaElegida = mejorMataComun;
         } else {
-            // Segunda/Tercera: Tirar la más fuerte que le queda para cerrar
+            cartaElegida = game.obtenerMejorRespuesta(game.manoOponente, game.mesa.jugador.poder);
+        }
+    } else {
+        // ESTRATEGIA 9: PARDA MASTER
+        const fueParda = game.registroBazas[0] === 'empate';
+        
+        if (game.manoOponente.length === 3) {
+            // ESTRATEGIA 12: EL AMAGUE (Fingir debilidad en 1ra)
+            const sorted = [...game.manoOponente].sort((a, b) => a.poder - b.poder);
+            if (Math.random() < 0.2 && !esFinalPartido) {
+                cartaElegida = sorted[0]; // Tira la más baja adrede
+            } else {
+                // ESTRATEGIA 10: LEAD TACTICIAN (No regalar mesa)
+                cartaElegida = soyMano ? (sorted[1] || sorted[0]) : sorted[0];
+            }
+        } else if (game.manoOponente.length === 2 && bazasGanadas === 1) {
+            // ESTRATEGIA 6: LA CURA (Baitear en 2da si ganó 1ra y tiene pieza)
+            if (tienePieza && !fueParda) {
+                const soloBajas = game.manoOponente.filter(c => !c.esPieza).sort((a,b) => a.poder - b.poder);
+                cartaElegida = soloBajas[0] || game.manoOponente[0];
+            } else {
+                const sorted = [...game.manoOponente].sort((a, b) => b.poder - a.poder);
+                cartaElegida = fueParda ? sorted[0] : (sorted[1] || sorted[0]); 
+            }
+        } else {
+            // ESTRATEGIA 13: CERRAR LA PUERTA (Asegurar punto final)
             const sorted = [...game.manoOponente].sort((a, b) => b.poder - a.poder);
             cartaElegida = sorted[0];
         }
@@ -724,25 +759,32 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
     
     // Bot mejorado (Táctico): Evalúa si quiere, si se achica o si RE-VIRA
     let botCantoRelleno = 'no'; // 'no', 'si', 'real'
+    
+    // ESTRATEGIA 17: KAMIKAZE FALTA (Si pierde por mucho, se la juega todas)
+    const diferencia = game.puntosPartido.jugador - game.puntosPartido.oponente;
+    const esKamikaze = diferencia > 10;
+
     if (opt === 'falta_envido') {
-        if (misPtos >= 30) botCantoRelleno = 'si';
+        if (misPtos >= 30 || (esKamikaze && misPtos >= 24)) botCantoRelleno = 'si';
     } else if (opt === 'real_envido') {
         if (misPtos >= 32) botCantoRelleno = 'real';
-        else if (misPtos >= 28) botCantoRelleno = 'si';
+        else if (misPtos >= 28 || (esKamikaze && misPtos >= 24)) botCantoRelleno = 'si';
     } else {
+        // ESTRATEGIA 20: CANTO INVERSO (Baiting con Envido si es muy alto)
         if (misPtos >= 30) botCantoRelleno = 'real';
-        else if (misPtos >= 25) botCantoRelleno = 'si';
+        else if (misPtos >= 25 || (esKamikaze && misPtos >= 20)) botCantoRelleno = 'si';
     }
 
     if (botCantoRelleno === 'no') {
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: No quiero.`);
         game.puntosPartido.jugador += 1; 
     } else if (botCantoRelleno === 'real' && opt !== 'falta_envido' && opt !== 'real_envido') {
-        // REVIRE: El bot responde con Real Envido
+        // REVIRE
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡REAL ENVIDO!`);
         const quiereReal = await window.UI.confirm(`🤖 IA te cruzó REAL ENVIDO.<br><br>Tus puntos: ${tusPtos}<br>¿Querés? (5 pts en juego si aceptás)`);
         if (quiereReal) {
             game.recordarPuntosRival(tusPtos, false);
+            game.analizarBluff(tusPtos, true); // Probar si el humano mintió
             window.shakeCards();
             await window.UI.alert(`🤖 IA muestra: ${misPtos} pts.`);
             if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
@@ -753,10 +795,11 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
                 game.puntosPartido.oponente += 5;
             }
         } else {
-            game.puntosPartido.oponente += 2; // Arrugaste ante el Real Envido (ya valía 2 el envido previo)
+            game.puntosPartido.oponente += 2; 
         }
     } else {
         game.recordarPuntosRival(tusPtos, false);
+        game.analizarBluff(tusPtos, true);
         window.vibrateAction(200);
         window.shakeCards();
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡QUIERO con ${misPtos}!`);
@@ -853,10 +896,13 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
     }
 
     // IA mejorada: Evalúa si quiere, se va al mazo o CANTA RETRUCO
+    game.registrarAccionRival('canto', 'truco');
     const poderMano = game.evaluarPoderMano(game.manoOponente);
+    const rivalEsMentiroso = game.perfilRival.bluffsDetectados > 1;
+
     let decision = 'no'; // 'no', 'si', 'voto'
-    if (poderMano > 85) decision = 'voto';
-    else if (poderMano > 20) decision = 'si';
+    if (poderMano > 80) decision = 'voto';
+    else if (poderMano > (rivalEsMentiroso ? (10 - sospechaRapidez) : (25 - sospechaRapidez))) decision = 'si'; 
 
     if (decision === 'voto' && sigNivel !== 'vale4') {
         const nextCanto = sigNivel === 'truco' ? 'RETRUCO' : (sigNivel === 'retruco' ? 'VALE 4' : '');
