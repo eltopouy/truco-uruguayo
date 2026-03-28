@@ -105,6 +105,16 @@ window.toggleMarcadorGlobal = function() {
     }
 };
 
+window.updateSyncUIState = function() {
+    const table = document.querySelector('.table');
+    if (!table) return;
+    if (window.isAwaitingStateSync && window.modoJuego === 'multiplayer') {
+        table.classList.add('sync-locked');
+    } else {
+        table.classList.remove('sync-locked');
+    }
+};
+
 function logJugada(texto, tipo = 'sistema') {
     const feed = document.getElementById('game-feed');
     if (!feed) return;
@@ -255,6 +265,7 @@ window.shakeCards = function() {
 };
 
 function renderJuego() {
+    if (typeof window.updateSyncUIState === 'function') window.updateSyncUIState();
     if (window.isAnimatingDeal) return;
     const oppHandEl = document.getElementById('opponent-hand');
     oppHandEl.innerHTML = '';

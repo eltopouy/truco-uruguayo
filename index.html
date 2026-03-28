@@ -230,7 +230,7 @@
         <div class="player-hand" id="player-hand"></div>
 
         <button id="btn-repartir" class="btn-primary"
-            style="display:none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 220px; font-size: 1.2rem; padding: 15px;">🔄
+            style="display:none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 15000; width: 220px; font-size: 1.2rem; padding: 15px;">🔄
             Repartir Cartas</button>
 
         <!-- Puntos Ayudante Flotante (Oculto por defecto, Toggle manual) -->
@@ -347,6 +347,13 @@
         </p>
         <button class="btn-primary" style="margin-top: 30px; background: #c0392b; font-size: 0.9rem;"
             onclick="location.reload()">Salir al Menú</button>
+    </div>
+
+    <!-- Overlay de Sincronización (Lag Feedback) -->
+    <div id="overlay-sync" 
+        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.3); z-index: 200000; backdrop-filter: blur(2px); color: white; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto;">
+        <div class="loader-small" style="margin-bottom: 10px;"></div>
+        <div style="font-size: 0.8rem; letter-spacing: 1px; color: var(--gold);">SINCRONIZANDO...</div>
     </div>
 
     <!-- Modal de Configuración -->

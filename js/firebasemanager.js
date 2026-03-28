@@ -20,6 +20,9 @@ const db = firebase.database();
 let miRol = null; 
 let codigoSalaActual = null;
 let roomSubscription = null;
+window.myActionSeq = 0;
+window.expectedRivalSeq = 0;
+window.actionQueue = []; // Para procesar fuera de orden si hay lag
 
 // Persistencia de Sesión
 function guardarSesionLocal(codigo, rol) {
@@ -160,6 +163,8 @@ window.crearSalaFirebase = async function(isPublica = false) {
                 
                 if (miRol === 'creador') {
                     game.iniciarRonda();
+                    window.myActionSeq = 0;
+                    window.expectedRivalSeq = 0;
                     sincronizarEstadoMotor();
                 }
                 renderJuego();
@@ -249,6 +254,9 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
                 const data = snap.val();
                 if (data) asignarEstadoDesdeRed(data);
             });
+
+            window.myActionSeq = 0;
+            window.expectedRivalSeq = 0;
 
             // Sincronizar solo acciones nuevas
             const initTime = Date.now();
@@ -376,7 +384,8 @@ window.sincronizarEstadoMotor = function(extraData = {}) {
     const snap = JSON.stringify(snapObj);
     db.ref('salas/' + codigoSalaActual).update({ 
         estado_maestro: snap,
-        lastUpdate: Date.now()
+        lastUpdate: Date.now(),
+        lastSeq: window.myActionSeq // Informar al rival cuál es mi última secuencia procesada
     }).then(() => {
         // Liberar UI del Host localmente después de sincronizar exitosamente
         desbloquearSyncLocal();
@@ -385,18 +394,29 @@ window.sincronizarEstadoMotor = function(extraData = {}) {
 
 window.enviarAccionFirebase = function(tipoAccion, payload) {
     if (modoJuego !== 'multiplayer') return;
+    window.myActionSeq++; // Incrementar mi secuencia
     const target = miRol === 'creador' ? 'acciones_host' : 'acciones_in';
     const refPath = db.ref('salas/' + codigoSalaActual + '/' + target).push();
+
+    // Feedback visual inmediato: Bloquear UI
+    window.isAwaitingStateSync = true;
+    window.startSyncTimeout(5000); // 5s de timeout de seguridad
+    if (typeof toggleSyncOverlay === 'function') toggleSyncOverlay(true);
+    if (typeof updateSyncUIState === 'function') updateSyncUIState();
+
     refPath.set({ 
         tipo: tipoAccion, 
         data: payload || {}, 
         sender: miRol,
-        ts: Date.now() 
+        ts: Date.now(),
+        seq: window.myActionSeq // Enviar el ID de secuencia
     });
 };
 
 window.desbloquearSyncLocal = function() {
     window.isAwaitingStateSync = false;
+    if (typeof toggleSyncOverlay === 'function') toggleSyncOverlay(false);
+    
     if (window.syncTimeout) {
         clearTimeout(window.syncTimeout);
         window.syncTimeout = null;
@@ -418,12 +438,21 @@ async function procesarAccionRed(snap) {
     const accion = snap.val();
     if (!accion || accion.sender === miRol) return; // Ignorar mis propias acciones reenviadas
     
+    // VALIDACIÓN DE SECUENCIA PARA EVITAR REPETICIONES U OMISIONES
+    if (accion.seq <= window.expectedRivalSeq) {
+        console.warn(`Mensaje repetido o viejo ignorado: ${accion.tipo} (Seq: ${accion.seq}, Esperábamos > ${window.expectedRivalSeq})`);
+        return; 
+    }
+    
+    // Si hay un salto, lo ideal sería pedir re-sincronización, pero aquí simplemente logueamos y actualizamos
+    if (accion.seq > window.expectedRivalSeq + 1) {
+        console.error(`¡Salto de secuencia detectado! (${window.expectedRivalSeq} -> ${accion.seq}). Posible pérdida de paquetes.`);
+    }
+    
+    window.expectedRivalSeq = accion.seq; // Actualizar secuencia esperada
+
     // Evitar procesar paquetes muy viejos (más de 10s de lag) para no causar desincronización
     const delta = Date.now() - accion.ts;
-    if (delta > 10000) {
-        console.warn("Acción ignorada por excesivo lag (>10s):", accion.tipo);
-        return;
-    }
     
     const t = accion.tipo;
     const d = accion.data;
@@ -1021,7 +1050,7 @@ function iniciarHeartbeat(roomCode, myRole, rivalRole) {
     
     window.heartbeatInterval = setInterval(() => {
         presenceRef.set(firebase.database.ServerValue.TIMESTAMP);
-    }, 3000);
+    }, 2000); // 2 segundos para detección rápida
     
     window.rivalPresenceSubscription = rivalPresenceRef.on('value', (snap) => {
         const lastSeen = snap.val();
@@ -1038,6 +1067,7 @@ function iniciarHeartbeat(roomCode, myRole, rivalRole) {
             if (reconnectingOverlay) {
                 if (diff > 8000) {
                     reconnectingOverlay.style.display = 'flex';
+                    reconnectingOverlay.style.zIndex = '300000'; // Asegurar que esté por encima de todo
                 } else {
                     reconnectingOverlay.style.display = 'none';
                     window.modalAbandonoMostrado = false; // Resetear si vuelve

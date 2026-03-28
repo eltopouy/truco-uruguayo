@@ -757,3 +757,25 @@ body, html {
 .modal-active #mini-marcador {
     z-index: 26000 !important;
 }
+
+/* --- ESTILOS DE SINCRONIZACIÓN Y RED --- */
+.loader-small {
+    border: 3px solid rgba(255,255,255,0.1);
+    border-left: 3px solid var(--gold);
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    animation: spin 0.8s linear infinite;
+}
+
+/* Estado de UI bloqueado por sincronización */
+.sync-locked {
+    pointer-events: none !important;
+    opacity: 0.6 !important;
+    filter: grayscale(50%) blur(1px) !important;
+    transition: all 0.3s ease;
+}
+
+#overlay-sync {
+    transition: opacity 0.3s ease;
+}

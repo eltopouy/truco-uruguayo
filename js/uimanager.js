@@ -127,3 +127,9 @@ window.UI = {
         });
     }
 };
+
+window.toggleSyncOverlay = function(show) {
+    const overlay = document.getElementById('overlay-sync');
+    if (!overlay) return;
+    overlay.style.display = show ? 'flex' : 'none';
+};
