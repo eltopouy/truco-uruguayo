@@ -278,7 +278,14 @@ function plainToCarta(obj) {
 }
 
 function asignarEstadoDesdeRed(dataStr) {
-    const rawData = JSON.parse(dataStr);
+    let rawData;
+    try {
+        rawData = JSON.parse(dataStr);
+    } catch (e) {
+        console.error("❌ Error al parsear estado de red:", e);
+        window.isAwaitingStateSync = false;
+        return;
+    }
     const data = miRol === 'invitado' ? aislarManoParaInvitado(rawData) : rawData;
     
     if (!data) return;
@@ -486,9 +493,9 @@ async function procesarAccionRed(snap) {
         logJugada(`💬 Rival: ${d.msg}`, 'rival');
         window.audio.play('win-baza'); 
     }
-    else if (t === 'abandonar_sala' || t === 'jugador_desconectado') {
-        const msg = t === 'abandonar_sala' ? "El oponente ha abandonado la partida." : "El oponente se ha desconectado.";
-        await window.UI.alert(`${msg} Has ganado por abandono.`, "¡Victoria!");
+    else if (t === 'abandonar_sala' || t === 'jugador_desconectado' || t === 'ganar_por_abandono') {
+        const msg = t === 'abandonar_sala' ? "El oponente ha abandonado la partida." : (t === 'ganar_por_abandono' ? "Has ganado porque el rival no respondió a tiempo." : "El oponente se ha desconectado.");
+        await window.UI.alert(`${msg} 🏆 ¡Victoria por abandono!`, "Fin de Partida");
         location.reload(); 
     }
     else if (t === 'pedir_revancha') {
@@ -966,46 +973,70 @@ function attachTypingListener(roomCode, rivalRole) {
     });
 }
 
+window.heartbeatInterval = null;
+window.rivalPresenceSubscription = null;
+window.modalAbandonoMostrado = false;
+
 function iniciarHeartbeat(roomCode, myRole, rivalRole) {
     const presenceRef = db.ref(`salas/${roomCode}/presence/${myRole}`);
     const rivalPresenceRef = db.ref(`salas/${roomCode}/presence/${rivalRole}`);
     
-    // El ping lo mostramos solo si estamos en multijugador activo
+    // Limpiar previo
+    if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
+    if (window.rivalPresenceSubscription) rivalPresenceRef.off('value', window.rivalPresenceSubscription);
+    window.modalAbandonoMostrado = false;
+
     document.getElementById('ping-container').style.display = 'flex';
     
-    // Heartbeat propio cada 3 segundos
-    setInterval(() => {
+    window.heartbeatInterval = setInterval(() => {
         presenceRef.set(firebase.database.ServerValue.TIMESTAMP);
     }, 3000);
     
-    // Escuchar el del rival para calcular Ping y Estado
-    rivalPresenceRef.on('value', (snap) => {
+    window.rivalPresenceSubscription = rivalPresenceRef.on('value', (snap) => {
         const lastSeen = snap.val();
         if (!lastSeen) return;
         
-        const now = Date.now();
-        const diff = now - lastSeen; // Diferencia en ms
-        
-        // RECONEXIÓN UI (Bulletproof)
-        const reconnectingOverlay = document.getElementById('overlay-reconnecting');
-        if (reconnectingOverlay) {
-            if (diff > 8000) {
-                reconnectingOverlay.style.display = 'flex';
-            } else {
-                reconnectingOverlay.style.display = 'none';
+        // Uso de ServerValue.TIMESTAMP implica que necesitamos calcular la diferencia
+        // Pero Firebase nos da el timestamp del servidor. Para evitar clock skew:
+        db.ref(".info/serverTimeOffset").once("value", (offsetSnap) => {
+            const offset = offsetSnap.val() || 0;
+            const now = Date.now() + offset;
+            const diff = now - lastSeen;
+            
+            const reconnectingOverlay = document.getElementById('overlay-reconnecting');
+            if (reconnectingOverlay) {
+                if (diff > 8000) {
+                    reconnectingOverlay.style.display = 'flex';
+                } else {
+                    reconnectingOverlay.style.display = 'none';
+                    window.modalAbandonoMostrado = false; // Resetear si vuelve
+                }
             }
-        }
 
-        const dot = document.getElementById('ping-dot');
-        const text = document.getElementById('ping-text');
-        
-        if (text) text.innerText = `${diff}ms`;
-        
-        if (dot) {
-            if (diff < 300) dot.style.background = '#2ecc71'; // Verde
-            else if (diff < 1000) dot.style.background = '#f1c40f'; // Amarillo
-            else dot.style.background = '#e74c3c'; // Rojo
-        }
+            // Lógica de Abandono con Confirmación
+            if (diff > 45000 && !window.modalAbandonoMostrado && window.modoJuego === 'multiplayer') {
+                window.modalAbandonoMostrado = true;
+                window.UI.confirm(
+                    "El rival lleva más de 45 segundos sin responder. ¿Deseas dar el partido por ganado por abandono o esperar un poco más?",
+                    "⚠️ Posible Abandono"
+                ).then(quiereGanar => {
+                    if (quiereGanar) {
+                        logJugada("🏆 Reclamando victoria por abandono...", "sistema");
+                        enviarAccionFirebase('ganar_por_abandono');
+                        // El host procesará esto y cerrará la sala
+                    }
+                });
+            }
+
+            const dot = document.getElementById('ping-dot');
+            const text = document.getElementById('ping-text');
+            if (text) text.innerText = `${Math.max(0, diff)}ms`;
+            if (dot) {
+                if (diff < 500) dot.style.background = '#2ecc71';
+                else if (diff < 2000) dot.style.background = '#f1c40f';
+                else dot.style.background = '#e74c3c';
+            }
+        });
     });
 }
 

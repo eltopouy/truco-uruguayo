@@ -401,6 +401,19 @@ function renderJuego() {
     }
 }
 
+window.isAwaitingStateSync = false;
+window.syncTimeout = null;
+window.startSyncTimeout = function(ms = 10000) {
+    if (window.syncTimeout) clearTimeout(window.syncTimeout);
+    window.syncTimeout = setTimeout(() => {
+        if (window.isAwaitingStateSync) {
+            console.warn("⏳ Sincronización lenta: Desbloqueo de emergencia activado.");
+            window.isAwaitingStateSync = false;
+            renderJuego();
+        }
+    }, ms);
+};
+
 async function jugarUI(indexCarta) {
     if (game.turno !== 'jugador' || game.rondaTerminada || window.isAwaitingStateSync) return;
     
@@ -419,6 +432,7 @@ async function jugarUI(indexCarta) {
     
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
+        window.startSyncTimeout();
         enviarAccionFirebase('jugar_carta', { index: indexCarta });
         sincronizarEstadoMotor({ timerStartTime: Date.now() });
     }
@@ -735,6 +749,7 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
 
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
+        window.startSyncTimeout();
         game.envidoCantado = true;
         window.audio.play('envido');
         enviarAccionFirebase('canto', { tipo: opt, pts: game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos, valor_pts: ptsToque });
@@ -824,6 +839,7 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
     // FLOR
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
+        window.startSyncTimeout();
         game.envidoCantado = true;
         enviarAccionFirebase('accion', { tipo: 'canta_flor', pts: game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos });
         await window.UI.alert("🗣️ Tú: ¡Flor!<br>(Esperando para ver si el rival cruza otra Flor por red...)");
@@ -887,6 +903,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
 
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
+        window.startSyncTimeout();
         window.audio.play('truco');
         enviarAccionFirebase('canto', { tipo: 'truco', nivel: p.estado, sigValor: sigValor, sigNivel: sigNivel, canto: canto });
         await window.UI.alert(`🗣️ Tú: ¡${canto}!<br>(Esperando respuesta por la red...)`);
