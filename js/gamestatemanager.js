@@ -93,6 +93,14 @@ class GameStateManager {
         // El Rey (12) actúa como comodín (Alcahuete) si la muestra es una pieza base
         this.piezasBase = [2, 4, 5, 11, 10]; 
         this.piezasActivas = []; // Almacena el valor de los números que son piezas en la ronda
+        
+        // Memoria para la IA (Deducción humana)
+        this.memoriaRival = {
+            puntosEnvido: null,
+            tieneFlor: false,
+            piezaDeducida: null, 
+            cartasJugadasRival: []
+        };
     }
 
     crearMazo() {
@@ -132,6 +140,14 @@ class GameStateManager {
         this.turno = this.manoDelPartido;
         this.fase = 'cantos';
         this.envidoCantado = false;
+        
+        // Resetear memoria de la IA para la nueva ronda
+        this.memoriaRival = {
+            puntosEnvido: null,
+            tieneFlor: false,
+            piezaDeducida: null,
+            cartasJugadasRival: []
+        };
         
         // Formato inicial de apuesta 'no cantada = 1 pt'
         this.apuestaTruco = { valor: 1, estado: 'nada', turnoCantar: 'ambos' };
@@ -433,5 +449,18 @@ class GameStateManager {
         // No hay ganadoras, devolver la peor carta para no quemar piezas/matas
         let todas = [...mano].sort((a, b) => a.poder - b.poder);
         return todas[0];
+    }
+
+    recordarPuntosRival(puntos, tieneFlor) {
+        this.memoriaRival.puntosEnvido = puntos;
+        this.memoriaRival.tieneFlor = tieneFlor;
+
+        // Deducción de Piezas (Reglas de Truco Uruguayo)
+        // 30 -> 2 | 29 -> 4 | 28 -> 5 | 27 -> 10 u 11
+        if (puntos === 30) this.memoriaRival.piezaProbable = 2;
+        else if (puntos === 29) this.memoriaRival.piezaProbable = 4;
+        else if (puntos === 28) this.memoriaRival.piezaProbable = 5;
+        else if (puntos === 27) this.memoriaRival.piezaProbable = 11; // Perico/a
+        else if (puntos > 30) this.memoriaRival.piezaProbable = 'fuerte'; // Pieza + carta alta
     }
 }

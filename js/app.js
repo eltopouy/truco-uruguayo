@@ -492,18 +492,6 @@ async function jugarBot() {
     if (window.modoJuego === 'multiplayer') return;
     if (game.rondaTerminada || game.manoOponente.length === 0) return;
     
-    // IA con "Personalidad": Retardo de pensamiento e indicador visual
-    const indicator = document.getElementById('typing-indicator');
-    if (indicator) {
-        indicator.innerText = "Rival está pensando...";
-        indicator.style.display = 'block';
-    }
-    
-    // Espera aleatoria entre 1 y 2.5 segundos para simular decisión humana
-    await new Promise(r => setTimeout(r, 800 + Math.random() * 1500));
-    
-    if (indicator) indicator.style.display = 'none';
-
     const indicator = document.getElementById('typing-indicator');
     if (indicator) {
         indicator.innerText = "Rival está pensando...";
@@ -538,6 +526,7 @@ async function jugarBot() {
                     let lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
                     let premio = game.config.limitePuntos - lider; 
                     if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
+                        game.recordarPuntosRival(objJG.puntos, true);
                         await window.UI.alert(`¡Tu Flor le ganó! (+${premio} pts)`);
                         game.puntosPartido.jugador += premio;
                     } else {
@@ -560,6 +549,7 @@ async function jugarBot() {
             const quiereEnv = await window.UI.confirm(`🤖 IA: ${msg}<br><br>Tus puntos: ${objJG.puntos} pts<br>¿Aceptás?`, "Desafío de IA");
             
             if (quiereEnv) {
+                game.recordarPuntosRival(objJG.puntos, false);
                 window.shakeCards();
                 await window.UI.alert(`🤖 IA muestra: ${objIA.puntos} pts.`);
                 if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
@@ -578,7 +568,7 @@ async function jugarBot() {
 
     // -- 2. LÓGICA DE TRUCO --
     if (game.apuestaTruco.estado === 'nada' && !esDormido) {
-        // Canta truco si tiene poder > 50 o si está blfeando
+        // Canta truco si tiene poder > 50 o si está blufeando
         if (poderMano > 50 || probBluff) {
             const msg = probBluff ? "¡TRUCO! (¡Miralo al mentiroso!)" : "¡TRUCO!";
             const quiereT = await window.UI.confirm(`🤖 IA: ${msg}<br>¿Querés?`, "¡Truco de la IA!");
@@ -598,19 +588,40 @@ async function jugarBot() {
         }
     }
 
+    // -- 2.1 LÓGICA DE IRSE AL MAZO (RETIRADA TÁCTICA) --
+    // Si la IA perdió la primera baza y sus cartas son basura, se retira para no arriesgar más puntos
+    if (game.manosGanadas.jugador === 1 && game.manosGanadas.oponente === 0 && poderMano < 15 && game.apuestaTruco.valor === 1) {
+        await window.UI.alert(`🤖 IA: ¡Me voy al mazo! Las tuyas pintan mejor.<br>(Ganas 1 punto)`);
+        game.puntosPartido.jugador += 1;
+        game.rondaTerminada = true;
+        if(await verificarLimitesPartido()) return;
+        renderJuego();
+        document.getElementById('btn-repartir').style.display = 'block';
+        return;
+    }
+
     // -- 3. SELECCIÓN DE CARTA ESTRATÉGICA --
     let cartaElegida = null;
     let indexElegido = 0;
 
     if (game.mesa.jugador) {
+        // ¿Sabemos que el rival tiene una pieza basada en el Envido?
+        let rivalTienePiezaDeducida = game.memoriaRival.piezaProbable !== null;
+        
+        // Si el rival ya tiró una pieza, ya no nos preocupa "esa" pieza deducida
+        if (game.mesa.jugador.esPieza) rivalTienePiezaDeducida = false;
+
         // El jugador ya tiró, el Bot busca la respuesta óptima
         cartaElegida = game.obtenerMejorRespuesta(game.manoOponente, game.mesa.jugador.poder);
     } else {
         // El Bot empieza. Estrategia según ronda.
+        let rivalTienePiezaDeducida = game.memoriaRival.piezaProbable !== null;
+
         if (game.manoOponente.length === 3) {
             // Primera mano: Tirar algo medio para asustar o bajo para baitear
             const sorted = [...game.manoOponente].sort((a, b) => a.poder - b.poder);
-            cartaElegida = sorted[1] || sorted[0]; // La del medio
+            // Si el rival tiene pieza deducida, el bot tira lo más bajo posible para no quemar nada
+            cartaElegida = rivalTienePiezaDeducida ? sorted[0] : (sorted[1] || sorted[0]);
         } else {
             // Segunda/Tercera: Tirar la más fuerte que le queda para cerrar
             const sorted = [...game.manoOponente].sort((a, b) => b.poder - a.poder);
@@ -711,16 +722,42 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
     const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).puntos;
     const tusPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos;
     
-    // Bot mejorado: Evalúa si quiere el desafío
-    let botQuiero = false;
-    if (opt === 'falta_envido') botQuiero = misPtos >= 30;
-    else if (opt === 'real_envido') botQuiero = misPtos >= 28;
-    else botQuiero = misPtos >= 25;
-
-    if (!botQuiero) {
-        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: No quiero.`);
-        game.puntosPartido.jugador += 1; // Solo se lleva 1 si no se quiere el primero
+    // Bot mejorado (Táctico): Evalúa si quiere, si se achica o si RE-VIRA
+    let botCantoRelleno = 'no'; // 'no', 'si', 'real'
+    if (opt === 'falta_envido') {
+        if (misPtos >= 30) botCantoRelleno = 'si';
+    } else if (opt === 'real_envido') {
+        if (misPtos >= 32) botCantoRelleno = 'real';
+        else if (misPtos >= 28) botCantoRelleno = 'si';
     } else {
+        if (misPtos >= 30) botCantoRelleno = 'real';
+        else if (misPtos >= 25) botCantoRelleno = 'si';
+    }
+
+    if (botCantoRelleno === 'no') {
+        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: No quiero.`);
+        game.puntosPartido.jugador += 1; 
+    } else if (botCantoRelleno === 'real' && opt !== 'falta_envido' && opt !== 'real_envido') {
+        // REVIRE: El bot responde con Real Envido
+        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡REAL ENVIDO!`);
+        const quiereReal = await window.UI.confirm(`🤖 IA te cruzó REAL ENVIDO.<br><br>Tus puntos: ${tusPtos}<br>¿Querés? (5 pts en juego si aceptás)`);
+        if (quiereReal) {
+            game.recordarPuntosRival(tusPtos, false);
+            window.shakeCards();
+            await window.UI.alert(`🤖 IA muestra: ${misPtos} pts.`);
+            if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
+                await window.UI.alert(`¡Tus ${tusPtos} le ganaron! (+5 pts)`);
+                game.puntosPartido.jugador += 5;
+            } else {
+                await window.UI.alert(`¡La IA te durmió con ${misPtos}! (+5 pts)`);
+                game.puntosPartido.oponente += 5;
+            }
+        } else {
+            game.puntosPartido.oponente += 2; // Arrugaste ante el Real Envido (ya valía 2 el envido previo)
+        }
+    } else {
+        game.recordarPuntosRival(tusPtos, false);
+        window.vibrateAction(200);
         window.shakeCards();
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡QUIERO con ${misPtos}!`);
         if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
@@ -815,11 +852,34 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
         return;
     }
 
-    const aceptaIA = Math.random() > 0.4; 
-    
-    if (aceptaIA) {
+    // IA mejorada: Evalúa si quiere, se va al mazo o CANTA RETRUCO
+    const poderMano = game.evaluarPoderMano(game.manoOponente);
+    let decision = 'no'; // 'no', 'si', 'voto'
+    if (poderMano > 85) decision = 'voto';
+    else if (poderMano > 20) decision = 'si';
+
+    if (decision === 'voto' && sigNivel !== 'vale4') {
+        const nextCanto = sigNivel === 'truco' ? 'RETRUCO' : (sigNivel === 'retruco' ? 'VALE 4' : '');
+        const nextVal = sigNivel === 'truco' ? 3 : 4;
+        const nextTarget = sigNivel === 'truco' ? 'retruco' : 'vale4';
+
+        await window.UI.alert(`🗣️ Tú: ¡${canto}!<br>🤖 Rival: ¡${nextCanto}! (Se agrandó el bot)`);
+        const quiereSuba = await window.UI.confirm(`🤖 IA te cruzó ${nextCanto}.<br>¿Te la aguantás? (${nextVal} pts en juego)`);
+        if (quiereSuba) {
+            window.shakeCards();
+            game.apuestaTruco.valor = nextVal;
+            game.apuestaTruco.estado = nextTarget;
+            game.apuestaTruco.turnoCantar = 'oponente'; 
+        } else {
+            game.puntosPartido.oponente += (nextVal - 1);
+            game.rondaTerminada = true;
+            renderJuego();
+            await window.manejarFinDeRondaUI();
+            return;
+        }
+    } else if (decision === 'si') {
         window.shakeCards();
-        await window.UI.alert(`🗣️ Tú: ¡Canto ${canto}!<br>🤖 Rival: ¡QUIERO VALE!`);
+        await window.UI.alert(`🗣️ Tú: ¡Canto ${canto}!<br>🤖 Rival: ¡QUIERO!`);
         game.apuestaTruco.valor = sigValor;
         game.apuestaTruco.estado = sigNivel;
         game.apuestaTruco.turnoCantar = 'oponente'; 
