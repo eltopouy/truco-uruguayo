@@ -165,6 +165,7 @@ window.crearSalaFirebase = async function(isPublica = false) {
                 renderJuego();
                 logJugada("🎮 ¡Rival Conectado! Empieza el partido...", "sistema");
                 attachTypingListener(codigoSalaActual, 'invitado');
+                iniciarHeartbeat(codigoSalaActual, 'creador', 'invitado');
             }
         });
         
@@ -254,6 +255,7 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
             roomRef.child('acciones_host').orderByChild('ts').startAt(initTime).on('child_added', procesarAccionRed);
             
             attachTypingListener(codigoSalaActual, 'creador');
+            iniciarHeartbeat(codigoSalaActual, 'invitado', 'creador');
             
             if(isPublica) logJugada("Te conectaste a una partida al azar.", "sistema");
         });
@@ -375,6 +377,13 @@ async function procesarAccionRed(snap) {
     const accion = snap.val();
     if (!accion || accion.sender === miRol) return; // Ignorar mis propias acciones reenviadas
     
+    // Evitar procesar paquetes muy viejos (más de 10s de lag) para no causar desincronización
+    const delta = Date.now() - accion.ts;
+    if (delta > 10000) {
+        console.warn("Acción ignorada por excesivo lag (>10s):", accion.tipo);
+        return;
+    }
+    
     const t = accion.tipo;
     const d = accion.data;
     
@@ -403,10 +412,12 @@ async function procesarAccionRed(snap) {
             procesarCantoEnvidoRed(d);
         }
         else if (d.tipo === 'truco') {
+            window.audio.play('truco');
             procesarCantoTrucoRed(d);
         }
     }
     else if (t === 'canto_subida') {
+        window.audio.play('truco'); // Los gritos de subida también disparan sonido
         window.resetTimer();
         procesarCantoSubidaRed(d);
     }
@@ -427,10 +438,12 @@ async function procesarAccionRed(snap) {
             renderJuego();
             await window.manejarFinDeRondaUI();
         } else if (d.tipo === 'canta_flor') {
+            window.audio.play('flor');
             window.resetTimer();
             game.envidoCantado = true;
             procesarCantoFlorRed(d);
         } else if (d.tipo === 'respuesta_flor') {
+            if (d.aceptada) window.audio.play('flor');
             procesarRespuestaFlorRed(d);
         } else if (d.tipo === 'repartir' && miRol === 'creador') {
             game.iniciarRonda();
@@ -844,6 +857,7 @@ window.checkExistingSession = async function() {
                     });
                     roomRef.child('acciones_in').on('child_added', procesarAccionRed);
                     attachTypingListener(codigoSalaActual, 'invitado');
+                    iniciarHeartbeat(codigoSalaActual, 'creador', 'invitado');
                     renderJuego();
                 } else {
                     // Invitado reconecta
@@ -857,6 +871,7 @@ window.checkExistingSession = async function() {
                     });
                     roomRef.child('acciones_host').on('child_added', procesarAccionRed);
                     attachTypingListener(codigoSalaActual, 'creador');
+                    iniciarHeartbeat(codigoSalaActual, 'invitado', 'creador');
                 }
             } else {
                 borrarSesionLocal();
@@ -915,6 +930,39 @@ function attachTypingListener(roomCode, rivalRole) {
         const indicator = document.getElementById('typing-indicator');
         if (indicator) {
             indicator.style.display = isTyping ? 'block' : 'none';
+        }
+    });
+}
+
+function iniciarHeartbeat(roomCode, myRole, rivalRole) {
+    const presenceRef = db.ref(`salas/${roomCode}/presence/${myRole}`);
+    const rivalPresenceRef = db.ref(`salas/${roomCode}/presence/${rivalRole}`);
+    
+    // El ping lo mostramos solo si estamos en multijugador activo
+    document.getElementById('ping-container').style.display = 'flex';
+    
+    // Heartbeat propio cada 3 segundos
+    setInterval(() => {
+        presenceRef.set(firebase.database.ServerValue.TIMESTAMP);
+    }, 3000);
+    
+    // Escuchar el del rival para calcular Ping y Estado
+    rivalPresenceRef.on('value', (snap) => {
+        const lastSeen = snap.val();
+        if (!lastSeen) return;
+        
+        const now = Date.now();
+        const diff = now - lastSeen; // Diferencia en ms
+        
+        const dot = document.getElementById('ping-dot');
+        const text = document.getElementById('ping-text');
+        
+        if (text) text.innerText = `${diff}ms`;
+        
+        if (dot) {
+            if (diff < 300) dot.style.background = '#2ecc71'; // Verde
+            else if (diff < 1000) dot.style.background = '#f1c40f'; // Amarillo
+            else dot.style.background = '#e74c3c'; // Rojo
         }
     });
 }
