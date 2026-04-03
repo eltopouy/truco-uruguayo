@@ -128,15 +128,24 @@ body, html {
     animation-iteration-count: 0.8;
 }
 
-/* Dorso de la baraja española manual */
+/* Dorso del mazo (pixel art) */
 .card-deck {
-    background: linear-gradient(135deg, #b71234 25%, transparent 25%) -25px 0, 
-                linear-gradient(225deg, #b71234 25%, transparent 25%) -25px 0, 
-                linear-gradient(315deg, #b71234 25%, transparent 25%), 
-                linear-gradient(45deg, #b71234 25%, transparent 25%);	
-    background-size: 50px 50px;
-    background-color: #8b0a24;
-    border: 5px solid white;
+    background-image: url('../assets/cards/back_red.png') !important;
+    background-size: 100% 100% !important;
+    background-position: center !important;
+    background-color: transparent !important;
+    border: none !important;
+    /* Efecto visual de Cartas Apiladas */
+    box-shadow: 
+        1px 1px 0 #fff, 
+        2px 2px 0 #7f8c8d, 
+        3px 3px 0 #fff, 
+        4px 4px 0 #7f8c8d, 
+        5px 5px 0 #fff, 
+        6px 6px 0 #7f8c8d, 
+        7px 7px 0 #fff, 
+        8px 8px 0 #7f8c8d, 
+        12px 12px 20px rgba(0,0,0,0.7) !important;
 }
 
 /* Modificadores para cartas Pixel Art */
@@ -147,7 +156,8 @@ body, html {
     image-rendering: crisp-edges;
     image-rendering: pixelated;
     box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    border-radius: 6px;
+    border-radius: 4px;
+    overflow: visible;
 }
 .pixel-card.card-facedown {
     background-image: url('../assets/cards/back_red.png') !important;
@@ -158,14 +168,17 @@ body, html {
 }
 .pieza-label-pixel {
     position: absolute;
-    bottom: -15px;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
     background: var(--gold);
     color: black;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 900;
     padding: 2px 8px;
     border-radius: 4px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    white-space: nowrap;
     z-index: 10;
 }
 

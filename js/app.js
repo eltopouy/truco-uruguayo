@@ -186,11 +186,16 @@ window.animarReparto = async function() {
         deckArea.className = 'deck-area';
         deckArea.classList.add(game.manoDelPartido === 'oponente' ? 'deck-mi-derecha' : 'deck-su-derecha');
         
-        // El mazo visual
-        const mazoDescifrado = crearCartaDOM(null, true);
-        mazoDescifrado.classList.remove('card-facedown');
-        mazoDescifrado.classList.add('card-deck');
-        deckArea.appendChild(mazoDescifrado);
+        // El mazo visual (pixel art dorso)
+        const mazoVisual = document.createElement('div');
+        mazoVisual.classList.add('card', 'pixel-card', 'card-deck');
+        deckArea.appendChild(mazoVisual);
+        
+        // La muestra (carta debajo del mazo)
+        if (game.muestra) {
+            const muestraDiv = crearCartaDOM(game.muestra, false, true);
+            deckArea.appendChild(muestraDiv);
+        }
     }
 
     const mano = game.manoDelPartido; // 'jugador' o 'oponente'
