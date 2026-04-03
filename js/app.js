@@ -142,38 +142,29 @@ function iniciarSolo() {
 function crearCartaDOM(carta, oculta = false, isMuestra = false) {
     const div = document.createElement('div');
     div.classList.add('card');
+    div.classList.add('pixel-card');
     
     if (oculta) {
         div.classList.add('card-facedown');
     } else {
-        const svg = PALS_SVG[carta.palo];
-        const paloClass = `palo-${carta.palo.toLowerCase()}`;
-        const pintaClass = `pinta-${carta.palo.toLowerCase()}`;
+        const suitRow = { 'Espada': 0, 'Basto': 1, 'Oro': 2, 'Copa': 3 };
+        const row = suitRow[carta.palo];
+        const col = carta.valor - 1;
         
-        let labelText = '';
-        if (carta.valor === 10) labelText = "SOTA";
-        if (carta.valor === 11) labelText = "CABALLO";
-        if (carta.valor === 12) labelText = "REY";
+        const xPos = (col / 12) * 100;
+        const yPos = (row / 3) * 100;
+
+        div.style.backgroundImage = 'url("assets/spritesheet.png")';
+        div.style.backgroundSize = '1300% 400%';
+        div.style.backgroundPosition = `${xPos}% ${yPos}%`;
         
-        div.innerHTML = `
-            <div class="card-inner-frame ${pintaClass}">
-                ${carta.palo === 'Basto' ? '<div class="pinta-basto-mid"></div>' : ''}
-            </div>
-            <div class="card-content ${paloClass}">
-                <div class="card-value-top">
-                    <span>${carta.valor}</span>
-                </div>
-                <div class="card-suit-main">
-                    ${labelText ? `<span class="figura-text">${labelText}</span>` : ''}
-                    ${svg}
-                </div>
-                <div class="card-value-bot">
-                    <span>${carta.valor}</span>
-                </div>
-                ${carta.esPieza ? '<div class="pieza-label">PIEZA</div>' : ''}
-            </div>
-        `;
-        if (carta.esPieza) div.classList.add('pieza-glowing');
+        if (carta.esPieza) {
+            div.classList.add('pieza-glowing');
+            const piezaTag = document.createElement('div');
+            piezaTag.className = 'pieza-label-pixel';
+            piezaTag.innerText = 'PIEZA';
+            div.appendChild(piezaTag);
+        }
     }
 
     if(isMuestra) div.classList.add('card-muestra');

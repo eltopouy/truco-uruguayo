@@ -17,9 +17,11 @@ window.UI = {
         if (typeof game === 'undefined' || !game.muestra || !game.partidoIniciado) return '';
 
         const muestra = game.muestra;
-        const PALS_SVG_LOCAL = typeof PALS_SVG !== 'undefined' ? PALS_SVG : {};
-        const svg = PALS_SVG_LOCAL[muestra.palo] || '';
-        const valor = muestra.valor === 10 ? 'SOTA' : muestra.valor === 11 ? 'CAB' : muestra.valor === 12 ? 'REY' : muestra.valor;
+        const suitRow = { 'Espada': 0, 'Basto': 1, 'Oro': 2, 'Copa': 3 };
+        const row = suitRow[muestra.palo];
+        const col = muestra.valor - 1;
+        const xPos = (col / 12) * 100;
+        const yPos = (row / 3) * 100;
 
         // Colores por palo
         const paloColors = { 'Oro': '#d35400', 'Copa': '#c0392b', 'Espada': '#2c3e50', 'Basto': '#27ae60' };
@@ -69,25 +71,19 @@ window.UI = {
             gap: 14px;
             text-align: left;
         ">
-            <!-- Carta Muestra miniatura -->
+            <!-- Carta Muestra miniatura pixel art -->
             <div style="
-                width: 52px; height: 78px;
-                background: white;
-                border-radius: 6px;
-                border: 2px solid ${color};
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: space-between;
-                padding: 3px;
-                box-sizing: border-box;
+                width: 48px; height: 68px; /* 100x155 scale approx */
+                background-image: url('assets/spritesheet.png');
+                background-size: 1300% 400%;
+                background-position: ${xPos}% ${yPos}%;
+                border-radius: 4px;
                 flex-shrink: 0;
                 box-shadow: 0 3px 10px rgba(0,0,0,0.5), 0 0 0 2px var(--gold);
                 position: relative;
+                image-rendering: crisp-edges;
+                image-rendering: pixelated;
             ">
-                <span style="font-size:0.9rem; font-weight:900; color:${color}; align-self:flex-start; line-height:1;">${valor}</span>
-                <div style="width:32px; height:32px;">${svg}</div>
-                <span style="font-size:0.9rem; font-weight:900; color:${color}; align-self:flex-end; transform:rotate(180deg); line-height:1;">${valor}</span>
                 <div style="
                     position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
                     background:var(--gold); color:black; font-size:0.55rem; font-weight:900;

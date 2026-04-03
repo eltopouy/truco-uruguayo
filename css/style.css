@@ -128,8 +128,8 @@ body, html {
     animation-iteration-count: 0.8;
 }
 
-/* Dorso de la baraja española */
-.card-deck, .card-facedown {
+/* Dorso de la baraja española manual */
+.card-deck {
     background: linear-gradient(135deg, #b71234 25%, transparent 25%) -25px 0, 
                 linear-gradient(225deg, #b71234 25%, transparent 25%) -25px 0, 
                 linear-gradient(315deg, #b71234 25%, transparent 25%), 
@@ -137,6 +137,36 @@ body, html {
     background-size: 50px 50px;
     background-color: #8b0a24;
     border: 5px solid white;
+}
+
+/* Modificadores para cartas Pixel Art */
+.pixel-card {
+    background-color: transparent !important;
+    border: none !important;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border-radius: 6px;
+}
+.pixel-card.card-facedown {
+    background-image: url('../assets/spritesheet.png') !important;
+    background-size: 1300% 400% !important;
+    background-position: 100% 100% !important; /* Dorso rojo original del spritesheet */
+    background-color: transparent !important;
+    border: none !important;
+}
+.pieza-label-pixel {
+    position: absolute;
+    bottom: -15px;
+    background: var(--gold);
+    color: black;
+    font-size: 0.7rem;
+    font-weight: 900;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    z-index: 10;
 }
 
 /* Disposición del mazo: Se define dinámicamente con clases (.deck-mi-derecha / .deck-su-derecha) */
