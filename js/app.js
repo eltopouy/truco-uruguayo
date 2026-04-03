@@ -617,7 +617,14 @@ async function jugarBot() {
                         game.puntosPartido.oponente += premio;
                     }
                 } else {
-                    game.puntosPartido.oponente += 3; game.puntosPartido.jugador += 3;
+                    let texto = `Tus ${objJG.puntos} de Flor contra sus ${objIA.puntos} de Flor...<br><br>`;
+                    if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
+                        await window.UI.alert(texto + `Te achicaste, ¡pero tu Flor igual gana por puntos! (+4 Pts)`);
+                        game.puntosPartido.jugador += 4;
+                    } else {
+                        await window.UI.alert(texto + `Te achicaste y la IA te ganó la Flor. (+4 Pts pa' la IA)`);
+                        game.puntosPartido.oponente += 4;
+                    }
                 }
             } else {
                 logJugada("🤖 IA: ¡FLOR!", 'rival');
@@ -629,9 +636,16 @@ async function jugarBot() {
             // El bot decide tocar envido
             game.envidoCantado = true;
             const msg = probBluff ? "¡TOCO ENVIDO! (Te está mintiendo...)" : "¡TOCO ENVIDO!";
-            const quiereEnv = await window.UI.confirm(`🤖 IA: ${msg}<br><br>Tus puntos: ${objJG.puntos} pts<br>¿Aceptás?`, "Desafío de IA");
             
-            if (quiereEnv) {
+            const ptsFalta = game.calcPuntosFalta();
+            const accionOpt = await window.UI.options(`🤖 IA: ${msg}<br><br>Tus puntos: ${objJG.puntos} pts`, [
+                { label: "QUIERO", value: "1", success: true, primary: true },
+                { label: "NO QUIERO", value: "2", neutral: true },
+                { label: "Real Envido", value: "4" },
+                { label: "Falta Envido", value: "5", danger: true }
+            ], "Desafío de IA");
+            
+            if (accionOpt === '1') {
                 game.recordarPuntosRival(objJG.puntos, false);
                 game.analizarBluff(objJG.puntos, true);
                 window.shakeCards();
@@ -643,8 +657,43 @@ async function jugarBot() {
                     await window.UI.alert(`¡IA gana el envido! (+2 pts)`);
                     game.puntosPartido.oponente += 2;
                 }
-            } else {
+            } else if (accionOpt === '2') {
                 game.puntosPartido.oponente += 1;
+            } else {
+                // El jugador le retrucó al BOT! (accionOpt 4 o 5)
+                const ptsReviro = (accionOpt === '4') ? 5 : ptsFalta; // Envido + Real = 5. Falta = resto.
+                const etiquetaRev = (accionOpt === '4') ? "REAL ENVIDO" : "FALTA ENVIDO";
+                
+                await window.UI.alert(`🗣️ Tú: ¡${etiquetaRev}! a la IA`);
+                
+                // La IA analiza si quiere el revire
+                const diferencia = game.puntosPartido.jugador - game.puntosPartido.oponente;
+                const esKamikaze = diferencia > 10;
+                let botAceptaRevire = false;
+                
+                if (accionOpt === '5') { // Falta Envido
+                    if (objIA.puntos >= 31 || (esKamikaze && objIA.puntos >= 27)) botAceptaRevire = true;
+                } else { // Real Envido
+                    if (objIA.puntos >= 30 || (esKamikaze && objIA.puntos >= 25)) botAceptaRevire = true;
+                }
+                
+                if (botAceptaRevire) {
+                    game.recordarPuntosRival(objJG.puntos, false);
+                    game.analizarBluff(objJG.puntos, true);
+                    window.shakeCards();
+                    await window.UI.alert(`🤖 IA: ¡QUIERO! Muestro ${objIA.puntos} pts.`);
+                    if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
+                        await window.UI.alert(`¡Ganaste el choque! (+${ptsReviro} pts)`);
+                        game.puntosPartido.jugador += ptsReviro;
+                    } else {
+                        await window.UI.alert(`¡IA te comió en el revire! (+${ptsReviro} pts)`);
+                        game.puntosPartido.oponente += ptsReviro;
+                    }
+                } else {
+                    // Bot rechaza revire a su propio envido (Oponente cobra Envido rechazado)
+                    await window.UI.alert(`🤖 IA: Son buenas, no quiero el ${etiquetaRev}.`);
+                    game.puntosPartido.jugador += 2;
+                }
             }
             if(await verificarLimitesPartido()) return;
         }
@@ -824,8 +873,8 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
     }
 
     game.envidoCantado = true;
-    const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).puntos;
-    const tusPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos;
+    const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).puntos; // Puntos del BOT para evaluar respuesta
+    const tusPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos; // Puntos del JUGADOR (correctos)
     
     // Bot mejorado (Táctico): Evalúa si quiere, si se achica o si RE-VIRA
     let botCantoRelleno = 'no'; // 'no', 'si', 'real'
@@ -924,9 +973,14 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
                 game.puntosPartido.oponente += premio;
             }
         } else {
-            await window.UI.alert(`Nadie agitó. Cada uno se guarda 3 puntitos al bolso en paz.`);
-            game.puntosPartido.jugador += 3;
-            game.puntosPartido.oponente += 3;
+            let texto = `Tus ${tusPtos} de Flor contra sus ${misPtos} de Flor...<br><br>`;
+            if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
+                await window.UI.alert(texto + `Nadie agitó, ¡pero tu Flor es mejor! (+4 Pts)`);
+                game.puntosPartido.jugador += 4;
+            } else {
+                await window.UI.alert(texto + `Nadie agitó, ¡pero la Flor de la IA es mejor! (+4 Pts pa' la IA)`);
+                game.puntosPartido.oponente += 4;
+            }
         }
     } else {
         await window.UI.alert("🗣️ Tú: ¡Flor!<br>🤖 Rival: ¡Esa Flor es tuya tigre!<br>(Oponente no tiene y cobrás 3 pts limpitos).");
@@ -969,6 +1023,20 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
 
     // IA mejorada: Evalúa si quiere, se va al mazo o CANTA RETRUCO
     game.registrarAccionRival('canto', 'truco');
+
+    if (game.manoOponente.length === 3 && !game.envidoCantado) {
+        const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
+        if (objIA.tieneFlor) {
+            await window.UI.alert(`🗣️ Tú: ¡${canto}!<br>🤖 Rival: ¡Tengo FLOR! (Anula tu toque. La IA cobra 3 pts de su Flor).`);
+            game.puntosPartido.oponente += 3;
+            game.envidoCantado = true;
+            game.fase = 'truco';
+            if(await verificarLimitesPartido()) return;
+            renderJuego();
+            return;
+        }
+    }
+
     const poderMano = game.evaluarPoderMano(game.manoOponente);
     const rivalEsMentiroso = game.perfilRival.bluffsDetectados > 1;
     const sospechaRapidez = (window.lastPlayerPlayTime && (Date.now() - window.lastPlayerPlayTime < 1500)) ? 10 : 0;

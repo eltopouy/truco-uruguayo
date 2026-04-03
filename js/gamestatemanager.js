@@ -98,7 +98,7 @@ class GameStateManager {
         this.memoriaRival = {
             puntosEnvido: null,
             tieneFlor: false,
-            piezaDeducida: null, 
+            piezaProbable: null, // Unificado: antes "piezaDeducida" causaba referencia incorrecta
             cartasJugadasRival: []
         };
 
@@ -156,7 +156,7 @@ class GameStateManager {
         this.memoriaRival = {
             puntosEnvido: null,
             tieneFlor: false,
-            piezaDeducida: null,
+            piezaProbable: null,
             cartasJugadasRival: []
         };
         this.memoriaPalos = { Espada: 0, Basto: 0, Oro: 0, Copa: 0 };

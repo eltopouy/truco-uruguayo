@@ -439,16 +439,6 @@ window.desbloquearSyncLocal = function() {
     renderJuego();
 };
 
-window.finalizarSalaFirebase = function() {
-    if (modoJuego !== 'multiplayer' || !codigoSalaActual) return;
-    detenerHeartbeat();
-    db.ref('salas/' + codigoSalaActual).update({
-        estado: 'finalizado',
-        finTs: Date.now()
-    });
-    borrarSesionLocal();
-};
-
 async function procesarAccionRed(snap) {
     const accion = snap.val();
     if (!accion || accion.sender === miRol) return; // Ignorar mis propias acciones reenviadas

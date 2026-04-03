@@ -753,9 +753,33 @@ body, html {
 .modal-active .player-hand,
 .modal-active .play-area,
 .modal-active .deck-area,
-.modal-active .mazo-container,
-.modal-active #mini-marcador {
+.modal-active #mini-marcador,
+.modal-active #ayudante-puntos,
+.modal-active #toggle-puntos-btn {
     z-index: 26000 !important;
+}
+
+/* Pulso dorado en la muestra cuando hay un modal activo (llama la atención) */
+.modal-active .card-muestra {
+    animation: muestra-pulse 1.5s ease-in-out infinite !important;
+    box-shadow: 0 0 0 3px var(--gold), 0 5px 20px rgba(241,196,15,0.6) !important;
+}
+
+@keyframes muestra-pulse {
+    0%, 100% { box-shadow: 0 0 0 2px var(--gold), 0 5px 15px rgba(241,196,15,0.4); }
+    50% { box-shadow: 0 0 0 5px var(--gold), 0 8px 25px rgba(241,196,15,0.8); }
+}
+
+/* Widget de contexto dentro del modal: ajustes responsive */
+#modal-game-context {
+    font-family: 'Outfit', sans-serif;
+}
+@media (max-width: 400px) {
+    #modal-game-context {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
 }
 
 /* --- ESTILOS DE SINCRONIZACIÓN Y RED --- */
