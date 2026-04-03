@@ -14,14 +14,11 @@ window.UI = {
      */
     _buildContextWidget: function() {
         // Solo mostrar si hay una partida activa
+        // Solo mostrar si hay una partida activa
         if (typeof game === 'undefined' || !game.muestra || !game.partidoIniciado) return '';
 
         const muestra = game.muestra;
-        const suitRow = { 'Espada': 0, 'Basto': 1, 'Oro': 2, 'Copa': 3 };
-        const row = suitRow[muestra.palo];
-        const col = muestra.valor - 1;
-        const xPos = (col / 12) * 100;
-        const yPos = (row / 3) * 100;
+        const url = `assets/cards/${muestra.palo}_${muestra.valor}.png`;
 
         // Colores por palo
         const paloColors = { 'Oro': '#d35400', 'Copa': '#c0392b', 'Espada': '#2c3e50', 'Basto': '#27ae60' };
@@ -74,9 +71,9 @@ window.UI = {
             <!-- Carta Muestra miniatura pixel art -->
             <div style="
                 width: 48px; height: 68px; /* 100x155 scale approx */
-                background-image: url('assets/spritesheet.png');
-                background-size: 1300% 400%;
-                background-position: ${xPos}% ${yPos}%;
+                background-image: url('${url}');
+                background-size: 100% 100%;
+                background-position: center;
                 border-radius: 4px;
                 flex-shrink: 0;
                 box-shadow: 0 3px 10px rgba(0,0,0,0.5), 0 0 0 2px var(--gold);

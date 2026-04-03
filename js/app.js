@@ -147,16 +147,12 @@ function crearCartaDOM(carta, oculta = false, isMuestra = false) {
     if (oculta) {
         div.classList.add('card-facedown');
     } else {
-        const suitRow = { 'Espada': 0, 'Basto': 1, 'Oro': 2, 'Copa': 3 };
-        const row = suitRow[carta.palo];
-        const col = carta.valor - 1;
-        
-        const xPos = (col / 12) * 100;
-        const yPos = (row / 3) * 100;
+        const url = `assets/cards/${carta.palo}_${carta.valor}.png`;
 
-        div.style.backgroundImage = 'url("assets/spritesheet.png")';
-        div.style.backgroundSize = '1300% 400%';
-        div.style.backgroundPosition = `${xPos}% ${yPos}%`;
+        div.style.backgroundImage = `url("${url}")`;
+        div.style.backgroundSize = '100% 100%';
+        div.style.backgroundPosition = 'center';
+        div.style.backgroundColor = 'transparent';
         
         if (carta.esPieza) {
             div.classList.add('pieza-glowing');

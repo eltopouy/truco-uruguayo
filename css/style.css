@@ -150,9 +150,9 @@ body, html {
     border-radius: 6px;
 }
 .pixel-card.card-facedown {
-    background-image: url('../assets/spritesheet.png') !important;
-    background-size: 1300% 400% !important;
-    background-position: 100% 100% !important; /* Dorso rojo original del spritesheet */
+    background-image: url('../assets/cards/back_red.png') !important;
+    background-size: 100% 100% !important;
+    background-position: center !important;
     background-color: transparent !important;
     border: none !important;
 }
