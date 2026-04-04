@@ -538,29 +538,29 @@ body, html {
 
     .opponent-hand {
         position: absolute !important;
-        top: 60px !important; /* Subido mucho más arriba (estaba en 100px) */
+        top: 45px !important; /* Más arriba */
         left: 50% !important;
-        transform: translateX(-50%) scale(0.8) !important;
+        transform: translateX(-50%) scale(0.70) !important; /* Más chicos para ganar lugar */
         padding: 0 !important;
         width: auto;
         z-index: 5;
     }
 
     .deck-mi-derecha {
-        bottom: 28%;
-        right: 5px;
+        bottom: auto;
+        top: 50%; /* Centro vertical */
+        right: 0px;
         left: auto;
-        top: auto;
-        transform: scale(0.65); /* Aún más chico en celular (era 0.85) */
+        transform: translateY(-50%) scale(0.55); /* Más chico y centrado */
         transform-origin: right center;
     }
 
     .deck-su-derecha {
-        top: 28%;
-        left: 5px;
-        right: auto;
         bottom: auto;
-        transform: scale(0.65); /* Aún más chico en celular (era 0.85) */
+        top: 50%; /* Centro vertical */
+        left: 0px;
+        right: auto;
+        transform: translateY(-50%) scale(0.55); /* Más chico y centrado */
         transform-origin: left center;
     }
 
