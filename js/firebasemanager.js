@@ -168,7 +168,8 @@ window.crearSalaFirebase = async function(isPublica = false) {
                 quitarLobbyEspera();
                 
                 document.getElementById('pantalla-inicio').style.display = 'none';
-                document.getElementById('chat-container').style.display = 'block';
+                const chatToggle = document.getElementById('btn-chat-toggle');
+                if (chatToggle) chatToggle.style.display = 'block';
                 document.getElementById('btn-abandonar').style.display = 'block';
                 
                 if (miRol === 'creador') {
@@ -256,7 +257,8 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
             guardarSesionLocal(codigoSalaActual, miRol);
             quitarLobbyEspera();
             document.getElementById('pantalla-inicio').style.display = 'none';
-            document.getElementById('chat-container').style.display = 'block';
+            const chatToggle2 = document.getElementById('btn-chat-toggle');
+            if (chatToggle2) chatToggle2.style.display = 'block';
             document.getElementById('btn-abandonar').style.display = 'block';
             
             // Sincronización del estado del motor (el invitado solo recibe)
@@ -345,6 +347,8 @@ function asignarEstadoDesdeRed(dataStr) {
     
     // Unlock interaction as we have the latest server state
     window.isAwaitingStateSync = false;
+    if (typeof toggleSyncOverlay === 'function') toggleSyncOverlay(false);
+    if (window.syncTimeout) { clearTimeout(window.syncTimeout); window.syncTimeout = null; }
     
     if (data.config) {
         game.config.limitePuntos = data.config.limitePuntos;
@@ -413,11 +417,16 @@ window.enviarAccionFirebase = function(tipoAccion, payload) {
     const target = miRol === 'creador' ? 'acciones_host' : 'acciones_in';
     const refPath = db.ref('salas/' + codigoSalaActual + '/' + target).push();
 
-    // Feedback visual inmediato: Bloquear UI
+    // Bloquear UI mientras se sincroniza
     window.isAwaitingStateSync = true;
-    window.startSyncTimeout(5000); // 5s de timeout de seguridad
-    if (typeof toggleSyncOverlay === 'function') toggleSyncOverlay(true);
-    if (typeof updateSyncUIState === 'function') updateSyncUIState();
+    // El overlay visual solo aplica al creador: él escribe el estado maestro y espera confirmación.
+    // El invitado solo manda una acción y espera recibir el estado del creador vía asignarEstadoDesdeRed.
+    const timeoutMs = miRol === 'creador' ? 5000 : 3000;
+    window.startSyncTimeout(timeoutMs);
+    if (miRol === 'creador') {
+        if (typeof toggleSyncOverlay === 'function') toggleSyncOverlay(true);
+        if (typeof updateSyncUIState === 'function') updateSyncUIState();
+    }
 
     refPath.set({ 
         tipo: tipoAccion, 
@@ -527,7 +536,25 @@ async function procesarAccionRed(snap) {
     }
     else if (t === 'chat') {
         logJugada(`💬 Rival: ${d.msg}`, 'rival');
-        window.audio.play('win-baza'); 
+        window.audio.play('win-baza');
+        // Auto-abrir el chat si está cerrado y mostrar badge
+        const chatPanel = document.getElementById('chat-container');
+        const badge = document.getElementById('chat-badge');
+        if (chatPanel && chatPanel.style.display === 'none') {
+            chatPanel.style.display = 'block';
+            // Auto-cerrar tras 8s si el jugador no interactúa
+            clearTimeout(window._autoChatClose);
+            window._autoChatClose = setTimeout(() => {
+                if (chatPanel.style.display === 'block') {
+                    chatPanel.style.display = 'none';
+                    if (badge) { badge.style.display = 'flex'; }
+                }
+            }, 8000);
+        } else if (chatPanel && chatPanel.style.display === 'block') {
+            // Ya está abierto, solo un pulso visual
+            chatPanel.style.boxShadow = '0 0 0 2px var(--gold)';
+            setTimeout(() => { chatPanel.style.boxShadow = ''; }, 800);
+        }
     }
     else if (t === 'abandonar_sala' || t === 'jugador_desconectado' || t === 'ganar_por_abandono') {
         detenerHeartbeat();
@@ -992,7 +1019,8 @@ window.checkExistingSession = async function() {
                 if (miRol === 'creador') {
                     // Host reconecta
                     document.getElementById('pantalla-inicio').style.display = 'none';
-                    document.getElementById('chat-container').style.display = 'block';
+                    const ctBtn1 = document.getElementById('btn-chat-toggle');
+                    if (ctBtn1) ctBtn1.style.display = 'block';
                     document.getElementById('btn-abandonar').style.display = 'block';
                     
                     roomRef.child('estado').on('value', (s) => {
@@ -1009,7 +1037,8 @@ window.checkExistingSession = async function() {
                 } else {
                     // Invitado reconecta
                     document.getElementById('pantalla-inicio').style.display = 'none';
-                    document.getElementById('chat-container').style.display = 'block';
+                    const ctBtn2 = document.getElementById('btn-chat-toggle');
+                    if (ctBtn2) ctBtn2.style.display = 'block';
                     document.getElementById('btn-abandonar').style.display = 'block';
                     
                     roomRef.child('estado_maestro').on('value', (s) => {
@@ -1147,4 +1176,44 @@ function iniciarHeartbeat(roomCode, myRole, rivalRole) {
         });
     });
 }
+
+/**
+ * Muestra/oculta el panel de chat. Limpia el badge de notificación al abrir.
+ */
+window.toggleChatPanel = function() {
+    const panel = document.getElementById('chat-container');
+    const badge = document.getElementById('chat-badge');
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none' && panel.style.display !== '';
+    panel.style.display = isOpen ? 'none' : 'block';
+    // Al abrir, limpiar badge y enfocar el input
+    if (!isOpen) {
+        if (badge) badge.style.display = 'none';
+        clearTimeout(window._autoChatClose);
+        const inp = document.getElementById('input-chat');
+        if (inp) setTimeout(() => inp.focus(), 50);
+    }
+};
+
+/**
+ * Limpia sesión local, detiene heartbeat y recarga la página de forma segura.
+ * Evita que checkExistingSession() reactive la sala al recargar.
+ */
+window.salirAlMenu = function() {
+    // 1. Borrar sesión guardada en localStorage para que no se restaure al recargar
+    borrarSesionLocal();
+    // 2. Detener heartbeat y desconectar listeners de Firebase
+    try { detenerHeartbeat(); } catch(e) {}
+    // 3. Cancelar cualquier onDisconnect pendiente para no corromper la sala
+    try {
+        if (codigoSalaActual) {
+            db.ref('salas/' + codigoSalaActual + '/estado').onDisconnect().cancel();
+        }
+    } catch(e) {}
+    // 4. Apagar el overlay de reconexión antes de recargar (UX)
+    const reconnOverlay = document.getElementById('overlay-reconnecting');
+    if (reconnOverlay) reconnOverlay.style.display = 'none';
+    // 5. Recargar
+    location.reload();
+};
 

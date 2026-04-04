@@ -21,8 +21,10 @@ window.resetTimer = function() {
     clearInterval(turnTimerInterval);
     const container = document.getElementById('turn-timer-container');
     const bar = document.getElementById('turn-timer-bar');
+    const secsEl = document.getElementById('turn-timer-seconds');
     if(container) container.style.display = 'none';
     if(bar) bar.style.width = '100%';
+    if(secsEl) { secsEl.style.display = 'none'; secsEl.innerText = `${TURN_TIME}s`; secsEl.style.color = 'rgba(255,255,255,0.7)'; }
 };
 
 window.startTurnTimer = function(syncStartTime) {
@@ -42,8 +44,14 @@ window.startTurnTimer = function(syncStartTime) {
 
         const container = document.getElementById('turn-timer-container');
         const bar = document.getElementById('turn-timer-bar');
+        const secsEl = document.getElementById('turn-timer-seconds');
         
         if (container) container.style.display = 'block';
+        if (secsEl) {
+            secsEl.style.display = 'block';
+            secsEl.innerText = `${timeLeft}s`;
+            secsEl.style.color = timeLeft <= 5 ? 'rgba(231,76,60,0.95)' : 'rgba(255,255,255,0.7)';
+        }
         if (bar) {
             const percentage = (timeLeft / TURN_TIME) * 100;
             bar.style.transition = 'none';
@@ -59,6 +67,10 @@ window.startTurnTimer = function(syncStartTime) {
         
         turnTimerInterval = setInterval(() => {
             timeLeft--;
+            if (secsEl) {
+                secsEl.innerText = `${Math.max(0, timeLeft)}s`;
+                secsEl.style.color = timeLeft <= 5 ? 'rgba(231,76,60,0.95)' : 'rgba(255,255,255,0.7)';
+            }
             if (timeLeft <= 0) {
                 window.resetTimer();
                 // Si llegamos a 0 y no hay un modal abierto (lo que frenaría la interacción)
@@ -321,7 +333,6 @@ window.animarReparto = async function() {
     }
 
     const mano = game.manoDelPartido; // 'jugador' o 'oponente'
-    const totalCartas = 6;
     
     for (let i = 0; i < 3; i++) {
         // Carta al Mano
@@ -367,6 +378,14 @@ window.animarReparto = async function() {
 
     window.isAnimatingDeal = false;
     renderJuego(); // Render final para asegurar estado correcto y listeners
+    
+    // Solo en singleplayer: resolver flor primero; si no hay flor y es turno del bot, que juegue
+    if (window.modoJuego === 'singleplayer') {
+        await resolverFlorSingleplayer();
+        if (game.turno === 'oponente' && !game.rondaTerminada) {
+            setTimeout(async () => { await jugarBot(); }, 500);
+        }
+    }
 };
 
 window.shakeCards = function() {
@@ -455,14 +474,9 @@ function renderJuego() {
     // REGLA DE TRUCO: Solo puedes cantar si es tu turno o si la palabra te favorece
     const esMiTurno = game.turno === 'jugador';
 
-    // Disparar resolución automática de Flor en singleplayer al inicio de la mano
-    if (window.modoJuego === 'singleplayer' && game.manoJugador.length === 3 && !game.envidoCantado && !window.florResuelta && !_florCheckScheduled) {
-        _florCheckScheduled = true;
-        setTimeout(async () => {
-            _florCheckScheduled = false;
-            await resolverFlorSingleplayer();
-        }, 400);
-    }
+    // NOTA: La resolución de flor se gestiona exclusivamente desde animarReparto() para evitar
+    // race conditions. El flag _florCheckScheduled se mantiene solo como guardia de seguridad.
+    // No disparar desde renderJuego para evitar loops y deadlocks.
     
     // Envido y Flor
     if (btnFlor && btnEnvido) {
@@ -586,8 +600,9 @@ window.startSyncTimeout = function(ms = 4000) {
     if (window.syncTimeout) clearTimeout(window.syncTimeout);
     window.syncTimeout = setTimeout(() => {
         if (window.isAwaitingStateSync) {
-            console.warn("⏳ Sincronización lenta: Desbloqueo de emergencia activado.");
+            console.warn('⏳ Sincronización lenta: Desbloqueo de emergencia activado.');
             window.isAwaitingStateSync = false;
+            if (typeof toggleSyncOverlay === 'function') toggleSyncOverlay(false);
             renderJuego();
         }
     }, ms);
@@ -1273,15 +1288,13 @@ document.getElementById('btn-repartir').addEventListener('click', () => {
         } else {
             game.iniciarRonda();
             sincronizarEstadoMotor();
+            renderJuego();
         }
     } else {
+        // Singleplayer: la animación de reparto maneja todo el flujo
+        // (renderJuego → resolverFlor → jugarBot si corresponde)
         game.iniciarRonda();
-    }
-    
-    renderJuego();
-    
-    if (game.turno === 'oponente' && window.modoJuego === 'singleplayer') {
-        setTimeout(async () => { await jugarBot(); }, 900);
+        window.animarReparto();
     }
 });
 
