@@ -107,6 +107,39 @@ window.UI = {
         this.message.innerHTML = contextHTML + msg.replace(/\n/g, '<br>');
         this.buttonsContainer.innerHTML = '';
         this.modal.style.display = 'block';
+        this.modal.classList.remove('modal-animate-pop');
+        void this.modal.offsetWidth; // trigger reflow
+        this.modal.classList.add('modal-animate-pop');
+        
+        // Si es una decisión de juego, lo hacemos más sutil y sin oscurecer (overlay transparente)
+        // para dar una experiencia de "opciones en pantalla" y no de un "alerta molesto".
+        const isGameDecision = !title.includes("Cagazo") && !title.includes("Revancha") && !title.includes("Atención") && !title.includes("Fin de");
+        if (isGameDecision) {
+            this.overlay.style.background = 'transparent';
+            this.overlay.style.backdropFilter = 'none';
+            this.title.style.display = 'none'; // Ocultar el título tipo "Atención"
+            this.message.style.marginBottom = '10px';
+            this.message.style.fontSize = '1rem';
+            this.modal.style.border = 'none';
+            this.modal.style.boxShadow = '0 15px 35px rgba(0,0,0,0.8), 0 0 0 2px var(--gold)'; 
+            this.buttonsContainer.style.flexDirection = 'row';
+            this.buttonsContainer.style.flexWrap = 'wrap';
+            this.buttonsContainer.style.justifyContent = 'center';
+            this.modal.style.top = '60%'; // Bajarlo un poquito
+            this.modal.style.padding = '15px';
+        } else {
+            this.overlay.style.background = 'rgba(0,0,0,0.8)';
+            this.overlay.style.backdropFilter = 'blur(8px)';
+            this.title.style.display = 'block';
+            this.message.style.marginBottom = '20px';
+            this.message.style.fontSize = '1.1rem';
+            this.modal.style.border = '1px solid var(--gold)';
+            this.modal.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.4)';
+            this.buttonsContainer.style.flexDirection = 'column';
+            this.modal.style.top = '50%';
+            this.modal.style.padding = '25px';
+        }
+
         this.overlay.style.display = 'block';
         document.body.classList.add('modal-active');
     },
@@ -114,6 +147,14 @@ window.UI = {
     _hide: function() {
         this.modal.style.display = 'none';
         this.overlay.style.display = 'none';
+        this.modal.classList.remove('modal-animate-pop');
+        
+        // Restaurar estado default por si luego salta un modal estandar
+        this.overlay.style.background = 'rgba(0,0,0,0.8)';
+        this.overlay.style.backdropFilter = 'blur(8px)';
+        this.title.style.display = 'block';
+        this.buttonsContainer.style.flexDirection = 'column';
+
         document.body.classList.remove('modal-active');
     },
 
