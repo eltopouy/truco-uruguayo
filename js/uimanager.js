@@ -116,30 +116,38 @@ window.UI = {
         if (isGameDecision) {
             this.overlay.style.background = 'transparent';
             this.overlay.style.backdropFilter = 'none';
-            this.title.style.display = 'none'; // Ocultar el título tipo "Atención"
+            this.title.style.display = 'none';
             
-            // Ocultar info por defecto y poner botón
-            const rawMsg = contextHTML + msg.replace(/\n/g, '<br>');
+            // Separar el mensaje: la primera línea es el titular visible, el resto va a "Ver Info"
+            const rawText = msg.replace(/<br\s*\/?>/gi, '\n');
+            const lines = rawText.split('\n').filter(l => l.trim() !== '');
+            const headline = lines[0] || '';
+            const details = lines.slice(1).join('<br>');
+            const hasDetails = details.trim() !== '' || contextHTML.trim() !== '';
+            
             this.message.innerHTML = `
-                <div style="text-align: center; margin-bottom: 5px;">
-                    <button id="btn-info-extra" style="background:transparent; border:1px solid rgba(255,255,255,0.3); color:#ccc; border-radius:15px; padding:2px 10px; font-size:0.75rem; cursor:pointer;" onclick="document.getElementById('info-text-extra').style.display = document.getElementById('info-text-extra').style.display === 'none' ? 'block' : 'none';">ℹ️ Ver Info</button>
+                <div style="text-align:center; font-size:1.15rem; font-weight:bold; color:#fff; margin-bottom:6px; text-shadow: 0 2px 8px rgba(0,0,0,0.8);">
+                    ${headline}
                 </div>
-                <div id="info-text-extra" style="display:none; font-size: 0.9rem; margin-bottom: 10px; opacity:0.8;">
-                    ${rawMsg}
+                ${hasDetails ? `
+                <div style="text-align: center; margin-bottom: 4px;">
+                    <button id="btn-info-extra" style="background:transparent; border:1px solid rgba(255,255,255,0.25); color:#bbb; border-radius:15px; padding:2px 10px; font-size:0.7rem; cursor:pointer;" onclick="var el=document.getElementById('info-text-extra'); el.style.display = el.style.display==='none'?'block':'none';">ℹ️ Ver Info</button>
                 </div>
+                <div id="info-text-extra" style="display:none; font-size: 0.85rem; margin-bottom: 6px; opacity:0.75; text-align:center;">
+                    ${contextHTML}${details}
+                </div>` : ''}
             `;
             
             this.message.style.marginBottom = '5px';
-            this.message.style.fontSize = '1rem';
             this.modal.style.border = 'none';
-            this.modal.style.background = 'rgba(20, 20, 20, 0.4)'; // Más transparente aún
-            this.modal.style.backdropFilter = 'blur(4px)';
-            this.modal.style.boxShadow = '0 5px 15px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,215,0,0.3)'; // Menos intrusivo
+            this.modal.style.background = 'rgba(15, 15, 15, 0.5)';
+            this.modal.style.backdropFilter = 'blur(6px)';
+            this.modal.style.boxShadow = '0 5px 15px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,215,0,0.3)';
             this.buttonsContainer.style.flexDirection = 'row';
             this.buttonsContainer.style.flexWrap = 'wrap';
             this.buttonsContainer.style.justifyContent = 'center';
-            this.modal.style.top = '65%'; // Más abajo, cerca de nuestras cartas
-            this.modal.style.padding = '8px 10px';
+            this.modal.style.top = '65%';
+            this.modal.style.padding = '10px 14px';
         } else {
             this.message.innerHTML = contextHTML + msg.replace(/\n/g, '<br>');
             this.overlay.style.background = 'rgba(0,0,0,0.8)';
