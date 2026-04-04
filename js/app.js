@@ -139,15 +139,21 @@ function iniciarSolo() {
     window.animarReparto();
 }
 
-function crearCartaDOM(carta, oculta = false, isMuestra = false) {
+function crearCartaDOM(carta, bocaAbajo = false, isMuestra = false) {
     const div = document.createElement('div');
     div.classList.add('card');
     div.classList.add('pixel-card');
     
-    if (oculta) {
+    if (bocaAbajo) {
         div.classList.add('card-facedown');
-    } else {
-        const url = `assets/cards/${carta.palo}_${carta.valor}.png`;
+    } else if (carta) {
+        const NOMBRES_VALORES = {1: 'As', 2: 'Dos', 3: 'Tres', 4: 'Cuatro', 5: 'Cinco', 6: 'Seis', 7: 'Siete', 10: 'Sota', 11: 'Caballo', 12: 'Rey'};
+        const NOMBRES_PALOS = {'Espada': 'Espadas', 'Basto': 'Bastos', 'Copa': 'Copas', 'Oro': 'Oros'};
+        
+        let url = `assets/cards_tatu/${NOMBRES_VALORES[carta.valor]}_de_${NOMBRES_PALOS[carta.palo]}.png`;
+        
+        // Excepción por si ocurre una carta no mapeada (Anti-caídas)
+        if (!NOMBRES_VALORES[carta.valor]) url = `assets/cards_tatu/carta_reverso.png`;
 
         div.style.backgroundImage = `url("${url}")`;
         div.style.backgroundSize = '100% 100%';
