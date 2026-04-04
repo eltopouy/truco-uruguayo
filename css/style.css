@@ -538,9 +538,10 @@ body, html {
 
     .opponent-hand {
         position: absolute !important;
-        top: 45px !important; /* Más arriba */
+        top: 0px !important; /* Pegado al tope */
         left: 50% !important;
-        transform: translateX(-50%) scale(0.70) !important; /* Más chicos para ganar lugar */
+        transform: translateX(-50%) scale(0.70) !important;
+        transform-origin: top center !important; /* Escalar hacia arriba, no al centro */
         padding: 0 !important;
         width: auto;
         z-index: 5;
@@ -566,11 +567,11 @@ body, html {
 
     .play-area {
         position: absolute;
-        top: 45%;
+        top: 52%; /* Ligeramente más bajo para dejar espacio al rival arriba */
         left: 50%;
         transform: translate(-50%, -50%) scale(0.9);
         display: flex;
-        flex-direction: row !important; /* Mantener horizontal para que no ocupe tanto alto */
+        flex-direction: row !important;
         gap: 10px !important;
         z-index: 2;
     }
