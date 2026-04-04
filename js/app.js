@@ -116,6 +116,122 @@ window.updateSyncUIState = function() {
     }
 };
 
+// ============================================================
+// FUNCIÓN CENTRALIZADA DE FLOR (SINGLEPLAYER)
+// Se llama automáticamente al inicio de cada mano
+// ============================================================
+window.florResuelta = false; // Reset por ronda
+
+async function resolverFlorSingleplayer() {
+    if (window.modoJuego !== 'singleplayer') return;
+    if (game.envidoCantado || window.florResuelta) return;
+    if (game.manoJugador.length !== 3 || game.manoOponente.length !== 3) return;
+
+    const objJG = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
+    const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
+    const soyMano = game.manoDelPartido === 'jugador';
+
+    // Ninguno tiene flor → no hacer nada
+    if (!objJG.tieneFlor && !objIA.tieneFlor) return;
+
+    window.florResuelta = true;
+    game.envidoCantado = true;
+
+    // ── CASO 1: Solo el jugador tiene Flor ──
+    if (objJG.tieneFlor && !objIA.tieneFlor) {
+        logJugada('🌸 Tú: ¡FLOR! (Automático)', 'propio');
+        window.audio.play && window.audio.play('flor');
+        await window.UI.alert(`🌸 ¡Tenés FLOR!<br>Cobrás 3 pts automáticamente. El rival no puede cantar Envido.`);
+        game.puntosPartido.jugador += 3;
+        if (await verificarLimitesPartido()) return;
+        game.fase = 'truco';
+        renderJuego();
+        return;
+    }
+
+    // ── CASO 2: Solo la IA tiene Flor ──
+    if (objIA.tieneFlor && !objJG.tieneFlor) {
+        logJugada('🤖 IA: ¡FLOR!', 'rival');
+        window.audio.play && window.audio.play('flor');
+        await window.UI.alert(`🤖 IA: ¡FLOR!<br>La IA cobra 3 pts automáticamente. No podés cantar Envido.`);
+        game.puntosPartido.oponente += 3;
+        if (await verificarLimitesPartido()) return;
+        game.fase = 'truco';
+        renderJuego();
+        return;
+    }
+
+    // ── CASO 3: Ambos tienen Flor — respetando turno Mano/Pie ──
+    // Mano canta primero; Pie puede achicarse o ¡Contra Flor!
+    const ptsJG = objJG.puntos;
+    const ptsIA = objIA.puntos;
+    logJugada('🌸 IA y Jugador: ¡CHOQUE DE FLORES!', 'sistema');
+    window.audio.play && window.audio.play('flor');
+
+    let ganaJugador = ptsJG > ptsIA || (ptsJG === ptsIA && soyMano);
+
+    if (soyMano) {
+        // Jugador es Mano → canta primero
+        const contraFlor = await window.UI.options(
+            `🌸 ¡CHOQUE DE FLORES!<br>Tú (Mano): ${ptsJG} pts · IA (Pie): ${ptsIA} pts<br><br>Cantaste Flor primero. La IA puede replicar:`,
+            [
+                { label: '¡CONTRA FLOR AL RESTO!', value: 'contra', danger: true },
+                { label: 'Con Flor me achico (ambos +3)', value: 'achico', neutral: true }
+            ],
+            '🌸 Flor vs Flor'
+        );
+        if (contraFlor === 'contra') {
+            const lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
+            const premio = game.config.limitePuntos - lider;
+            window.shakeCards && window.shakeCards();
+            await window.UI.alert(`🗣️ Tú: ¡CONTRA FLOR AL RESTO!<br>🤖 IA: ¡QUIERO VALE!<br><br>${ptsJG} vs ${ptsIA}`);
+            if (ganaJugador) {
+                await window.UI.alert(`¡Tu Flor aplastó la de la IA! (+${premio} pts) 🌸`);
+                game.puntosPartido.jugador += premio;
+            } else {
+                await window.UI.alert(`¡La Flor de la IA te aplastó! (+${premio} pts) 🤖`);
+                game.puntosPartido.oponente += premio;
+            }
+        } else {
+            // Ambos cobran 3
+            await window.UI.alert(`Nadie se la jugó. Ambos cobran 3 pts de su Flor.`);
+            game.puntosPartido.jugador += 3;
+            game.puntosPartido.oponente += 3;
+        }
+    } else {
+        // IA es Mano → canta primero; jugador responde
+        const resp = await window.UI.options(
+            `🤖 IA (Mano): ¡FLOR! (${ptsIA} pts)<br>Tú también tenés Flor (${ptsJG} pts).<br><br>¿Qué hacés?`,
+            [
+                { label: '¡CONTRA FLOR AL RESTO!', value: 'contra', danger: true },
+                { label: 'Con Flor me achico (ambos +3)', value: 'achico', neutral: true }
+            ],
+            '🌸 Flor vs Flor'
+        );
+        if (resp === 'contra') {
+            const lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
+            const premio = game.config.limitePuntos - lider;
+            window.shakeCards && window.shakeCards();
+            await window.UI.alert(`🗣️ Tú: ¡CONTRA FLOR AL RESTO!<br>🤖 IA: ¡QUIERO VALE!<br><br>${ptsJG} vs ${ptsIA}`);
+            if (ganaJugador) {
+                await window.UI.alert(`¡Tu Flor aplastó la de la IA! (+${premio} pts) 🌸`);
+                game.puntosPartido.jugador += premio;
+            } else {
+                await window.UI.alert(`¡La Flor de la IA te aplastó! (+${premio} pts) 🤖`);
+                game.puntosPartido.oponente += premio;
+            }
+        } else {
+            await window.UI.alert(`Con Flor me achico. Ambos cobran 3 pts.`);
+            game.puntosPartido.jugador += 3;
+            game.puntosPartido.oponente += 3;
+        }
+    }
+
+    if (await verificarLimitesPartido()) return;
+    game.fase = 'truco';
+    renderJuego();
+}
+
 function logJugada(texto, tipo = 'sistema') {
     const feed = document.getElementById('game-feed');
     if (!feed) return;
@@ -263,6 +379,9 @@ window.shakeCards = function() {
     });
 };
 
+// Flag para evitar múltiples disparos del resolver de Flor por render
+let _florCheckScheduled = false;
+
 function renderJuego() {
     if (typeof window.updateSyncUIState === 'function') window.updateSyncUIState();
     if (window.isAnimatingDeal) return;
@@ -335,12 +454,22 @@ function renderJuego() {
     
     // REGLA DE TRUCO: Solo puedes cantar si es tu turno o si la palabra te favorece
     const esMiTurno = game.turno === 'jugador';
-    const puedeCantarEnvidoFlor = esMiTurno && game.manoJugador.length === 3 && !game.envidoCantado;
+
+    // Disparar resolución automática de Flor en singleplayer al inicio de la mano
+    if (window.modoJuego === 'singleplayer' && game.manoJugador.length === 3 && !game.envidoCantado && !window.florResuelta && !_florCheckScheduled) {
+        _florCheckScheduled = true;
+        setTimeout(async () => {
+            _florCheckScheduled = false;
+            await resolverFlorSingleplayer();
+        }, 400);
+    }
     
     // Envido y Flor
     if (btnFlor && btnEnvido) {
+        // Ocultar btn-flor: la Flor ya es automática
+        if (btnFlor) btnFlor.style.display = 'none';
         if (game.manoJugador.length === 3 && !game.envidoCantado) {
-            btnFlor.style.display = calc.tieneFlor ? 'block' : 'none';
+            // Solo mostrar Envido si el jugador NO tiene Flor (Flor es automática)
             btnEnvido.style.display = calc.tieneFlor ? 'none' : 'block';
             
             // Si no es mi turno, se ven opacos y desactivados (Regla de Mano/Pie)
@@ -591,12 +720,11 @@ async function jugarBot() {
     const rivalEsMentiroso = game.perfilRival.bluffsDetectados > 1;
 
     // -- 1. LÓGICA DE CANTOS (FLOR / ENVIDO) --
+    // La Flor en singleplayer ya fue resuelta automáticamente al inicio de la mano
+    // El bot aquí solo maneja el Envido (si ninguno tuvo Flor)
     if (game.manoOponente.length === 3 && !game.envidoCantado) {
-        // ESTRATEGIA 11: FLOR ESCONDIDA (Pie espera al Envido)
-        let cantarFlorAhora = true;
-        if (!soyMano && objIA.tieneFlor && Math.random() < 0.3) cantarFlorAhora = false; // 30% decide esperar
-
-        if (objIA.tieneFlor && cantarFlorAhora) {
+        // ESTRATEGIA 11 eliminada: ya no hace falta, la Flor es automática
+        if (false && objIA.tieneFlor) { // Bloque desactivado, mantenido por estructura
             game.envidoCantado = true;
             if (objJG.tieneFlor) {
                 // Choque de flores
@@ -858,13 +986,13 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
         return;
     }
     
+    // Si llegó hasta acá es porque ninguno tiene Flor (la Flor ya fue resuelta automáticamente al inicio)
+    // Doble chequeo de seguridad: si por alguna razón el rival tiene Flor, el sistema lo maneja
     const oponenteTieneFlor = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).tieneFlor;
     if (oponenteTieneFlor) {
-        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡Tengo FLOR! (Anula tu toque. La IA cobra 3 pts de su Flor).`);
-        game.puntosPartido.oponente += 3;
+        await window.UI.alert(`🛑 El rival tiene Flor — el Envido queda anulado automáticamente.<br>La IA ya cobró sus 3 pts de Flor.`);
         game.envidoCantado = true;
         game.fase = 'truco';
-        if(await verificarLimitesPartido()) return;
         renderJuego();
         return;
     }
@@ -989,6 +1117,14 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
     game.fase = 'truco'; 
     renderJuego();
 });
+
+// Reset del flag de Flor al inicio de cada nueva ronda
+const _origIniciarRonda = game.iniciarRonda.bind(game);
+game.iniciarRonda = function(...args) {
+    window.florResuelta = false;
+    _florCheckScheduled = false;
+    return _origIniciarRonda(...args);
+};
 
 document.getElementById('btn-truco').addEventListener('click', async () => {
     if (game.apuestaTruco.turnoCantar === 'oponente' || window.isAwaitingStateSync) {
