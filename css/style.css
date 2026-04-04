@@ -538,7 +538,7 @@ body, html {
 
     .opponent-hand {
         position: absolute !important;
-        top: 100px !important;
+        top: 60px !important; /* Subido mucho más arriba (estaba en 100px) */
         left: 50% !important;
         transform: translateX(-50%) scale(0.8) !important;
         padding: 0 !important;
@@ -551,7 +551,7 @@ body, html {
         right: 5px;
         left: auto;
         top: auto;
-        transform: scale(0.85);
+        transform: scale(0.65); /* Aún más chico en celular (era 0.85) */
         transform-origin: right center;
     }
 
@@ -560,7 +560,7 @@ body, html {
         left: 5px;
         right: auto;
         bottom: auto;
-        transform: scale(0.85);
+        transform: scale(0.65); /* Aún más chico en celular (era 0.85) */
         transform-origin: left center;
     }
 
