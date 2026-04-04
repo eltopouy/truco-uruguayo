@@ -482,23 +482,18 @@ function renderJuego() {
     if (btnFlor && btnEnvido) {
         // Ocultar btn-flor: la Flor ya es automática
         if (btnFlor) btnFlor.style.display = 'none';
-        if (game.manoJugador.length === 3 && !game.envidoCantado) {
-            // Solo mostrar Envido si el jugador NO tiene Flor (Flor es automática)
+        
+        // Fase de cantos: el envido solo vale antes de tirar la segunda carta y antes de cantar Fase Truco
+        if (game.manoJugador.length === 3 && !game.envidoCantado && game.fase === 'cantos') {
             btnEnvido.style.display = calc.tieneFlor ? 'none' : 'block';
             
-            // Si no es mi turno, se ven opacos y desactivados (Regla de Mano/Pie)
+            // Si no es mi turno, se ven opacos (Regla de Mano/Pie) pero los dejamos clickeables para dar feedback
             if (!esMiTurno) {
-                [btnFlor, btnEnvido].forEach(b => {
-                    b.style.opacity = '0.4';
-                    b.style.filter = 'grayscale(100%)';
-                    b.style.pointerEvents = 'none';
-                });
+                btnEnvido.style.opacity = '0.5';
+                btnEnvido.style.filter = 'grayscale(80%)';
             } else {
-                [btnFlor, btnEnvido].forEach(b => {
-                    b.style.opacity = '1';
-                    b.style.filter = 'none';
-                    b.style.pointerEvents = 'auto';
-                });
+                btnEnvido.style.opacity = '1';
+                btnEnvido.style.filter = 'none';
             }
         } else {
             btnFlor.style.display = 'none';
@@ -974,6 +969,12 @@ async function verificarResolucionMesa() {
 
 document.getElementById('btn-envido').addEventListener('click', async () => {
     if (game.manoJugador.length !== 3 || game.envidoCantado || window.isAwaitingStateSync) return;
+    if (game.fase !== 'cantos') return; // Ya no estamos en fase de cantos
+    
+    if (game.turno !== 'jugador') {
+        window.UI.alert("¡Pará un cacho! Le toca hablar al rival. Esperá a que hable o tire una carta para mandarle tu Envido.", "Aguardá tu turno");
+        return;
+    }
     
     const ptsFalta = game.calcPuntosFalta();
     const opt = await window.UI.options("Elegí tu toque:", [
