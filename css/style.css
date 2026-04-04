@@ -234,13 +234,15 @@ body, html {
 
 /* La Muestra asoma hacia el centro de la mesa dependiendo de dónde esté el mazo */
 .deck-mi-derecha .card-muestra {
-    left: -55px;
-    transform: rotate(-18deg);
+    left: -70px;  /* Más hacia la izquierda para verse mejor */
+    top: 5px;
+    transform: rotate(-22deg);
 }
 
 .deck-su-derecha .card-muestra {
-    left: 55px;
-    transform: rotate(18deg);
+    left: 70px;  /* Más hacia la derecha para verse mejor */
+    top: 5px;
+    transform: rotate(22deg);
 }
 
 /* Manos de jugadores */
