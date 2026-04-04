@@ -733,7 +733,6 @@ async function jugarBot() {
 
     if (game.mesa.jugador) {
         // ESTRATEGIA 14: DEDUCCIÓN DE PALO
-        game.registrarAccionRival('carta', game.mesa.jugador);
         
         let rivalTienePiezaDeducida = game.memoriaRival.piezaProbable !== null;
         if (game.mesa.jugador.esPieza) rivalTienePiezaDeducida = false;
@@ -1088,8 +1087,14 @@ document.getElementById('btn-mazo').addEventListener('click', async () => {
         let ptsCastigo = 1;
         let razon = "te fuiste porque pintó fea";
         if (game.manoJugador.length === 3) {
-            ptsCastigo = 2;
+            ptsCastigo = 2; // Irse en primera sin tirar da 2 puntos
             razon = "te fuiste corriendo sin tirar ni una";
+        }
+        
+        // Si ya hay una apuesta de Truco en juego, el castigo mínimo es el valor de la apuesta
+        if (game.apuestaTruco.valor > ptsCastigo) {
+            ptsCastigo = game.apuestaTruco.valor;
+            razon = "te achicaste con el truco cantado";
         }
         
         if (window.modoJuego === 'multiplayer') {

@@ -503,9 +503,9 @@ async function procesarAccionRed(snap) {
     }
     else if (t === 'accion') {
         if (d.tipo === 'mazo') {
-            await window.UI.alert("🌐 Rival se fue al mazo.");
+            await window.UI.alert(`🌐 Rival se fue al mazo.<br>(+${d.cost || 1} Pts para ti)`);
             if (miRol === 'creador') {
-                game.puntosPartido.jugador += d.cost;
+                game.puntosPartido.jugador += (d.cost || 1);
                 game.rondaTerminada = true;
                 sincronizarEstadoMotor();
             }
