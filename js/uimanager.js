@@ -112,22 +112,36 @@ window.UI = {
         this.modal.classList.add('modal-animate-pop');
         
         // Si es una decisión de juego, lo hacemos más sutil y sin oscurecer (overlay transparente)
-        // para dar una experiencia de "opciones en pantalla" y no de un "alerta molesto".
         const isGameDecision = !title.includes("Cagazo") && !title.includes("Revancha") && !title.includes("Atención") && !title.includes("Fin de");
         if (isGameDecision) {
             this.overlay.style.background = 'transparent';
             this.overlay.style.backdropFilter = 'none';
             this.title.style.display = 'none'; // Ocultar el título tipo "Atención"
-            this.message.style.marginBottom = '10px';
+            
+            // Ocultar info por defecto y poner botón
+            const rawMsg = contextHTML + msg.replace(/\n/g, '<br>');
+            this.message.innerHTML = `
+                <div style="text-align: center; margin-bottom: 5px;">
+                    <button id="btn-info-extra" style="background:transparent; border:1px solid rgba(255,255,255,0.3); color:#ccc; border-radius:15px; padding:2px 10px; font-size:0.75rem; cursor:pointer;" onclick="document.getElementById('info-text-extra').style.display = document.getElementById('info-text-extra').style.display === 'none' ? 'block' : 'none';">ℹ️ Ver Info</button>
+                </div>
+                <div id="info-text-extra" style="display:none; font-size: 0.9rem; margin-bottom: 10px; opacity:0.8;">
+                    ${rawMsg}
+                </div>
+            `;
+            
+            this.message.style.marginBottom = '5px';
             this.message.style.fontSize = '1rem';
             this.modal.style.border = 'none';
-            this.modal.style.boxShadow = '0 15px 35px rgba(0,0,0,0.8), 0 0 0 2px var(--gold)'; 
+            this.modal.style.background = 'rgba(20, 20, 20, 0.4)'; // Más transparente aún
+            this.modal.style.backdropFilter = 'blur(4px)';
+            this.modal.style.boxShadow = '0 5px 15px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,215,0,0.3)'; // Menos intrusivo
             this.buttonsContainer.style.flexDirection = 'row';
             this.buttonsContainer.style.flexWrap = 'wrap';
             this.buttonsContainer.style.justifyContent = 'center';
-            this.modal.style.top = '60%'; // Bajarlo un poquito
-            this.modal.style.padding = '15px';
+            this.modal.style.top = '65%'; // Más abajo, cerca de nuestras cartas
+            this.modal.style.padding = '8px 10px';
         } else {
+            this.message.innerHTML = contextHTML + msg.replace(/\n/g, '<br>');
             this.overlay.style.background = 'rgba(0,0,0,0.8)';
             this.overlay.style.backdropFilter = 'blur(8px)';
             this.title.style.display = 'block';
