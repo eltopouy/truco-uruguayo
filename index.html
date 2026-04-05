@@ -182,11 +182,47 @@
             <li><strong style="color:#1abc9c;">Envido Alto:</strong> Inclinar la cabeza 🧐</li>
             <li><strong style="color:#e74c3c;">Estoy Ciego (sin nada):</strong> Cerrar ambos ojos 😔</li>
         </ul>
-        <button id="btn-cerrar-senas" class="btn-primary" style="margin-top: 20px; width: 100%;">Entendido,
-            jefe</button>
+        <button id="btn-cerrar-senas" class="btn-primary" style="margin-top: 20px; width: 100%;">Entendido, jefe</button>
+        <button id="btn-ver-jerarquia" class="btn-action"
+            style="margin-top: 10px; width: 100%; background: linear-gradient(135deg, #f39c12, #e67e22);">🃏 Jerarquía de Cartas</button>
         <button id="btn-ver-reglamento" class="btn-action"
-            style="margin-top: 10px; width: 100%; background: linear-gradient(135deg, #1abc9c, #16a085);">📖 Ver
-            Reglamento Completo</button>
+            style="margin-top: 10px; width: 100%; background: linear-gradient(135deg, #1abc9c, #16a085);">📖 Ver Reglamento Completo</button>
+    </div>
+
+    <!-- Modal de Jerarquía de Cartas (Oculto por defecto) -->
+    <div id="overlay-jerarquia"
+        style="display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10008; backdrop-filter: blur(8px);">
+    </div>
+    <div id="modal-jerarquia" class="glass"
+        style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10009; min-width: 320px; max-width: 500px; max-height: 85vh; overflow-y: auto;">
+        <h2 style="text-align: center; color: var(--gold); border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">
+            🃏 Jerarquía de las Cartas</h2>
+        <div style="font-size: 0.9rem; line-height: 1.5; color: #ddd;">
+            <p style="color:var(--gold); font-weight:bold; border-bottom: 1px solid rgba(255,215,0,0.2); padding-bottom:5px;">1. PIEZAS (Palo de la Muestra)</p>
+            <ul style="list-style: none; padding-left: 10px; margin-bottom: 15px;">
+                <li>👑 <b>El 2</b> (30 pts) - La más poderosa</li>
+                <li>🏅 <b>El 4</b> (29 pts)</li>
+                <li>🥈 <b>El 5</b> (28 pts)</li>
+                <li>🥉 <b>El 11 (Caballo)</b> (27 pts)</li>
+                <li>🥉 <b>El 10 (Sota)</b> (27 pts)</li>
+                <li style="font-size:0.8rem; opacity:0.8;">* Si la muestra es una de estas, el 12 (Rey) toma su lugar (Alcahuete).</li>
+            </ul>
+
+            <p style="color:#1abc9c; font-weight:bold; border-bottom: 1px solid rgba(26,188,156,0.2); padding-bottom:5px;">2. MATAS (Cartas de Poder)</p>
+            <ul style="list-style: none; padding-left: 10px; margin-bottom: 15px;">
+                <li>⚔️ <b>1 de Espada</b></li>
+                <li>🌳 <b>1 de Basto</b></li>
+                <li>🗡️ <b>7 de Espada</b></li>
+                <li>💰 <b>7 de Oro (Siete de Velo)</b></li>
+            </ul>
+
+            <p style="color:#aaa; font-weight:bold; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom:5px;">3. CARTAS COMUNES (Orden Descendente)</p>
+            <p style="margin-left: 10px; font-weight:bold; font-size:1rem; letter-spacing: 2px; text-align:center;">
+                3 > 2* > 1* > 12* > 11* > 10* > 7* > 6 > 5* > 4*
+            </p>
+            <p style="font-size:0.75rem; opacity:0.6; text-align:center; margin-top:5px;">(* Quedan fuera de aquí las que son Muestra o Matas)</p>
+        </div>
+        <button id="btn-cerrar-jerarquia" class="btn-primary" style="margin-top: 20px; width: 100%;">Volver</button>
     </div>
 
     <!-- Modal de Reglamento -->

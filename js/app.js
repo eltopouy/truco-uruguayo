@@ -14,6 +14,9 @@ let lastOponentePts = 0;
 let turnTimerInterval = null;
 let autoRepartirInterval = null;
 const TURN_TIME = 25; // 25 Segundos para jugar
+
+// Helper para que la IA parezca más humana al responder (espera entre 1.2 y 2.2 seg)
+const botDelay = () => new Promise(res => setTimeout(res, 1200 + Math.random() * 1000));
 window.isAwaitingStateSync = false; 
 window.isWinnerAlertShowing = false;
 
@@ -699,6 +702,9 @@ async function jugarBot() {
     if (window.modoJuego === 'multiplayer') return;
     if (game.turno !== 'oponente' || game.rondaTerminada || game.manoOponente.length === 0) return;
     
+    // Espera sutil para que no parezca un robot instantáneo
+    await botDelay();
+    
     const indicator = document.getElementById('typing-indicator');
     if (indicator) {
         indicator.innerText = "Rival está pensando...";
@@ -1039,11 +1045,14 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
     }
 
     if (botCantoRelleno === 'no') {
+        await botDelay();
         window.audio && window.audio.play('no_quiero');
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: No quiero.`);
         game.puntosPartido.jugador += 1; 
     } else if (botCantoRelleno === 'real' && opt !== 'falta_envido' && opt !== 'real_envido') {
         // REVIRE
+        await botDelay();
+        window.audio && window.audio.play('real_envido');
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡REAL ENVIDO!`);
         const quiereReal = await window.UI.confirm(`🤖 IA te cruzó REAL ENVIDO.<br><br>Tus puntos: ${tusPtos}<br>¿Querés? (5 pts en juego si aceptás)`);
         if (quiereReal) {
@@ -1066,6 +1075,7 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
         game.analizarBluff(tusPtos, true);
         window.vibrateAction(200);
         window.shakeCards();
+        await botDelay();
         window.audio && window.audio.play('quiero');
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡QUIERO con ${misPtos}!`);
         if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
@@ -1104,6 +1114,7 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
         const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).puntos;
         const tusPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos;
         
+        await botDelay();
         const contraFlor = await window.UI.confirm(`🗣️ Tú: ¡Flor!<br>🤖 Rival: ¡Con Flor me achico! (También tiene Flor).<br><br>¿Te le animás a gritarle CONTRA FLOR AL RESTO?`, "Choque de Flores");
         if (contraFlor) {
             window.shakeCards();
@@ -1207,6 +1218,8 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
         const nextVal = sigNivel === 'truco' ? 3 : 4;
         const nextTarget = sigNivel === 'truco' ? 'retruco' : 'vale4';
 
+        await botDelay();
+        window.audio && window.audio.play(nextTarget === 'vale4' ? 'vale_4' : nextTarget);
         await window.UI.alert(`🗣️ Tú: ¡${canto}!<br>🤖 Rival: ¡${nextCanto}! (Se agrandó el bot)`);
         const quiereSuba = await window.UI.confirm(`🤖 IA te cruzó ${nextCanto}.<br>¿Te la aguantás? (${nextVal} pts en juego)`);
         if (quiereSuba) {
@@ -1223,6 +1236,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
         }
     } else if (decision === 'si') {
         window.shakeCards();
+        await botDelay();
         window.audio && window.audio.play('quiero');
         await window.UI.alert(`🗣️ Tú: ¡Canto ${canto}!<br>🤖 Rival: ¡QUIERO!`);
         game.apuestaTruco.valor = sigValor;
@@ -1236,6 +1250,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
         game.fase = 'truco'; 
         renderJuego();
     } else {
+        await botDelay();
         window.audio && window.audio.play('no_quiero');
         await window.UI.alert(`🗣️ Tú: ¡Canto ${canto}!<br>🤖 Rival: Son buenas, me voy al mazo.`);
         game.puntosPartido.jugador += game.apuestaTruco.valor; 
@@ -1337,6 +1352,22 @@ document.getElementById('btn-cerrar-reglamento').addEventListener('click', () =>
 document.getElementById('overlay-reglamento').addEventListener('click', () => {
     document.getElementById('modal-reglamento').style.display = 'none';
     document.getElementById('overlay-reglamento').style.display = 'none';
+});
+
+// Jerarquia
+document.getElementById('btn-ver-jerarquia').addEventListener('click', () => {
+    document.getElementById('modal-senas').style.display = 'none';
+    document.getElementById('overlay-senas').style.display = 'none';
+    document.getElementById('modal-jerarquia').style.display = 'block';
+    document.getElementById('overlay-jerarquia').style.display = 'block';
+});
+document.getElementById('btn-cerrar-jerarquia').addEventListener('click', () => {
+    document.getElementById('modal-jerarquia').style.display = 'none';
+    document.getElementById('overlay-jerarquia').style.display = 'none';
+});
+document.getElementById('overlay-jerarquia').addEventListener('click', () => {
+    document.getElementById('modal-jerarquia').style.display = 'none';
+    document.getElementById('overlay-jerarquia').style.display = 'none';
 });
 
 window.manejarFinDeRondaUI = async function() {

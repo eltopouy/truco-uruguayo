@@ -23,7 +23,7 @@ class SoundManager {
             'contra_flor_al_resto': new Audio('assets/audio_voices/contra_flor_al_resto.mp3'),
             'con_flor_me_achico': new Audio('assets/audio_voices/con_flor_me_achico.mp3'),
             'quiero': new Audio('assets/audio_voices/quiero.mp3'),
-            'no-quiero': new Audio('assets/audio_voices/no_quiero.mp3'),
+            'no_quiero': new Audio('assets/audio_voices/no_quiero.mp3'),
             'son_buenas': new Audio('assets/audio_voices/son_buenas.mp3'),
             'mazo': new Audio('assets/audio_voices/me_voy_al_mazo.mp3')
         };
