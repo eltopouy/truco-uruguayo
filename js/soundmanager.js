@@ -11,13 +11,21 @@ class SoundManager {
             'win-baza': new Audio('https://assets.mixkit.co/active_storage/sfx/2015/2015-preview.mp3'), // Campana suave
             'loss': new Audio('https://assets.mixkit.co/active_storage/sfx/2014/2014-preview.mp3'), // Error suave
             
-            // Voces (Placeholders - El usuario puede reemplazarlos por archivos locales .mp3)
-            'truco': null,
-            'envido': null,
-            'flor': null,
-            'quiero': null,
-            'no-quiero': null,
-            'mazo': null
+            // Voces Reales (Neural TTS - Uruguay)
+            'truco': new Audio('assets/audio_voices/truco.mp3'),
+            'retruco': new Audio('assets/audio_voices/retruco.mp3'),
+            'vale_4': new Audio('assets/audio_voices/vale_4.mp3'),
+            'envido': new Audio('assets/audio_voices/envido.mp3'),
+            'real_envido': new Audio('assets/audio_voices/real_envido.mp3'),
+            'falta_envido': new Audio('assets/audio_voices/falta_envido.mp3'),
+            'flor': new Audio('assets/audio_voices/flor.mp3'),
+            'contra_flor': new Audio('assets/audio_voices/contra_flor.mp3'),
+            'contra_flor_al_resto': new Audio('assets/audio_voices/contra_flor_al_resto.mp3'),
+            'con_flor_me_achico': new Audio('assets/audio_voices/con_flor_me_achico.mp3'),
+            'quiero': new Audio('assets/audio_voices/quiero.mp3'),
+            'no-quiero': new Audio('assets/audio_voices/no_quiero.mp3'),
+            'son_buenas': new Audio('assets/audio_voices/son_buenas.mp3'),
+            'mazo': new Audio('assets/audio_voices/me_voy_al_mazo.mp3')
         };
 
         // Volumen por defecto y Estado

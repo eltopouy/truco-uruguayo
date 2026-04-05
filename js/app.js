@@ -770,6 +770,7 @@ async function jugarBot() {
         } 
         else if (objIA.puntos >= 29 || (probBluff && objIA.puntos >= 20)) {
             // El bot decide tocar envido
+            window.audio && window.audio.play('envido');
             game.envidoCantado = true;
             const msg = probBluff ? "¡TOCO ENVIDO! (Te está mintiendo...)" : "¡TOCO ENVIDO!";
             
@@ -839,6 +840,7 @@ async function jugarBot() {
     if (game.apuestaTruco.estado === 'nada' && !esDormido) {
         // Canta truco si tiene poder > 50 o si está blufeando
         if (poderMano > 50 || probBluff) {
+            window.audio && window.audio.play('truco');
             const msg = probBluff ? "¡TRUCO! (¡Miralo al mentiroso!)" : "¡TRUCO!";
             const quiereT = await window.UI.confirm(`🤖 IA: ${msg}<br>¿Querés?`, "¡Truco de la IA!");
             if (quiereT) {
@@ -987,14 +989,16 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
 
     let ptsToque = 2;
     let labelToque = "ENVIDO";
-    if (opt === "real_envido") { ptsToque = 3; labelToque = "REAL ENVIDO"; }
-    if (opt === "falta_envido") { ptsToque = ptsFalta; labelToque = "FALTA ENVIDO"; }
+    let audioKeyToque = "envido";
+    if (opt === "real_envido") { ptsToque = 3; labelToque = "REAL ENVIDO"; audioKeyToque = "real_envido"; }
+    if (opt === "falta_envido") { ptsToque = ptsFalta; labelToque = "FALTA ENVIDO"; audioKeyToque = "falta_envido"; }
+    
+    window.audio && window.audio.play(audioKeyToque);
 
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
         window.startSyncTimeout();
         game.envidoCantado = true;
-        window.audio.play('envido');
         enviarAccionFirebase('canto', { tipo: opt, pts: game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos, valor_pts: ptsToque });
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>(Esperando respuesta del rival...)`);
         renderJuego();
@@ -1035,6 +1039,7 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
     }
 
     if (botCantoRelleno === 'no') {
+        window.audio && window.audio.play('no_quiero');
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: No quiero.`);
         game.puntosPartido.jugador += 1; 
     } else if (botCantoRelleno === 'real' && opt !== 'falta_envido' && opt !== 'real_envido') {
@@ -1061,6 +1066,7 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
         game.analizarBluff(tusPtos, true);
         window.vibrateAction(200);
         window.shakeCards();
+        window.audio && window.audio.play('quiero');
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡QUIERO con ${misPtos}!`);
         if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
             await window.UI.alert(`Tus ${tusPtos} le ganaron a sus ${misPtos}.<br>¡Cobrás ${ptsToque} Pts!`);
@@ -1080,6 +1086,7 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
     if (game.manoJugador.length !== 3 || game.envidoCantado || window.isAwaitingStateSync) return;
     
     // FLOR
+    window.audio && window.audio.play('flor');
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
         window.startSyncTimeout();
@@ -1160,7 +1167,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
         window.startSyncTimeout();
-        window.audio.play('truco');
+        window.audio && window.audio.play(sigNivel === 'vale4' ? 'vale_4' : sigNivel);
         enviarAccionFirebase('canto', { tipo: 'truco', nivel: p.estado, sigValor: sigValor, sigNivel: sigNivel, canto: canto });
         await window.UI.alert(`🗣️ Tú: ¡${canto}!<br>(Esperando respuesta por la red...)`);
         game.apuestaTruco.turnoCantar = 'oponente';
@@ -1168,6 +1175,8 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
         renderJuego();
         return;
     }
+    
+    window.audio && window.audio.play(sigNivel === 'vale4' ? 'vale_4' : sigNivel);
 
     // IA mejorada: Evalúa si quiere, se va al mazo o CANTA RETRUCO
     game.registrarAccionRival('canto', 'truco');
@@ -1214,6 +1223,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
         }
     } else if (decision === 'si') {
         window.shakeCards();
+        window.audio && window.audio.play('quiero');
         await window.UI.alert(`🗣️ Tú: ¡Canto ${canto}!<br>🤖 Rival: ¡QUIERO!`);
         game.apuestaTruco.valor = sigValor;
         game.apuestaTruco.estado = sigNivel;
@@ -1226,6 +1236,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
         game.fase = 'truco'; 
         renderJuego();
     } else {
+        window.audio && window.audio.play('no_quiero');
         await window.UI.alert(`🗣️ Tú: ¡Canto ${canto}!<br>🤖 Rival: Son buenas, me voy al mazo.`);
         game.puntosPartido.jugador += game.apuestaTruco.valor; 
         game.rondaTerminada = true;
@@ -1239,6 +1250,7 @@ document.getElementById('btn-mazo').addEventListener('click', async () => {
     
     const meMazo = await window.UI.confirm("¿Te achicás al mazo y le regalás la mano al rival, bo?");
     if (meMazo) {
+        window.audio && window.audio.play('mazo');
         game.rondaTerminada = true;
         
         let ptsCastigo = 1;
