@@ -494,3 +494,8 @@ class GameStateManager {
         }
     }
 }
+
+// Compatibilidad con entorno Node.js / Jest / Node test runner
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { Carta, GameStateManager, PALOS, VALORES };
+}

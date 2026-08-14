@@ -1,4 +1,34 @@
 // js/uiManager.js
+
+/**
+ * Escapes unsafe HTML characters to prevent XSS.
+ */
+window.escapeHTML = function(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+/**
+ * Strips dangerous HTML tags/attributes while preserving safe layout tags.
+ */
+window.sanitizeHTML = function(html) {
+    if (html === null || html === undefined) return '';
+    const str = String(html);
+    // Remove script tags, iframes, object/embed, event handlers and javascript: URIs
+    return str
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+        .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+        .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
+        .replace(/\son\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '')
+        .replace(/href\s*=\s*['"]?javascript:[^'"]*['"]?/gi, 'href="#"');
+};
+
 window.UI = {
     init: function() {
         this.modal = document.getElementById('modal-custom');
@@ -102,9 +132,11 @@ window.UI = {
     _show: function(title, msg) {
         if (!this.modal) this.init();
         this.title.innerText = title;
+        // Sanitizar el mensaje para prevenir XSS
+        const safeMsg = window.sanitizeHTML(msg);
         // Inyectar el widget de contexto ANTES del mensaje
         const contextHTML = this._buildContextWidget();
-        this.message.innerHTML = contextHTML + msg.replace(/\n/g, '<br>');
+        this.message.innerHTML = contextHTML + safeMsg.replace(/\n/g, '<br>');
         this.buttonsContainer.innerHTML = '';
         this.modal.style.display = 'block';
         this.modal.classList.remove('modal-animate-pop');
@@ -119,7 +151,7 @@ window.UI = {
             this.title.style.display = 'none';
             
             // Separar el mensaje: la primera línea es el titular visible, el resto va a "Ver Info"
-            const rawText = msg.replace(/<br\s*\/?>/gi, '\n');
+            const rawText = safeMsg.replace(/<br\s*\/?>/gi, '\n');
             const lines = rawText.split('\n').filter(l => l.trim() !== '');
             const headline = lines[0] || '';
             const details = lines.slice(1).join('<br>');
@@ -149,7 +181,7 @@ window.UI = {
             this.modal.style.top = '65%';
             this.modal.style.padding = '10px 14px';
         } else {
-            this.message.innerHTML = contextHTML + msg.replace(/\n/g, '<br>');
+            this.message.innerHTML = contextHTML + safeMsg.replace(/\n/g, '<br>');
             this.overlay.style.background = 'rgba(0,0,0,0.8)';
             this.overlay.style.backdropFilter = 'blur(8px)';
             this.title.style.display = 'block';

@@ -1403,9 +1403,13 @@ window.manejarFinDeRondaUI = async function() {
 };
 
 window.guardarConfig = function() {
-    game.config.nombreJugador = document.getElementById('config-name-yo').value.trim() || "TÚ";
-    game.config.nombreOponente = document.getElementById('config-name-rival').value.trim() || "RIVAL";
-    game.config.limitePuntos = parseInt(document.getElementById('config-limite').value) || 30;
+    const rawYo = (document.getElementById('config-name-yo').value || '').trim();
+    const rawRival = (document.getElementById('config-name-rival').value || '').trim();
+    const rawLim = parseInt(document.getElementById('config-limite').value);
+
+    game.config.nombreJugador = rawYo.substring(0, 20) || "TÚ";
+    game.config.nombreOponente = rawRival.substring(0, 20) || "RIVAL";
+    game.config.limitePuntos = (rawLim === 40) ? 40 : 30;
     
     // Config de Sonido y Vibración
     if (window.audio) {

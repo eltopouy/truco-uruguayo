@@ -104,7 +104,7 @@
                 CÓDIGO PRIVADO</span>
         </div>
 
-        <input type="text" id="input-sala" placeholder="CÓDIGO"
+        <input type="text" id="input-sala" placeholder="CÓDIGO" maxlength="12"
             style="padding: 12px; border-radius: 8px; border:none; outline:none; text-align:center; font-size: 1.1rem; width: 100%; box-sizing: border-box; font-family:inherit; background: rgba(255,255,255,0.9); font-weight:bold; color:#111;">
 
         <button class="btn-action" style="margin-top: 15px; width: 100%; box-sizing: border-box;"
@@ -363,7 +363,7 @@
             <div id="typing-indicator"
                 style="display:none; font-size: 0.65rem; color: #888; font-style: italic; margin-top: 5px; margin-bottom: -5px;">
                 Rival está escribiendo...</div>
-            <input type="text" id="input-chat" placeholder="Escribí algo..."
+            <input type="text" id="input-chat" placeholder="Escribí algo..." maxlength="120"
                 style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 5px; margin-top: 8px; border-radius: 4px; box-sizing: border-box;">
         </div>
 
@@ -406,11 +406,11 @@
         <h2 style="text-align: center; margin-bottom: 20px;">⚙️ Ajustes</h2>
 
         <label style="color:#aaa; font-size:0.8rem;">Tu Nombre:</label>
-        <input type="text" id="config-name-yo" value="TÚ"
+        <input type="text" id="config-name-yo" value="TÚ" maxlength="20"
             style="width:100%; padding:8px; margin-bottom:15px; border-radius:5px; border:none; background:rgba(255,255,255,0.1); color:white; font-family:inherit; box-sizing:border-box;">
 
         <label style="color:#aaa; font-size:0.8rem;">Nombre del Rival (Bot):</label>
-        <input type="text" id="config-name-rival" value="RIVAL"
+        <input type="text" id="config-name-rival" value="RIVAL" maxlength="20"
             style="width:100%; padding:8px; margin-bottom:15px; border-radius:5px; border:none; background:rgba(255,255,255,0.1); color:white; font-family:inherit; box-sizing:border-box;">
 
         <label style="color:#aaa; font-size:0.8rem;">Límite del Partido:</label>

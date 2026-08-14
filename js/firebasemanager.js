@@ -47,7 +47,7 @@ db.ref('salas').orderByChild('estado').equalTo('esperando').on('value', (snap) =
     if (snap.exists()) {
         snap.forEach(child => {
             const data = child.val();
-            if (data.publica) {
+            if (data && data.publica) {
                 count++;
                 const item = document.createElement('div');
                 item.className = 'glass';
@@ -61,10 +61,13 @@ db.ref('salas').orderByChild('estado').equalTo('esperando').on('value', (snap) =
                 item.style.cursor = 'pointer';
                 item.onclick = () => unirseSalaFirebase(child.key, true);
                 
+                const safeKey = typeof window.escapeHTML === 'function' ? window.escapeHTML(child.key) : child.key;
+                const safeHost = typeof window.escapeHTML === 'function' ? window.escapeHTML(data.creadorName || 'Jugador') : (data.creadorName || 'Jugador');
+                
                 item.innerHTML = `
                     <div style="text-align: left;">
-                        <span style="color: var(--gold); font-weight: bold;">${child.key}</span><br>
-                        <span style="font-size: 0.7rem; color: #aaa;">Host: ${data.creadorName || 'Jugador'}</span>
+                        <span style="color: var(--gold); font-weight: bold;">${safeKey}</span><br>
+                        <span style="font-size: 0.7rem; color: #aaa;">Host: ${safeHost}</span>
                     </div>
                     <button class="btn-action" style="padding: 5px 10px; font-size: 0.7rem;">UNIRSE</button>
                 `;
@@ -225,10 +228,15 @@ window.buscarPartidaRapida = async function() {
  * Se une a una sala existente mediante código.
  */
 window.unirseSalaFirebase = async function(codigo, isPublica = false) {
-    if(!codigo) { await window.UI.alert("Ingresa un código, che."); return; }
+    if (!codigo || typeof codigo !== 'string') { await window.UI.alert("Ingresa un código, che."); return; }
+    codigo = codigo.trim().toUpperCase();
+    if (!/^[A-Z0-9]{1,12}$/.test(codigo)) {
+        await window.UI.alert("❌ Código inválido. Solo debe contener letras y números (máx 12 caracteres).");
+        return;
+    }
     ocultarMenusOnline();
     window.modoJuego = 'multiplayer';
-    codigoSalaActual = codigo.toUpperCase();
+    codigoSalaActual = codigo;
     miRol = 'invitado';
 
     const roomRef = db.ref('salas/' + codigoSalaActual);
@@ -453,17 +461,22 @@ async function procesarAccionRed(snap) {
     if (!accion || accion.sender === miRol) return; // Ignorar mis propias acciones reenviadas
     
     // VALIDACIÓN DE SECUENCIA PARA EVITAR REPETICIONES U OMISIONES
-    if (accion.seq <= window.expectedRivalSeq) {
-        console.warn(`Mensaje repetido o viejo ignorado: ${accion.tipo} (Seq: ${accion.seq}, Esperábamos > ${window.expectedRivalSeq})`);
+    const seq = typeof accion.seq === 'number' ? accion.seq : 0;
+    const expectedSeq = typeof window.expectedRivalSeq === 'number' ? window.expectedRivalSeq : 0;
+    
+    if (seq > 0 && seq <= expectedSeq) {
+        console.warn(`Mensaje repetido o viejo ignorado: ${accion.tipo} (Seq: ${seq}, Esperábamos > ${expectedSeq})`);
         return; 
     }
     
-    // Si hay un salto, lo ideal sería pedir re-sincronización, pero aquí simplemente logueamos y actualizamos
-    if (accion.seq > window.expectedRivalSeq + 1) {
-        console.error(`¡Salto de secuencia detectado! (${window.expectedRivalSeq} -> ${accion.seq}). Posible pérdida de paquetes.`);
+    // Si hay un salto, actualizamos
+    if (seq > expectedSeq + 1) {
+        console.warn(`¡Salto de secuencia detectado! (${expectedSeq} -> ${seq}).`);
     }
     
-    window.expectedRivalSeq = accion.seq; // Actualizar secuencia esperada
+    if (seq > 0) {
+        window.expectedRivalSeq = seq; // Actualizar secuencia esperada
+    }
 
     // Evitar procesar paquetes muy viejos (más de 10s de lag) para no causar desincronización
     const delta = Date.now() - accion.ts;
@@ -963,11 +976,16 @@ async function resolverFlorRed(mis, sus, alResto) {
 
 window.enviarChatRed = function(texto) {
     if (!texto) {
-        texto = document.getElementById('input-chat').value;
-        document.getElementById('input-chat').value = '';
+        const inp = document.getElementById('input-chat');
+        if (inp) {
+            texto = inp.value;
+            inp.value = '';
+        }
     }
-    if (!texto || !texto.trim()) return;
+    if (!texto || typeof texto !== 'string' || !texto.trim()) return;
     
+    // Limitar longitud y sanear
+    texto = texto.trim().substring(0, 120);
     enviarAccionFirebase('chat', { msg: texto });
     logJugada(`💬 Tú: ${texto}`, 'propio');
 };
@@ -1068,11 +1086,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.checkExistingSession();
     
     // Auto-unirse si hay hash en la URL
-    const hash = window.location.hash.substring(1);
-    if (hash && hash.length === 6 && !localStorage.getItem('truco_room_code')) {
-        document.getElementById('input-sala').value = hash;
+    const rawHash = window.location.hash.substring(1).trim().toUpperCase();
+    if (rawHash && /^[A-Z0-9]{1,12}$/.test(rawHash) && !localStorage.getItem('truco_room_code')) {
+        const inputSala = document.getElementById('input-sala');
+        if (inputSala) inputSala.value = rawHash;
         setTimeout(() => {
-            unirseSalaFirebase(hash);
+            unirseSalaFirebase(rawHash);
         }, 500);
     }
 
