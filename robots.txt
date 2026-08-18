@@ -1,0 +1,12 @@
+﻿User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://truco-uruguayo.servicioti.com.uy/sitemap.xml
+
+# No indexar archivos de desarrollo
+Disallow: /test/
+Disallow: /generate_voices.py
+Disallow: /slice_cards.py
+Disallow: /get_links.py
+Disallow: /test_sprite.html

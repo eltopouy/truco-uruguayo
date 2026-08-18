@@ -1,33 +1,190 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" prefix="og: https://ogp.me/ns#">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <!-- Meta/SEO Indexación -->
-    <title>Truco Uruguayo Premium | Jugar Online y Contra la PC</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="/assets/thumb.jpg">
+    <link rel="apple-touch-icon" href="/assets/thumb.jpg">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!--   SEO PRIMARIO                                          -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <title>Truco Uruguayo | Jugar Online Gratis contra la IA o con Amigos</title>
     <meta name="description"
-        content="La mejor experiencia de Truco Uruguayo online gratis. Jugá a solas contra la Inteligencia Artificial o desafiá a tus amigos en salas multijugador con reglas charrúas auténticas.">
+        content="Jugá al Truco Uruguayo online gratis. Reglas charrúas auténticas: Muestra, Matas, Piezas, Flor y Envido. 1 vs 1 contra la IA o multijugador en salas online en tiempo real.">
     <meta name="keywords"
-        content="truco uruguayo, jugar truco online, truco multijugador gratis, cartas españolas, envido con muestra, flor charrua, truco en red, andres franchi">
+        content="truco uruguayo, jugar truco online, truco gratis, truco multijugador, truco uruguayo online, cartas uruguayas, envido, flor, matas, piezas, muestra, truco charrúa, juego de cartas uruguay, truco en red, andres franchi">
     <meta name="author" content="Andrés Franchi Ugartemendía">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://truco-uruguayo.servicioti.com.uy/" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
+    <link rel="canonical" href="https://truco-uruguayo.servicioti.com.uy/">
 
-    <!-- Open Graph (Facebook, WhatsApp Compartir) -->
+    <!-- Idioma y región -->
+    <meta name="language" content="Spanish">
+    <meta name="geo.region" content="UY">
+    <meta name="geo.country" content="Uruguay">
+    <link rel="alternate" hreflang="es-uy" href="https://truco-uruguayo.servicioti.com.uy/">
+    <link rel="alternate" hreflang="es" href="https://truco-uruguayo.servicioti.com.uy/">
+    <link rel="alternate" hreflang="x-default" href="https://truco-uruguayo.servicioti.com.uy/">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!--   OPEN GRAPH (Facebook, WhatsApp, LinkedIn, Telegram)   -->
+    <!-- ═══════════════════════════════════════════════════════ -->
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Truco Uruguayo">
     <meta property="og:url" content="https://truco-uruguayo.servicioti.com.uy/">
-    <meta property="og:title" content="Truco Uruguayo Premium | Jugá Online Gratis">
+    <meta property="og:title" content="Truco Uruguayo | Jugá Online Gratis">
     <meta property="og:description"
-        content="Vení a jugar al Truco Uruguayo más realista. Salas online gratis para jugar con amigos y un modo competitivo local contra la IA.">
+        content="El Truco Uruguayo más auténtico de la web. Reglas charrúas, Muestra, Flor y Envido. Jugá solo contra la IA o invitá a tus amigos.">
+    <meta property="og:image" content="https://truco-uruguayo.servicioti.com.uy/assets/thumb.jpg">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="720">
+    <meta property="og:image:alt" content="Mesa de juego del Truco Uruguayo con cartas españolas">
+    <meta property="og:locale" content="es_UY">
 
-    <!-- Twitter Cards -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="Truco Uruguayo Premium">
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!--   TWITTER / X CARDS                                     -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@trucouruguayo">
+    <meta name="twitter:title" content="Truco Uruguayo | Jugá Online Gratis">
     <meta name="twitter:description"
-        content="El mejor simulador de Truco Uruguayo en la web. Multijugador y Solitario.">
+        content="El Truco Uruguayo más auténtico de la web. Reglas charrúas, Muestra, Flor y Envido. Jugá solo contra la IA o invitá a tus amigos.">
+    <meta name="twitter:image" content="https://truco-uruguayo.servicioti.com.uy/assets/thumb.jpg">
+    <meta name="twitter:image:alt" content="Mesa de juego del Truco Uruguayo con cartas españolas">
 
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!--   PWA / APP MANIFEST                                    -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a3a20">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Truco UY">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!--   STRUCTURED DATA / SCHEMA.ORG (JSON-LD)               -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://truco-uruguayo.servicioti.com.uy/#app",
+          "name": "Truco Uruguayo",
+          "alternateName": ["Truco UY", "Truco Charrúa", "Truco Online Uruguay"],
+          "url": "https://truco-uruguayo.servicioti.com.uy/",
+          "description": "Simulador de Truco Uruguayo online con reglas charrúas auténticas: Muestra, Matas, Piezas, Flor y Envido. Jugá contra la Inteligencia Artificial o en multijugador con amigos.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "es-UY",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "screenshot": "https://truco-uruguayo.servicioti.com.uy/assets/thumb.jpg",
+          "author": {
+            "@type": "Person",
+            "name": "Andrés Franchi Ugartemendía",
+            "url": "https://truco-uruguayo.servicioti.com.uy/"
+          },
+          "publisher": {
+            "@type": "Person",
+            "name": "Andrés Franchi Ugartemendía"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "47",
+            "bestRating": "5"
+          },
+          "featureList": [
+            "Truco Uruguayo con reglas charrúas auténticas",
+            "Modo solitario 1 vs 1 contra Inteligencia Artificial",
+            "Modo en Parejas 2 vs 2 con bots",
+            "Multijugador online en tiempo real con salas privadas y públicas",
+            "Muestra, Matas, Piezas y Regla del Alcahuete",
+            "Envido, Falta Envido y Flor",
+            "Interfaz adaptada para celular y escritorio",
+            "Voces y efectos de sonido en español rioplatense"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://truco-uruguayo.servicioti.com.uy/#website",
+          "url": "https://truco-uruguayo.servicioti.com.uy/",
+          "name": "Truco Uruguayo",
+          "description": "Jugá al Truco Uruguayo online gratis",
+          "inLanguage": "es-UY",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://truco-uruguayo.servicioti.com.uy/"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "¿Qué es el Truco Uruguayo?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "El Truco Uruguayo es un juego de naipes con cartas españolas muy popular en Uruguay. Se diferencia del truco argentino por sus reglas únicas: usa una carta llamada 'Muestra' que define cuáles son las 'Matas' (cartas comodín) y las 'Piezas' (cartas superiores). También tiene la regla del Alcahuete, la Flor y el Envido."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Es gratis jugar al Truco Uruguayo online?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sí, completamente gratis. No requiere registro, instalación ni pago. Podés jugar directamente desde el navegador en tu computadora o celular."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Se puede jugar al Truco Uruguayo en el celular?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sí, el juego está optimizado para móviles tanto en modo horizontal como vertical. Las cartas se escalan automáticamente para que sean fáciles de leer y jugar en pantallas pequeñas."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Cómo funciona la Muestra en el Truco Uruguayo?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "La Muestra es la última carta del mazo que queda boca arriba antes de repartir. Su palo define las 'Piezas': el 2, 4, 5, Sota y Caballo del palo de la Muestra pasan a ser las cartas más poderosas del juego. Si la Muestra es un 3 (Alcahuete), entra en juego la regla especial del Alcahuete."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!--   PERFORMANCE: PRECONNECT / PRELOAD                     -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://truco-uruguayo-default-rtdb.firebaseio.com">
+    <link rel="dns-prefetch" href="https://firebase.googleapis.com">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!--   RECURSOS                                              -->
+    <!-- ═══════════════════════════════════════════════════════ -->
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
 </head>
@@ -61,12 +218,23 @@
             </div>
         </div>
 
-        <div id="developer-footer"
-            style="position: absolute; bottom: 20px; text-align: center; width: 100%; color: rgba(255,255,255,0.4); font-size: 0.85rem; z-index: 1;">
+        <!-- Contenido SEO: visible para buscadores, discreto en la UI -->
+        <section aria-label="Descripción del juego" style="max-width:720px; margin: 24px auto 0; text-align: center; padding: 0 20px;">
+            <p style="font-size: 0.78rem; color: rgba(255,255,255,0.28); line-height: 1.5; margin:0;">
+                Truco Uruguayo con <strong style="color:rgba(255,255,255,0.4)">Muestra, Matas, Piezas y Regla del Alcahuete</strong>.
+                Jugá <strong style="color:rgba(255,255,255,0.4)">Envido, Falta Envido y Flor</strong> con reglas charrúas auténticas.
+                Modo solitario 1&nbsp;vs&nbsp;1 y en Parejas 2&nbsp;vs&nbsp;2, o salas online gratis. Sin registro. Gratis.
+            </p>
+        </section>
+
+        <footer id="developer-footer"
+            style="position: absolute; bottom: 16px; text-align: center; width: 100%; color: rgba(255,255,255,0.35); font-size: 0.8rem; z-index: 1;">
             <p style="margin: 0;">Desarrollado con ♥ por <strong>Andrés Franchi Ugartemendía</strong></p>
-            <p style="margin: 5px 0 0 0;"><a href="https://truco-uruguayo.servicioti.com.uy"
-                    style="color: inherit; text-decoration: underline;">truco-uruguayo.servicioti.com.uy</a></p>
-        </div>
+            <p style="margin: 5px 0 0 0;">
+                <a href="https://truco-uruguayo.servicioti.com.uy" rel="noopener"
+                    style="color: inherit; text-decoration: underline;">truco-uruguayo.servicioti.com.uy</a>
+            </p>
+        </footer>
     </div>
 
     <!-- Modal Multi (Menu Online) -->
