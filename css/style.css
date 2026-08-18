@@ -511,6 +511,8 @@ body, html {
 #mini-marcador.show-score {
     opacity: 1;
     pointer-events: auto;
+}
+
 /* --- 4 PLAYERS (2 vs 2 / PAREJAS) - BASE DESKTOP --- */
 .seat-badge {
     background: rgba(0,0,0,0.6);

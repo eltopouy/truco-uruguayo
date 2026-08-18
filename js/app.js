@@ -340,11 +340,16 @@ window.animarReparto = async function() {
             }
         }
 
+        const playArea2p = document.getElementById('play-area');
+        const playArea4p = document.getElementById('play-area-4p');
+
         if (game.numJugadores === 4) {
             if (partnerHandEl) partnerHandEl.style.display = 'flex';
             if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'flex';
             if (rivalRightHandEl) rivalRightHandEl.style.display = 'flex';
             if (oppHandEl) oppHandEl.style.display = 'none';
+            if (playArea2p) playArea2p.style.display = 'none';
+            if (playArea4p) playArea4p.style.display = 'flex';
 
             for (let round = 0; round < 3; round++) {
                 for (let s = 0; s < 4; s++) {
@@ -372,6 +377,8 @@ window.animarReparto = async function() {
             if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'none';
             if (rivalRightHandEl) rivalRightHandEl.style.display = 'none';
             if (oppHandEl) oppHandEl.style.display = 'flex';
+            if (playArea4p) playArea4p.style.display = 'none';
+            if (playArea2p) playArea2p.style.display = 'flex';
 
             for (let i = 0; i < 3; i++) {
                 if (window.audio && typeof window.audio.play === 'function') window.audio.play('card-deal');

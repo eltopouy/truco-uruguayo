@@ -4,7 +4,9 @@
   "description": "Simulador de Truco Uruguayo Premium con Inteligencia Artificial y Multijugador en Tiempo Real",
   "main": "js/app.js",
   "scripts": {
-    "test": "node test/truco.test.js && node test/e2e.test.js"
+    "test": "node test/truco.test.js && node test/e2e.test.js",
+    "test:browser": "node test/browser.test.js",
+    "test:all": "node test/truco.test.js && node test/e2e.test.js && node test/browser.test.js"
   },
   "keywords": [
     "truco",
@@ -14,5 +16,8 @@
     "firebase"
   ],
   "author": "Andrés Franchi Ugartemendía",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
 }
