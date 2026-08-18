@@ -933,13 +933,8 @@ async function verificarResolucionMesa() {
     } else {
         if (window.modoJuego === 'singleplayer' && game.turnoSeat !== 0 && !game.rondaTerminada) {
             setTimeout(async () => { await jugarBot(); }, 600);
-        }
-    }
-}ndow.modoJuego === 'singleplayer') {
-                setTimeout(async () => { await jugarBot(); }, 400);
-            } else if (game.turno === 'jugador') {
-                window.vibrateAction(100); // Vibrar al inicio del turno del jugador
-            }
+        } else if (game.turnoSeat === 0 && !game.rondaTerminada) {
+            window.vibrateAction(100);
         }
     }
 }
