@@ -352,6 +352,26 @@ function asignarEstadoDesdeRed(dataStr) {
     game.partidoIniciado = data.partidoIniciado;
     game.piezasActivas = data.piezasActivas || [];
     game.paloMuestra = data.paloMuestra;
+
+    if (typeof data.numJugadores === 'number') {
+        game.numJugadores = data.numJugadores;
+    }
+    if (typeof data.turnoSeat === 'number') {
+        game.turnoSeat = data.turnoSeat;
+    }
+    if (typeof data.manoSeat === 'number') {
+        game.manoSeat = data.manoSeat;
+    }
+    if (data.mesaSlots && Array.isArray(data.mesaSlots)) {
+        game.mesaSlots = data.mesaSlots.map(plainToCarta);
+    }
+    if (data.players && Array.isArray(data.players)) {
+        game.players = data.players.map(p => ({
+            ...p,
+            hand: (p.hand || []).map(plainToCarta),
+            initialHand: (p.initialHand || []).map(plainToCarta)
+        }));
+    }
     
     // Unlock interaction as we have the latest server state
     window.isAwaitingStateSync = false;
@@ -399,6 +419,20 @@ window.sincronizarEstadoMotor = function(extraData = {}) {
     }
     if (snapObj.manoInicialJugador) {
         snapObj.manoInicialJugador = snapObj.manoInicialJugador.map(() => ({ oculto: true }));
+    }
+
+    // Ocultar manos de jugadores en array universal
+    if (snapObj.players && Array.isArray(snapObj.players)) {
+        snapObj.players = snapObj.players.map(p => {
+            if (p.seat === 0) {
+                return {
+                    ...p,
+                    hand: (p.hand || []).map(() => ({ oculto: true })),
+                    initialHand: (p.initialHand || []).map(() => ({ oculto: true }))
+                };
+            }
+            return p;
+        });
     }
 
     // El invitado NO debe saber el resto del mazo (Anti-Cheat)

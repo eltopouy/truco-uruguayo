@@ -40,18 +40,24 @@
             Truco Uruguayo Premium</h1>
         <p style="color: #ccc; margin-bottom: 40px; font-size: 1.2rem;">Bienvenido al paño verde. Elige tu rival.</p>
 
-        <div class="opciones-inicio" style="display: flex; gap: 30px;">
-            <div class="glass" style="text-align: center; cursor: pointer; transition: transform 0.2s;"
+        <div class="opciones-inicio" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 900px;">
+            <div class="glass" style="text-align: center; cursor: pointer; transition: transform 0.2s; min-width: 220px; flex: 1;"
                 onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"
-                onclick="iniciarSolo()">
-                <h2 style="font-size: 2rem; margin-bottom: 10px;">🤖 Jugar a Solas</h2>
-                <p>Torneo contra nuestra super IA</p>
+                onclick="iniciarSolo(2)">
+                <h2 style="font-size: 1.8rem; margin-bottom: 10px; color: var(--gold);">🤖 1 vs 1</h2>
+                <p style="font-size: 0.9rem;">Mano a Mano contra la IA</p>
             </div>
-            <div class="glass" style="text-align: center; cursor: pointer; transition: transform 0.2s;"
+            <div class="glass" style="text-align: center; cursor: pointer; transition: transform 0.2s; min-width: 220px; flex: 1; border-color: rgba(241,196,15,0.4);"
+                onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"
+                onclick="iniciarSolo(4)">
+                <h2 style="font-size: 1.8rem; margin-bottom: 10px; color: #e67e22;">👥 2 vs 2</h2>
+                <p style="font-size: 0.9rem;">En Parejas (Tú + Bot vs 2 Bots)</p>
+            </div>
+            <div class="glass" style="text-align: center; cursor: pointer; transition: transform 0.2s; min-width: 220px; flex: 1;"
                 onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"
                 onclick="document.getElementById('menu-multi').style.display='block'; document.getElementById('overlay-custom').style.display='block';">
-                <h2 style="font-size: 2rem; margin-bottom: 10px; color:#1abc9c;">🌐 Jugar Online</h2>
-                <p>Enfrentar a un amigo real</p>
+                <h2 style="font-size: 1.8rem; margin-bottom: 10px; color:#1abc9c;">🌐 Online</h2>
+                <p style="font-size: 0.9rem;">Multijugador en tiempo real</p>
             </div>
         </div>
 
@@ -261,9 +267,14 @@
             cancha!</button>
     </div>
 
-    <div class="table">
-        <!-- Mano del oponente (cara abajo) -->
+    <div class="table" id="game-table">
+        <!-- Mano del oponente 1v1 (cara abajo arriba) -->
         <div class="opponent-hand" id="opponent-hand"></div>
+
+        <!-- Manos para modo 4 Jugadores (2v2) -->
+        <div class="partner-hand" id="partner-hand" style="display: none;"></div>
+        <div class="rival-left-hand" id="rival-left-hand" style="display: none;"></div>
+        <div class="rival-right-hand" id="rival-right-hand" style="display: none;"></div>
 
         <!-- Área central del mazo y la muestra -->
         <div class="deck-area">
@@ -278,7 +289,15 @@
             <div id="mesa-jugador" style="transform: translateY(20px);"></div>
         </div>
 
-        <!-- Mano del jugador -->
+        <!-- Mesa de 4 ranuras cardinales para 2v2 -->
+        <div class="play-area-4p" id="play-area-4p" style="display: none;">
+            <div class="slot-north" id="slot-seat-2"></div>
+            <div class="slot-east" id="slot-seat-1"></div>
+            <div class="slot-south" id="slot-seat-0"></div>
+            <div class="slot-west" id="slot-seat-3"></div>
+        </div>
+
+        <!-- Mano del jugador (Asiento 0 - Abajo) -->
         <div class="player-hand" id="player-hand"></div>
 
         <button id="btn-repartir" class="btn-primary"

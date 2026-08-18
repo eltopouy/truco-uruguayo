@@ -4,6 +4,42 @@ Todas las mejoras notables y correcciones aplicadas al proyecto se documentan en
 
 ---
 
+## [v2.3.0] - 2026-08-14
+
+### 👥 Modo 4 Jugadores (2 vs 2 / Parejas)
+- **Motor Universal Multijugador (`GameStateManager`)**:
+  - Arquitectura orientada a N jugadores (`players: [ { id, seat, team, name, hand, initialHand, isBot } ]`) con soporte nativo de 2 y 4 participantes.
+  - Asignación de equipos (`Team 0`: Nosotros / `Team 1`: Ellos).
+  - Rotación cíclica de turnos (`turnoSeat`) y mano (`manoSeat`) a través de las 4 posiciones de la mesa.
+  - Mesa de 4 ranuras (`mesaSlots: [c0, c1, c2, c3]`).
+  - Evaluación de bazas por equipos: gana el equipo con la carta de mayor poder en la mesa y el jugador individual que la jugó sale mano en la siguiente baza.
+  - Manejo de empate cooperativo: si compañeros de equipo empatan en la carta más alta, su equipo gana limpiamente sin generar parda.
+  - Compatibilidad regresiva 100% con modo 1v1 mediante getters/setters sincronizados (`manoJugador`, `manoOponente`, `mesa`, `turno`).
+
+### 🤖 Inteligencia Artificial Cooperativa y Adaptativa
+- **IA para Parejas**:
+  - Soporte para compañeros y rivales bots en asientos 1, 2 y 3.
+  - Estrategia de asistencia en el compañero (Asiento 2): no gasta cartas altas ni piezas si el jugador (Asiento 0) ya tiene la baza ganada.
+  - Lectura de mesa y selección de mejor respuesta (`obtenerMejorRespuesta`).
+
+### 🎨 Tablero y UI de 4 Asientos
+- **Diseño del Paño**:
+  - Posicionamiento responsive de 4 manos: Jugador (Sur), Rival 1 (Este), Compañero (Norte), Rival 2 (Oeste).
+  - Animación de reparto de 12 cartas distribuidas secuencialmente desde el Asiento Mano.
+  - Mesa central con cuadrante cardinal de 4 cartas.
+  - Nuevas opciones de menú en inicio: **🤖 1 vs 1** y **👥 2 vs 2**.
+
+### 🔒 Reglas de Seguridad de Base de Datos (`database.rules.json`)
+- **Esquema de Validación Firebase**:
+  - Restricción de escritura a salas activas y validación de tipos de datos.
+  - Permisos de solo lectura para el estado maestro de la sala por parte de invitados.
+  - Esquema estricto para canales de acciones (`acciones_host`, `acciones_in`, `presencia`, `chat`).
+
+### 🧪 Expansión de Tests Automatizados
+- 29 pruebas unitarias completas en `test/truco.test.js` (100% de éxito).
+
+---
+
 ## [v2.2.0] - 2026-08-14
 
 ### 🛡️ Seguridad y Sanitización

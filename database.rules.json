@@ -1,0 +1,42 @@
+{
+  "rules": {
+    "salas": {
+      "$salaId": {
+        // Cualquier cliente puede leer la información pública de la sala si conoce el código
+        ".read": true,
+        
+        // Creación y actualización de sala
+        ".write": "data.val() === null || (auth != null || newData.child('estado').exists())",
+        
+        // Validación del estado de la sala
+        "estado": {
+          ".validate": "newData.isString() && (newData.val() == 'esperando' || newData.val() == 'conectado' || newData.val() == 'finalizado' || newData.val() == 'jugador_desconectado')"
+        },
+        
+        // Validación de acciones entrantes
+        "acciones_host": {
+          "$accionId": {
+            ".validate": "newData.hasChildren(['tipo', 'ts', 'seq']) && newData.child('seq').isNumber()"
+          }
+        },
+        "acciones_in": {
+          "$accionId": {
+            ".validate": "newData.hasChildren(['tipo', 'ts', 'seq']) && newData.child('seq').isNumber()"
+          }
+        },
+        
+        // Validación de presencia (Heartbeat)
+        "presence": {
+          "$player": {
+            ".validate": "newData.isNumber()"
+          }
+        },
+        
+        // Estado maestro del juego
+        "estado_maestro": {
+          ".validate": "newData.isString()"
+        }
+      }
+    }
+  }
+}

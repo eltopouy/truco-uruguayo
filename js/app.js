@@ -262,13 +262,15 @@ function logJugada(texto, tipo = 'sistema') {
     }, 8000);
 }
 
-function iniciarSolo() {
+window.iniciarSolo = function(num = 2) {
     document.getElementById('pantalla-inicio').style.display = 'none';
     window.modoJuego = 'singleplayer';
+    game.configurarJugadores(num);
     game.iniciarRonda();
-    logJugada("🧉 ¡Suerte en el paño, gurí!", "sistema");
+    const txt = num === 4 ? "👥 ¡Partida en Parejas (2 vs 2) iniciada!" : "🧉 ¡Suerte en el paño, gurí!";
+    logJugada(txt, "sistema");
     window.animarReparto();
-}
+};
 
 function crearCartaDOM(carta, bocaAbajo = false, isMuestra = false) {
     const div = document.createElement('div');
@@ -313,15 +315,22 @@ window.animarReparto = async function() {
     
     const oppHandEl = document.getElementById('opponent-hand');
     const plyHandEl = document.getElementById('player-hand');
+    const partnerHandEl = document.getElementById('partner-hand');
+    const rivalLeftHandEl = document.getElementById('rival-left-hand');
+    const rivalRightHandEl = document.getElementById('rival-right-hand');
     const deckArea = document.querySelector('.deck-area');
     
     // Limpieza inicial para la animación
     if (oppHandEl) oppHandEl.innerHTML = '';
     if (plyHandEl) plyHandEl.innerHTML = '';
+    if (partnerHandEl) partnerHandEl.innerHTML = '';
+    if (rivalLeftHandEl) rivalLeftHandEl.innerHTML = '';
+    if (rivalRightHandEl) rivalRightHandEl.innerHTML = '';
+
     if (deckArea) {
         deckArea.innerHTML = '';
         deckArea.className = 'deck-area';
-        deckArea.classList.add(game.manoDelPartido === 'oponente' ? 'deck-mi-derecha' : 'deck-su-derecha');
+        deckArea.classList.add((game.manoDelPartido === 'oponente' || game.manoSeat !== 0) ? 'deck-mi-derecha' : 'deck-su-derecha');
         
         // El mazo visual (pixel art dorso)
         const mazoVisual = document.createElement('div');
@@ -335,40 +344,53 @@ window.animarReparto = async function() {
         }
     }
 
-    const mano = game.manoDelPartido; // 'jugador' o 'oponente'
-    
-    for (let i = 0; i < 3; i++) {
-        // Carta al Mano
-        window.audio.play('card-deal');
-        if (mano === 'jugador') {
-            const c = game.manoJugador[i];
-            const cardDOM = crearCartaDOM(c, false);
-            cardDOM.classList.add('animate-deal');
-            cardDOM.addEventListener('click', () => jugarUI(i));
-            plyHandEl.appendChild(cardDOM);
-        } else {
-            const c = game.manoOponente[i];
-            const cardDOM = crearCartaDOM(c, true);
-            cardDOM.classList.add('animate-deal');
-            oppHandEl.appendChild(cardDOM);
-        }
-        await new Promise(r => setTimeout(r, 400));
+    if (game.numJugadores === 4) {
+        if (partnerHandEl) partnerHandEl.style.display = 'flex';
+        if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'flex';
+        if (rivalRightHandEl) rivalRightHandEl.style.display = 'flex';
+        if (oppHandEl) oppHandEl.style.display = 'none';
 
-        // Carta al Pie
-        window.audio.play('card-deal');
-        if (mano === 'jugador') {
-            const c = game.manoOponente[i];
-            const cardDOM = crearCartaDOM(c, true);
-            cardDOM.classList.add('animate-deal');
-            oppHandEl.appendChild(cardDOM);
-        } else {
-            const c = game.manoJugador[i];
-            const cardDOM = crearCartaDOM(c, false);
-            cardDOM.classList.add('animate-deal');
-            cardDOM.addEventListener('click', () => jugarUI(i));
-            plyHandEl.appendChild(cardDOM);
+        for (let round = 0; round < 3; round++) {
+            for (let s = 0; s < 4; s++) {
+                const targetSeat = (game.manoSeat + s) % 4;
+                window.audio.play('card-deal');
+                const card = game.players[targetSeat]?.hand[round];
+                
+                if (targetSeat === 0 && card) {
+                    const cardDOM = crearCartaDOM(card, false);
+                    cardDOM.classList.add('animate-deal');
+                    cardDOM.addEventListener('click', () => jugarUI(round));
+                    if (plyHandEl) plyHandEl.appendChild(cardDOM);
+                } else if (targetSeat === 2 && partnerHandEl && card) {
+                    partnerHandEl.appendChild(crearCartaDOM(card, true));
+                } else if (targetSeat === 1 && rivalRightHandEl && card) {
+                    rivalRightHandEl.appendChild(crearCartaDOM(card, true));
+                } else if (targetSeat === 3 && rivalLeftHandEl && card) {
+                    rivalLeftHandEl.appendChild(crearCartaDOM(card, true));
+                }
+                await new Promise(r => setTimeout(r, 150));
+            }
         }
-        await new Promise(r => setTimeout(r, 400));
+    } else {
+        if (partnerHandEl) partnerHandEl.style.display = 'none';
+        if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'none';
+        if (rivalRightHandEl) rivalRightHandEl.style.display = 'none';
+        if (oppHandEl) oppHandEl.style.display = 'flex';
+
+        for (let i = 0; i < 3; i++) {
+            window.audio.play('card-deal');
+            const c0 = game.manoJugador[i];
+            if (c0) {
+                const cardDOM = crearCartaDOM(c0, false);
+                cardDOM.classList.add('animate-deal');
+                cardDOM.addEventListener('click', () => jugarUI(i));
+                if (plyHandEl) plyHandEl.appendChild(cardDOM);
+            }
+
+            const c1 = game.manoOponente[i];
+            if (oppHandEl && c1) oppHandEl.appendChild(crearCartaDOM(c1, true));
+            await new Promise(r => setTimeout(r, 300));
+        }
     }
 
     // Muestra (Al final, debajo del mazo)
@@ -385,8 +407,8 @@ window.animarReparto = async function() {
     // Solo en singleplayer: resolver flor primero; si no hay flor y es turno del bot, que juegue
     if (window.modoJuego === 'singleplayer') {
         await resolverFlorSingleplayer();
-        if (game.turno === 'oponente' && !game.rondaTerminada) {
-            setTimeout(async () => { await jugarBot(); }, 500);
+        if (game.turnoSeat !== 0 && !game.rondaTerminada) {
+            setTimeout(async () => { await jugarBot(); }, 600);
         }
     }
 };
@@ -407,35 +429,91 @@ let _florCheckScheduled = false;
 function renderJuego() {
     if (typeof window.updateSyncUIState === 'function') window.updateSyncUIState();
     if (window.isAnimatingDeal) return;
-    const oppHandEl = document.getElementById('opponent-hand');
-    oppHandEl.innerHTML = '';
-    game.manoOponente.forEach(c => {
-        oppHandEl.appendChild(crearCartaDOM(c, true));
-    });
 
     const plyHandEl = document.getElementById('player-hand');
-    if(plyHandEl) plyHandEl.innerHTML = '';
-    game.manoJugador.forEach((c, index) => {
-        const cardDOM = crearCartaDOM(c, false);
-        cardDOM.addEventListener('click', () => jugarUI(index));
-        if(plyHandEl) plyHandEl.appendChild(cardDOM);
-    });
+    const oppHandEl = document.getElementById('opponent-hand');
+    const partnerHandEl = document.getElementById('partner-hand');
+    const rivalLeftHandEl = document.getElementById('rival-left-hand');
+    const rivalRightHandEl = document.getElementById('rival-right-hand');
+    const playArea2p = document.getElementById('play-area');
+    const playArea4p = document.getElementById('play-area-4p');
+
+    if (game.numJugadores === 4) {
+        if (oppHandEl) oppHandEl.style.display = 'none';
+        if (playArea2p) playArea2p.style.display = 'none';
+        if (partnerHandEl) {
+            partnerHandEl.style.display = 'flex';
+            partnerHandEl.innerHTML = '';
+            (game.players[2]?.hand || []).forEach(c => partnerHandEl.appendChild(crearCartaDOM(c, true)));
+        }
+        if (rivalRightHandEl) {
+            rivalRightHandEl.style.display = 'flex';
+            rivalRightHandEl.innerHTML = '';
+            (game.players[1]?.hand || []).forEach(c => rivalRightHandEl.appendChild(crearCartaDOM(c, true)));
+        }
+        if (rivalLeftHandEl) {
+            rivalLeftHandEl.style.display = 'flex';
+            rivalLeftHandEl.innerHTML = '';
+            (game.players[3]?.hand || []).forEach(c => rivalLeftHandEl.appendChild(crearCartaDOM(c, true)));
+        }
+        if (playArea4p) {
+            playArea4p.style.display = 'flex';
+            for (let s = 0; s < 4; s++) {
+                const slot = document.getElementById(`slot-seat-${s}`);
+                if (slot) {
+                    slot.innerHTML = '';
+                    if (game.mesaSlots[s]) {
+                        slot.appendChild(crearCartaDOM(game.mesaSlots[s]));
+                    }
+                }
+            }
+        }
+    } else {
+        if (partnerHandEl) partnerHandEl.style.display = 'none';
+        if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'none';
+        if (rivalRightHandEl) rivalRightHandEl.style.display = 'none';
+        if (playArea4p) playArea4p.style.display = 'none';
+        if (oppHandEl) {
+            oppHandEl.style.display = 'flex';
+            oppHandEl.innerHTML = '';
+            (game.manoOponente || []).forEach(c => oppHandEl.appendChild(crearCartaDOM(c, true)));
+        }
+        if (playArea2p) {
+            playArea2p.style.display = 'flex';
+            const mesaOpp = document.getElementById('mesa-oponente');
+            const mesaPly = document.getElementById('mesa-jugador');
+            if (mesaOpp) {
+                mesaOpp.innerHTML = '';
+                if (game.mesaSlots[1] || game.mesa.oponente) mesaOpp.appendChild(crearCartaDOM(game.mesaSlots[1] || game.mesa.oponente));
+            }
+            if (mesaPly) {
+                mesaPly.innerHTML = '';
+                if (game.mesaSlots[0] || game.mesa.jugador) mesaPly.appendChild(crearCartaDOM(game.mesaSlots[0] || game.mesa.jugador));
+            }
+        }
+    }
+
+    if (plyHandEl) {
+        plyHandEl.innerHTML = '';
+        (game.players[0]?.hand || []).forEach((c, index) => {
+            const cardDOM = crearCartaDOM(c, false);
+            cardDOM.addEventListener('click', () => jugarUI(index));
+            plyHandEl.appendChild(cardDOM);
+        });
+    }
 
     const deckArea = document.querySelector('.deck-area');
-    if(deckArea) {
+    if (deckArea) {
         deckArea.innerHTML = '';
         deckArea.className = 'deck-area';
         
-        // El mazo va a la derecha del que reparte (el Pie)
-        // Si 'Mano' es oponente, yo soy 'Pie' -> Va a MI derecha
-        if (game.manoDelPartido === 'oponente') {
+        if (game.manoDelPartido === 'oponente' || game.manoSeat !== 0) {
             deckArea.classList.add('deck-mi-derecha');
         } else {
-            // Si 'Mano' soy yo, el rival es 'Pie' -> Va a SU derecha
             deckArea.classList.add('deck-su-derecha');
         }
 
-        if(game.muestra) {
+        if (game.muestra) {
             const muestraDOM = crearCartaDOM(game.muestra, false, true);
             deckArea.appendChild(muestraDOM);
         }
@@ -445,14 +523,6 @@ function renderJuego() {
         mazoDescifrado.classList.add('card-deck');
         deckArea.appendChild(mazoDescifrado);
     }
-
-    const mesaOpp = document.getElementById('mesa-oponente');
-    const mesaPly = document.getElementById('mesa-jugador');
-    if(mesaOpp) mesaOpp.innerHTML = '';
-    if(mesaPly) mesaPly.innerHTML = '';
-    
-    if (game.mesa.oponente && mesaOpp) mesaOpp.appendChild(crearCartaDOM(game.mesa.oponente));
-    if (game.mesa.jugador && mesaPly) mesaPly.appendChild(crearCartaDOM(game.mesa.jugador));
 
     const calc = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
     const envPts = document.getElementById('envido-pts');
@@ -607,13 +677,14 @@ window.startSyncTimeout = function(ms = 4000) {
 };
 
 async function jugarUI(indexCarta) {
-    if (game.turno !== 'jugador' || game.rondaTerminada || window.isAwaitingStateSync) return;
+    if (game.turnoSeat !== 0 || game.rondaTerminada || window.isAwaitingStateSync) return;
     
-    window.lastPlayerPlayTime = Date.now(); // ESTRATEGIA 18: IA mide la rapidez
-    const c = game.manoJugador[indexCarta];
-    const nombre= c.getNombreCriollo(game.paloMuestra, game.piezasActivas);
+    window.lastPlayerPlayTime = Date.now();
+    const c = game.players[0]?.hand[indexCarta];
+    if (!c) return;
+    const nombre = c.getNombreCriollo(game.paloMuestra, game.piezasActivas);
     
-    const cartaAprobada = game.jugarCarta('jugador', indexCarta);
+    const cartaAprobada = game.jugarCarta(0, indexCarta);
     if (!cartaAprobada) {
         logJugada("⚠️ No podés jugar esa carta ahora.", "sistema");
         return;
@@ -631,13 +702,14 @@ async function jugarUI(indexCarta) {
     
     renderJuego();
 
-    if (!game.mesa.oponente) {
-        if (window.modoJuego === 'singleplayer') {
-            setTimeout(async () => { await jugarBot(); }, 600);
-        }
-    } else {
+    const cartasJugadas = game.mesaSlots.filter(x => x !== null);
+    if (cartasJugadas.length === game.numJugadores) {
         await verificarResolucionMesa();
         if (window.modoJuego === 'multiplayer') sincronizarEstadoMotor({ timerStartTime: Date.now() });
+    } else {
+        if (window.modoJuego === 'singleplayer' && game.turnoSeat !== 0) {
+            setTimeout(async () => { await jugarBot(); }, 600);
+        }
     }
 }
 
@@ -685,8 +757,6 @@ async function verificarLimitesPartido() {
                 game.puntosPartido.oponente = 0;
                 game.partidoIniciado = false; 
                 document.getElementById('btn-repartir').style.display = 'none';
-                document.getElementById('btn-truco').innerText = "Gritar Truco";
-                game.iniciarRonda();
                 logJugada("🔄 Comenzando nuevo partido...", "sistema");
                 renderJuego();
             } else {
@@ -699,274 +769,159 @@ async function verificarLimitesPartido() {
 }
 
 async function jugarBot() {
-    if (window.modoJuego === 'multiplayer') return;
-    if (game.turno !== 'oponente' || game.rondaTerminada || game.manoOponente.length === 0) return;
+
+    const currentBot = game.players[game.turnoSeat];
+    if (!currentBot || !currentBot.isBot || !currentBot.hand || currentBot.hand.length === 0) return;
     
-    // Espera sutil para que no parezca un robot instantáneo
+    // Espera sutil para ritmo orgánico
     await botDelay();
-    
+
     const indicator = document.getElementById('typing-indicator');
     if (indicator) {
-        indicator.innerText = "Rival está pensando...";
+        indicator.innerText = `${currentBot.name} está pensando...`;
         indicator.style.display = 'block';
     }
-    
-    // -- ESTRATEGIA 18: LECTURA DE TIEMPO (SOSPECHA POR RAPIDEZ) --
-    let sospechaRapidez = 0;
-    if (window.lastPlayerPlayTime && (Date.now() - window.lastPlayerPlayTime < 1500)) {
-        sospechaRapidez = 10; // Si el humano tira instantáneo, el bot sospecha
-    }
 
-    // -- EVALUACIÓN DE MANO Y FACTORES PSICOLÓGICOS --
-    const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
-    const objJG = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
-    const poderMano = game.evaluarPoderMano(game.manoOponente);
-    const probBluff = Math.random() < 0.15; // 15% de probabilidad de ser un "mentiroso" en esta mano
-    const esDormido = Math.random() < 0.10; // 10% de probabilidad de no cantar nada aunque tenga piezas (trampa pasiva)
+    const hand = currentBot.hand;
+    const poderMano = game.evaluarPoderMano(hand);
+    const probBluff = Math.random() < 0.15;
+    const esDormido = Math.random() < 0.10;
 
-    const soyMano = (game.manoDelPartido === 'oponente');
-    const bazasGanadas = game.manosGanadas.oponente;
-    const bazasPerdidas = game.manosGanadas.jugador;
-    
-    // -- ESTRATEGIA 8: CONSERVADURISMO (MARCADOR CRÍTICO) --
-    const esFinalPartido = (game.puntosPartido.oponente >= (game.config.limitePuntos - 3));
-    const probBluffFinal = esFinalPartido ? 0 : (probBluff ? 0.15 : 0);
+    // Cantos en 1v1 para el rival (Seat 1)
+    if (game.numJugadores === 2 && currentBot.seat === 1) {
+        const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
+        const objJG = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
 
-    // -- ESTRATEGIA 7: PROFILING (BLUFF CATCHER) --
-    const rivalEsMentiroso = game.perfilRival.bluffsDetectados > 1;
-
-    // -- 1. LÓGICA DE CANTOS (FLOR / ENVIDO) --
-    // La Flor en singleplayer ya fue resuelta automáticamente al inicio de la mano
-    // El bot aquí solo maneja el Envido (si ninguno tuvo Flor)
-    if (game.manoOponente.length === 3 && !game.envidoCantado) {
-        // ESTRATEGIA 11 eliminada: ya no hace falta, la Flor es automática
-        if (false && objIA.tieneFlor) { // Bloque desactivado, mantenido por estructura
+        // Envido si corresponde
+        if (hand.length === 3 && !game.envidoCantado && !objIA.tieneFlor && !objJG.tieneFlor && objIA.puntos >= 27 && !esDormido) {
             game.envidoCantado = true;
-            if (objJG.tieneFlor) {
-                // Choque de flores
-                const contra = await window.UI.confirm("🤖 IA: ¡Tengo FLOR, papá!<br><br>Tú también tienes Flor.<br>¿Te le animás a gritarle CONTRA FLOR AL RESTO?");
-                if (contra) {
-                    window.shakeCards();
-                    await window.UI.alert(`🗣️ Tú: ¡CONTRA FLOR AL RESTO!<br>🤖 Rival: ¡QUIERO VALE!`);
-                    let lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
-                    let premio = game.config.limitePuntos - lider; 
-                    if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
-                        game.recordarPuntosRival(objJG.puntos, true);
-                        await window.UI.alert(`¡Tu Flor le ganó! (+${premio} pts)`);
-                        game.puntosPartido.jugador += premio;
-                    } else {
-                        await window.UI.alert(`¡La Flor de la IA te mató! (+${premio} pts)`);
-                        game.puntosPartido.oponente += premio;
-                    }
-                } else {
-                    let texto = `Tus ${objJG.puntos} de Flor contra sus ${objIA.puntos} de Flor...<br><br>`;
-                    if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
-                        await window.UI.alert(texto + `Te achicaste, ¡pero tu Flor igual gana por puntos! (+4 Pts)`);
-                        game.puntosPartido.jugador += 4;
-                    } else {
-                        await window.UI.alert(texto + `Te achicaste y la IA te ganó la Flor. (+4 Pts pa' la IA)`);
-                        game.puntosPartido.oponente += 4;
-                    }
-                }
-            } else {
-                logJugada("🤖 IA: ¡FLOR!", 'rival');
-                game.puntosPartido.oponente += 3;
-            }
-            if(await verificarLimitesPartido()) return;
-        } 
-        else if (objIA.puntos >= 29 || (probBluff && objIA.puntos >= 20)) {
-            // El bot decide tocar envido
             window.audio && window.audio.play('envido');
-            game.envidoCantado = true;
-            const msg = probBluff ? "¡TOCO ENVIDO! (Te está mintiendo...)" : "¡TOCO ENVIDO!";
-            
-            const ptsFalta = game.calcPuntosFalta();
-            const accionOpt = await window.UI.options(`🤖 IA: ${msg}<br><br>Tus puntos: ${objJG.puntos} pts`, [
-                { label: "QUIERO", value: "1", success: true, primary: true },
-                { label: "NO QUIERO", value: "2", neutral: true },
-                { label: "Real Envido", value: "4" },
-                { label: "Falta Envido", value: "5", danger: true }
-            ], "Desafío de IA");
-            
-            if (accionOpt === '1') {
-                game.recordarPuntosRival(objJG.puntos, false);
-                game.analizarBluff(objJG.puntos, true);
-                window.shakeCards();
-                await window.UI.alert(`🤖 IA muestra: ${objIA.puntos} pts.`);
+            const quiero = await window.UI.confirm(`🤖 IA: ¡Envido!<br><br>¿Querés aceptar? (Tus puntos: ${objJG.puntos})`);
+            if (quiero) {
+                let ptsPremio = 2;
                 if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
-                    await window.UI.alert(`¡Ganaste el envido! (+2 pts)`);
-                    game.puntosPartido.jugador += 2;
-                } else {
-                    await window.UI.alert(`¡IA gana el envido! (+2 pts)`);
-                    game.puntosPartido.oponente += 2;
-                }
-            } else if (accionOpt === '2') {
-                game.puntosPartido.oponente += 1;
-            } else {
-                // El jugador le retrucó al BOT! (accionOpt 4 o 5)
-                const ptsReviro = (accionOpt === '4') ? 5 : ptsFalta; // Envido + Real = 5. Falta = resto.
-                const etiquetaRev = (accionOpt === '4') ? "REAL ENVIDO" : "FALTA ENVIDO";
-                
-                await window.UI.alert(`🗣️ Tú: ¡${etiquetaRev}! a la IA`);
-                
-                // La IA analiza si quiere el revire
-                const diferencia = game.puntosPartido.jugador - game.puntosPartido.oponente;
-                const esKamikaze = diferencia > 10;
-                let botAceptaRevire = false;
-                
-                if (accionOpt === '5') { // Falta Envido
-                    if (objIA.puntos >= 31 || (esKamikaze && objIA.puntos >= 27)) botAceptaRevire = true;
-                } else { // Real Envido
-                    if (objIA.puntos >= 30 || (esKamikaze && objIA.puntos >= 25)) botAceptaRevire = true;
-                }
-                
-                if (botAceptaRevire) {
                     game.recordarPuntosRival(objJG.puntos, false);
-                    game.analizarBluff(objJG.puntos, true);
-                    window.shakeCards();
-                    await window.UI.alert(`🤖 IA: ¡QUIERO! Muestro ${objIA.puntos} pts.`);
-                    if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
-                        await window.UI.alert(`¡Ganaste el choque! (+${ptsReviro} pts)`);
-                        game.puntosPartido.jugador += ptsReviro;
-                    } else {
-                        await window.UI.alert(`¡IA te comió en el revire! (+${ptsReviro} pts)`);
-                        game.puntosPartido.oponente += ptsReviro;
-                    }
+                    await window.UI.alert(`¡Ganaste el Envido! (${objJG.puntos} vs ${objIA.puntos}) (+${ptsPremio} Pts)`);
+                    game.puntosPartido.jugador += ptsPremio;
                 } else {
-                    // Bot rechaza revire a su propio envido (Oponente cobra Envido rechazado)
-                    await window.UI.alert(`🤖 IA: Son buenas, no quiero el ${etiquetaRev}.`);
-                    game.puntosPartido.jugador += 2;
+                    game.recordarPuntosRival(objJG.puntos, false);
+                    await window.UI.alert(`Perdiste el Envido (${objJG.puntos} vs ${objIA.puntos}) (+${ptsPremio} Pts para la IA)`);
+                    game.puntosPartido.oponente += ptsPremio;
                 }
+            } else {
+                await window.UI.alert("No quisiste el Envido. (+1 Pt para la IA)");
+                game.puntosPartido.oponente += 1;
             }
-            if(await verificarLimitesPartido()) return;
+            if (await verificarLimitesPartido()) return;
+            game.fase = 'truco';
+            renderJuego();
         }
-    }
 
-    // -- 2. LÓGICA DE TRUCO --
-    if (game.apuestaTruco.estado === 'nada' && !esDormido) {
-        // Canta truco si tiene poder > 50 o si está blufeando
-        if (poderMano > 50 || probBluff) {
+        // Truco si corresponde
+        const puedeCantarTruco = (game.apuestaTruco.turnoCantar === 'ambos' || game.apuestaTruco.turnoCantar === 'oponente');
+        if (puedeCantarTruco && (poderMano > 45 || probBluff) && game.apuestaTruco.estado === 'nada' && Math.random() < 0.6) {
             window.audio && window.audio.play('truco');
-            const msg = probBluff ? "¡TRUCO! (¡Miralo al mentiroso!)" : "¡TRUCO!";
-            const quiereT = await window.UI.confirm(`🤖 IA: ${msg}<br>¿Querés?`, "¡Truco de la IA!");
-            if (quiereT) {
-                window.shakeCards();
+            const acepta = await window.UI.confirm("🤖 IA: ¡TRUCO, carajo!<br><br>¿Aceptás el reto?");
+            if (acepta) {
                 game.apuestaTruco.valor = 2;
                 game.apuestaTruco.estado = 'truco';
                 game.apuestaTruco.turnoCantar = 'jugador';
+                logJugada("🗣️ Aceptaste el Truco", "propio");
             } else {
                 game.puntosPartido.oponente += 1;
                 game.rondaTerminada = true;
-                if(await verificarLimitesPartido()) return;
+                logJugada("🏳️ Te fuiste al mazo en el Truco", "propio");
+                await window.UI.alert("Te achicaste. (+1 Pt para la IA)");
                 renderJuego();
-                document.getElementById('btn-repartir').style.display = 'block';
+                await window.manejarFinDeRondaUI();
                 return;
             }
         }
     }
 
-    // -- 2.1 LÓGICA DE IRSE AL MAZO (RETIRADA TÁCTICA) --
-    // Si la IA perdió la primera baza y sus cartas son basura, se retira para no arriesgar más puntos
-    if (game.manosGanadas.jugador === 1 && game.manosGanadas.oponente === 0 && poderMano < 15 && game.apuestaTruco.valor === 1) {
-        await window.UI.alert(`🤖 IA: ¡Me voy al mazo! Las tuyas pintan mejor.<br>(Ganas 1 punto)`);
-        game.puntosPartido.jugador += 1;
-        game.rondaTerminada = true;
-        if(await verificarLimitesPartido()) return;
-        renderJuego();
-        document.getElementById('btn-repartir').style.display = 'block';
-        return;
-    }
-
-    // -- 3. SELECCIÓN DE CARTA ESTRATÉGICA (20 CAPAS) --
+    // Selección de carta
     let cartaElegida = null;
-    let indexElegido = 0;
+    let highestPowerOnTable = -1;
+    let highestSeatOnTable = -1;
 
-    const tienePieza = game.manoOponente.some(c => c.esPieza);
-
-    if (game.mesa.jugador) {
-        // ESTRATEGIA 14: DEDUCCIÓN DE PALO
-        
-        let rivalTienePiezaDeducida = game.memoriaRival.piezaProbable !== null;
-        if (game.mesa.jugador.esPieza) rivalTienePiezaDeducida = false;
-
-        // ESTRATEGIA 15: AHORRO DE PIEZA (No usarla si una mata común alcanza)
-        const mejorMataComun = game.manoOponente.filter(c => !c.esPieza && c.poder > game.mesa.jugador.poder).sort((a,b) => a.poder - b.poder)[0];
-        if (mejorMataComun && !rivalTienePiezaDeducida) {
-            cartaElegida = mejorMataComun;
-        } else {
-            cartaElegida = game.obtenerMejorRespuesta(game.manoOponente, game.mesa.jugador.poder);
-        }
-    } else {
-        // ESTRATEGIA 9: PARDA MASTER
-        const fueParda = game.registroBazas[0] === 'empate';
-        
-        if (game.manoOponente.length === 3) {
-            // ESTRATEGIA 12: EL AMAGUE (Fingir debilidad en 1ra)
-            const sorted = [...game.manoOponente].sort((a, b) => a.poder - b.poder);
-            if (Math.random() < 0.2 && !esFinalPartido) {
-                cartaElegida = sorted[0]; // Tira la más baja adrede
-            } else {
-                // ESTRATEGIA 10: LEAD TACTICIAN (No regalar mesa)
-                cartaElegida = soyMano ? (sorted[1] || sorted[0]) : sorted[0];
-            }
-        } else if (game.manoOponente.length === 2 && bazasGanadas === 1) {
-            // ESTRATEGIA 6: LA CURA (Baitear en 2da si ganó 1ra y tiene pieza)
-            if (tienePieza && !fueParda) {
-                const soloBajas = game.manoOponente.filter(c => !c.esPieza).sort((a,b) => a.poder - b.poder);
-                cartaElegida = soloBajas[0] || game.manoOponente[0];
-            } else {
-                const sorted = [...game.manoOponente].sort((a, b) => b.poder - a.poder);
-                cartaElegida = fueParda ? sorted[0] : (sorted[1] || sorted[0]); 
-            }
-        } else {
-            // ESTRATEGIA 13: CERRAR LA PUERTA (Asegurar punto final)
-            const sorted = [...game.manoOponente].sort((a, b) => b.poder - a.poder);
-            cartaElegida = sorted[0];
+    for (let s = 0; s < game.numJugadores; s++) {
+        const c = game.mesaSlots[s];
+        if (c && c.poder > highestPowerOnTable) {
+            highestPowerOnTable = c.poder;
+            highestSeatOnTable = s;
         }
     }
 
-    indexElegido = game.manoOponente.indexOf(cartaElegida);
-    game.jugarCarta('oponente', indexElegido);
+    // Cooperación si es el Compañero (Seat 2)
+    if (currentBot.seat === 2 && highestSeatOnTable === 0 && highestPowerOnTable >= 18) {
+        const sorted = [...hand].sort((a, b) => a.poder - b.poder);
+        cartaElegida = sorted[0];
+    } else if (highestPowerOnTable >= 0) {
+        cartaElegida = game.obtenerMejorRespuesta(hand, highestPowerOnTable);
+    } else {
+        const sorted = [...hand].sort((a, b) => b.poder - a.poder);
+        cartaElegida = sorted[sorted.length - 1] || sorted[0];
+    }
+
+    const indexElegido = hand.indexOf(cartaElegida);
+    const cartaJugada = game.jugarCarta(currentBot.seat, indexElegido);
+
+    if (cartaJugada) {
+        const nombre = cartaJugada.getNombreCriollo(game.paloMuestra, game.piezasActivas);
+        const emoji = currentBot.seat === 2 ? '🤝' : '🤖';
+        const tipoLog = currentBot.seat === 2 ? 'propio' : 'rival';
+        logJugada(`${emoji} ${currentBot.name} juega ${nombre}`, tipoLog);
+    }
+
     renderJuego();
-    
-    if (game.mesa.jugador) {
-        const nombre = game.mesa.oponente.getNombreCriollo(game.paloMuestra, game.piezasActivas);
-        logJugada(`🤖 Rival juega ${nombre}`, 'rival');
+
+    const cartasJugadas = game.mesaSlots.filter(c => c !== null);
+    if (cartasJugadas.length === game.numJugadores) {
         await verificarResolucionMesa();
+    } else if (!game.rondaTerminada && game.turnoSeat !== 0) {
+        setTimeout(async () => { await jugarBot(); }, 600);
     }
 }
 
 async function verificarResolucionMesa() {
-    if (game.mesa.jugador && game.mesa.oponente) {
-        await new Promise(r => setTimeout(r, 800));
-        
-        const result = game.evaluarMesa();
-        renderJuego(); 
-        
-        if (result.ganadorRonda) {
-            let ptsJuego = game.apuestaTruco.valor;
-            if (result.ganadorRonda === 'jugador') {
-                game.puntosPartido.jugador += ptsJuego;
-                window.audio.play('win-baza');
-            } else if (result.ganadorRonda === 'oponente') {
-                game.puntosPartido.oponente += ptsJuego;
-                window.audio.play('loss');
-            }
+    const cartasJugadas = game.mesaSlots.filter(c => c !== null);
+    if (cartasJugadas.length < game.numJugadores) return;
 
-            const txt = result.ganadorRonda === 'jugador' ? `¡Esa mano es tuya, papá! 🏆 (+${ptsJuego} Pts)` : (result.ganadorRonda === 'empate' ? `¡Parda! Quedamos feos pa' la foto.<br>Si hubo truco se esfuma.` : `Marchaste al spiedo en esta mano 💀 (+${ptsJuego} Pts pa' la IA)`);
-            
-            if (window.modoJuego === 'multiplayer' && typeof window.sincronizarEstadoMotor === 'function') {
-                window.sincronizarEstadoMotor({ timerStartTime: Date.now() });
-            }
-            
-            if(await verificarLimitesPartido()) return;
-            
-            renderJuego(); 
-            logJugada(`🔔 ${txt.replace(/<br>/g, ' ')}`, 'sistema');
-            
-            await window.manejarFinDeRondaUI();
-        } else {
-            if (game.turno === 'oponente' && window.modoJuego === 'singleplayer') {
+    await new Promise(r => setTimeout(r, 800));
+    
+    const result = game.evaluarMesa();
+    renderJuego(); 
+    
+    if (result && result.ganadorRonda) {
+        let ptsJuego = game.apuestaTruco.valor;
+        if (result.ganadorRonda === 'jugador') {
+            game.puntosPartido.jugador += ptsJuego;
+            window.audio && window.audio.play('win-baza');
+        } else if (result.ganadorRonda === 'oponente') {
+            game.puntosPartido.oponente += ptsJuego;
+            window.audio && window.audio.play('loss');
+        }
+
+        const txt = result.ganadorRonda === 'jugador' ? 
+            `¡Esa mano es nuestra, papá! 🏆 (+${ptsJuego} Pts)` : 
+            (result.ganadorRonda === 'empate' ? `¡Parda! Quedamos feos pa' la foto.<br>Si hubo truco se esfuma.` : `Marcharon al spiedo en esta mano 💀 (+${ptsJuego} Pts)`);
+        
+        if (window.modoJuego === 'multiplayer' && typeof window.sincronizarEstadoMotor === 'function') {
+            window.sincronizarEstadoMotor({ timerStartTime: Date.now() });
+        }
+        
+        if (await verificarLimitesPartido()) return;
+        
+        renderJuego(); 
+        logJugada(`🔔 ${txt.replace(/<br>/g, ' ')}`, 'sistema');
+        
+        await window.manejarFinDeRondaUI();
+    } else {
+        if (window.modoJuego === 'singleplayer' && game.turnoSeat !== 0 && !game.rondaTerminada) {
+            setTimeout(async () => { await jugarBot(); }, 600);
+        }
+    }
+}ndow.modoJuego === 'singleplayer') {
                 setTimeout(async () => { await jugarBot(); }, 400);
             } else if (game.turno === 'jugador') {
                 window.vibrateAction(100); // Vibrar al inicio del turno del jugador

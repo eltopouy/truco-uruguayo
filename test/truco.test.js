@@ -472,6 +472,125 @@ test('Validación de Código de Sala debe rechazar caracteres especiales de Fire
 });
 
 // ----------------------------------------------------
+// 8. Modo 4 Jugadores (2 vs 2 / Parejas)
+// ----------------------------------------------------
+console.log('\n👥 8. Modo 4 Jugadores (2 vs 2):');
+
+test('Inicialización de 4 Jugadores: Reparto de 12 cartas + muestra', () => {
+    const game = new GameStateManager(4);
+    assert.strictEqual(game.numJugadores, 4);
+    assert.strictEqual(game.players.length, 4);
+    assert.strictEqual(game.players[0].team, 0); // Tú
+    assert.strictEqual(game.players[1].team, 1); // Rival 1
+    assert.strictEqual(game.players[2].team, 0); // Compañero
+    assert.strictEqual(game.players[3].team, 1); // Rival 2
+
+    game.iniciarRonda();
+
+    assert.strictEqual(game.players[0].hand.length, 3);
+    assert.strictEqual(game.players[1].hand.length, 3);
+    assert.strictEqual(game.players[2].hand.length, 3);
+    assert.strictEqual(game.players[3].hand.length, 3);
+    assert.notStrictEqual(game.muestra, null);
+    assert.strictEqual(game.mazo.length, 40 - 12 - 1); // 27 cartas restantes
+});
+
+test('Baza de 4 Jugadores: Gana el equipo con la carta más alta y el jugador que la tiró sale primero', () => {
+    const game = new GameStateManager(4);
+    game.paloMuestra = 'Oro';
+    game.piezasActivas = [2, 4, 5, 11, 10];
+
+    // Seat 0 (Team 0): 3 Copa (Poder 16)
+    // Seat 1 (Team 1): 7 Espada (Poder 18)
+    // Seat 2 (Team 0, Compañero): 1 Espada (Poder 20)
+    // Seat 3 (Team 1): 1 Basto (Poder 19)
+    const c0 = new Carta(3, 'Copa');
+    const c1 = new Carta(7, 'Espada');
+    const c2 = new Carta(1, 'Espada');
+    const c3 = new Carta(1, 'Basto');
+    game.actualizarMatrizDePoder(c0, c1, c2, c3);
+
+    game.mesaSlots[0] = c0;
+    game.mesaSlots[1] = c1;
+    game.mesaSlots[2] = c2;
+    game.mesaSlots[3] = c3;
+
+    const res = game.evaluarMesa();
+    assert.strictEqual(res.ganadorMesa, 'jugador'); // Team 0
+    assert.strictEqual(game.manosGanadas.jugador, 1);
+    assert.strictEqual(game.turnoSeat, 2); // Seat 2 (Compañero) tiró la más alta y sale primero
+});
+
+test('Baza de 4 Jugadores: Si jugador y compañero empatan con la carta más alta, el equipo gana limpiamente sin parda', () => {
+    const game = new GameStateManager(4);
+    game.paloMuestra = 'Oro';
+    game.piezasActivas = [2, 4, 5, 11, 10];
+
+    // Seat 0 (Team 0): 3 Copa (Poder 16)
+    // Seat 1 (Team 1): 2 Copa (Poder 15)
+    // Seat 2 (Team 0): 3 Basto (Poder 16)
+    // Seat 3 (Team 1): 4 Basto (Poder 7)
+    const c0 = new Carta(3, 'Copa');
+    const c1 = new Carta(2, 'Copa');
+    const c2 = new Carta(3, 'Basto');
+    const c3 = new Carta(4, 'Basto');
+    game.actualizarMatrizDePoder(c0, c1, c2, c3);
+
+    game.mesaSlots[0] = c0;
+    game.mesaSlots[1] = c1;
+    game.mesaSlots[2] = c2;
+    game.mesaSlots[3] = c3;
+
+    const res = game.evaluarMesa();
+    assert.strictEqual(res.ganadorMesa, 'jugador'); // Team 0 gana
+    assert.strictEqual(game.manosGanadas.jugador, 1);
+    assert.strictEqual(game.manosGanadas.empates, 0); // No es parda
+});
+
+test('Baza de 4 Jugadores: Si rivales y jugador empatan en la carta más alta, es Parda (empate entre equipos)', () => {
+    const game = new GameStateManager(4);
+    game.paloMuestra = 'Oro';
+    game.piezasActivas = [2, 4, 5, 11, 10];
+
+    // Seat 0 (Team 0): 3 Copa (Poder 16)
+    // Seat 1 (Team 1): 3 Oro (Poder 16)
+    // Seat 2 (Team 0): 2 Basto (Poder 15)
+    // Seat 3 (Team 1): 2 Espada (Poder 15)
+    const c0 = new Carta(3, 'Copa');
+    const c1 = new Carta(3, 'Oro');
+    const c2 = new Carta(2, 'Basto');
+    const c3 = new Carta(2, 'Espada');
+    game.actualizarMatrizDePoder(c0, c1, c2, c3);
+
+    game.mesaSlots[0] = c0;
+    game.mesaSlots[1] = c1;
+    game.mesaSlots[2] = c2;
+    game.mesaSlots[3] = c3;
+
+    const res = game.evaluarMesa();
+    assert.strictEqual(res.ganadorMesa, 'empate');
+    assert.strictEqual(game.manosGanadas.empates, 1);
+});
+
+test('Rotación de Mano en 4 Jugadores: Rota cíclicamente 0 -> 1 -> 2 -> 3', () => {
+    const game = new GameStateManager(4);
+    game.iniciarRonda(); // 1ra ronda -> manoSeat = 0
+    assert.strictEqual(game.manoSeat, 0);
+
+    game.iniciarRonda(); // 2da ronda -> manoSeat = 1
+    assert.strictEqual(game.manoSeat, 1);
+
+    game.iniciarRonda(); // 3ra ronda -> manoSeat = 2
+    assert.strictEqual(game.manoSeat, 2);
+
+    game.iniciarRonda(); // 4ta ronda -> manoSeat = 3
+    assert.strictEqual(game.manoSeat, 3);
+
+    game.iniciarRonda(); // 5ta ronda -> vuelve a 0
+    assert.strictEqual(game.manoSeat, 0);
+});
+
+// ----------------------------------------------------
 // Resumen
 // ----------------------------------------------------
 console.log('\n========================================');

@@ -1,6 +1,9 @@
 /**
- * Motor lógico para Truco Uruguayo.
- * Maneja el mazo, reparto, piezas (y regla del Alcahuete), matriz de poder dinámica y cálculo de Envido/Flor.
+ * Motor lógico universal para Truco Uruguayo (1 vs 1 y 2 vs 2).
+ * Maneja 2 o 4 jugadores, asientos (seats 0..3), equipos (teams 0..1),
+ * reparto alternado, piezas dinámicas (con regla del Alcahuete),
+ * matriz de poder, cálculo de Envido/Flor individual y por equipos,
+ * y resolución de bazas y pardas.
  */
 
 const PALOS = ['Espada', 'Basto', 'Oro', 'Copa'];
@@ -14,6 +17,7 @@ class Carta {
         this.esPieza = false;
         this.poder = 0; // Jerarquía en el juego (mayor es mejor)
         this.puntosEnvido = 0; // Puntos fijos al calcular envido/flor
+        this.oculto = false;
     }
 
     toString() {
@@ -55,27 +59,36 @@ class Carta {
 }
 
 class GameStateManager {
-    constructor() {
+    constructor(numJugadores = 2) {
+        this.numJugadores = (numJugadores === 4) ? 4 : 2;
         this.mazo = [];
-        this.manoJugador = [];
-        this.manoOponente = [];
-        this.idRonda = 0; // Identificador único para disparar animaciones de reparto
-        this.manoInicialJugador = [];
-        this.manoInicialOponente = [];
+        this.idRonda = 0; // Identificador único de ronda
         this.muestra = null;
         this.paloMuestra = null;
         
-        this.mesa = { jugador: null, oponente: null };
+        // Inicialización de Jugadores (Asientos y Equipos)
+        // Seat 0: TÚ (Team 0)
+        // Seat 1: Rival 1 / Rival Mano a Mano (Team 1)
+        // Seat 2: Compañero (Team 0) [solo en 4P]
+        // Seat 3: Rival 2 (Team 1) [solo en 4P]
+        this.players = [];
+        this.configurarJugadores(this.numJugadores);
+        
+        // Mesa: ranuras indexadas por asiento (0..numJugadores-1)
+        this.mesa = { jugador: null, oponente: null }; // Objeto legacy
+        this.mesaSlots = new Array(this.numJugadores).fill(null);
+        
         this.manosGanadas = { jugador: 0, oponente: 0, empates: 0 };
         this.registroBazas = []; // Historial visual
-        this.turno = 'jugador'; // A quién le toca jugar esta minironda
+        
+        this.turnoSeat = 0; // Asiento al que le toca jugar (0..3)
+        this.manoSeat = 0;  // Asiento que es Mano en la ronda (0..3)
         this.rondaTerminada = false;
         
-        // Arquitectura Nueva: Partido a 30 puntos
+        // Partido a 30 o 40 puntos
         this.puntosPartido = { jugador: 0, oponente: 0 };
         this.fase = 'cantos'; // Fases: 'cantos' -> 'truco'
         this.envidoCantado = false; // Bloquea cantar envido 2 veces por ronda
-        this.manoDelPartido = 'jugador'; // Quién reparte y quién es MANO
         this.partidoIniciado = false;
         this.partidoFinalizado = false;
         
@@ -98,7 +111,7 @@ class GameStateManager {
         this.memoriaRival = {
             puntosEnvido: null,
             tieneFlor: false,
-            piezaProbable: null, // Unificado: antes "piezaDeducida" causaba referencia incorrecta
+            piezaProbable: null,
             cartasJugadasRival: []
         };
 
@@ -106,12 +119,84 @@ class GameStateManager {
         this.perfilRival = {
             frecuenciaTruco: 0,
             bluffsDetectados: 0,
-            agresividad: 0.5, // 0 asustado - 1 agresivo
+            agresividad: 0.5,
             totalCantos: 0
         };
 
         // Memoria de palos quemados para deducción probabilística
         this.memoriaPalos = { Espada: 0, Basto: 0, Oro: 0, Copa: 0 };
+    }
+
+    // --- Getters y Setters de Compatibilidad 1v1 ---
+    get manoJugador() {
+        return (this.players[0] && this.players[0].hand) ? this.players[0].hand : [];
+    }
+    set manoJugador(arr) {
+        if (!this.players[0]) this.players[0] = { id: 'p0', seat: 0, team: 0, name: 'TÚ', hand: [], initialHand: [], isBot: false };
+        this.players[0].hand = arr || [];
+    }
+
+    get manoOponente() {
+        return (this.players[1] && this.players[1].hand) ? this.players[1].hand : [];
+    }
+    set manoOponente(arr) {
+        if (!this.players[1]) this.players[1] = { id: 'p1', seat: 1, team: 1, name: 'RIVAL', hand: [], initialHand: [], isBot: true };
+        this.players[1].hand = arr || [];
+    }
+
+    get manoInicialJugador() {
+        return (this.players[0] && this.players[0].initialHand) ? this.players[0].initialHand : [];
+    }
+    set manoInicialJugador(arr) {
+        if (this.players[0]) this.players[0].initialHand = arr || [];
+    }
+
+    get manoInicialOponente() {
+        return (this.players[1] && this.players[1].initialHand) ? this.players[1].initialHand : [];
+    }
+    set manoInicialOponente(arr) {
+        if (this.players[1]) this.players[1].initialHand = arr || [];
+    }
+
+    get turno() {
+        return this.turnoSeat === 0 ? 'jugador' : 'oponente';
+    }
+    set turno(val) {
+        if (typeof val === 'number') {
+            this.turnoSeat = val % this.numJugadores;
+        } else {
+            this.turnoSeat = (val === 'jugador' || val === 0) ? 0 : 1;
+        }
+    }
+
+    get manoDelPartido() {
+        return this.manoSeat === 0 ? 'jugador' : 'oponente';
+    }
+    set manoDelPartido(val) {
+        if (typeof val === 'number') {
+            this.manoSeat = val % this.numJugadores;
+        } else {
+            this.manoSeat = (val === 'jugador' || val === 0) ? 0 : 1;
+        }
+    }
+
+    configurarJugadores(num = 2) {
+        this.numJugadores = (num === 4) ? 4 : 2;
+        this.mesaSlots = new Array(this.numJugadores).fill(null);
+        
+        if (this.numJugadores === 4) {
+            this.players = [
+                { id: 'p0', seat: 0, team: 0, name: this.config?.nombreJugador || 'TÚ', hand: [], initialHand: [], isBot: false },
+                { id: 'p1', seat: 1, team: 1, name: 'Rival Derecha', hand: [], initialHand: [], isBot: true },
+                { id: 'p2', seat: 2, team: 0, name: 'Compañero', hand: [], initialHand: [], isBot: true },
+                { id: 'p3', seat: 3, team: 1, name: 'Rival Izquierda', hand: [], initialHand: [], isBot: true }
+            ];
+        } else {
+            this.players = [
+                { id: 'p0', seat: 0, team: 0, name: this.config?.nombreJugador || 'TÚ', hand: [], initialHand: [], isBot: false },
+                { id: 'p1', seat: 1, team: 1, name: this.config?.nombreOponente || 'RIVAL', hand: [], initialHand: [], isBot: true }
+            ];
+        }
     }
 
     crearMazo() {
@@ -133,22 +218,24 @@ class GameStateManager {
     iniciarRonda() {
         this.idRonda++;
         if (this.partidoIniciado) {
-            this.manoDelPartido = this.manoDelPartido === 'jugador' ? 'oponente' : 'jugador';
+            // Rotación cíclica de la Mano alrededor de la mesa
+            this.manoSeat = (this.manoSeat + 1) % this.numJugadores;
         } else {
             this.partidoIniciado = true;
             this.partidoFinalizado = false;
-            this.manoDelPartido = 'jugador';
+            this.manoSeat = 0;
         }
 
         this.crearMazo();
         this.mezclarMazo();
 
-        // Resetear mesa
+        // Resetear mesa y bazas
         this.mesa = { jugador: null, oponente: null };
+        this.mesaSlots = new Array(this.numJugadores).fill(null);
         this.manosGanadas = { jugador: 0, oponente: 0, empates: 0 };
         this.registroBazas = [];
         this.rondaTerminada = false;
-        this.turno = this.manoDelPartido;
+        this.turnoSeat = this.manoSeat; // Empieza el Mano
         this.fase = 'cantos';
         this.envidoCantado = false;
         
@@ -164,32 +251,39 @@ class GameStateManager {
         // Formato inicial de apuesta 'no cantada = 1 pt'
         this.apuestaTruco = { valor: 1, estado: 'nada', turnoCantar: 'ambos' };
 
-        // Reparto de 3 cartas a cada jugador (una a una, alternando desde el 'Mano')
-        this.manoJugador = [];
-        this.manoOponente = [];
-        for (let i = 0; i < 3; i++) {
-            if (this.manoDelPartido === 'jugador') {
-                this.manoJugador.push(this.mazo.pop());
-                this.manoOponente.push(this.mazo.pop());
-            } else {
-                this.manoOponente.push(this.mazo.pop());
-                this.manoJugador.push(this.mazo.pop());
+        // Limpiar manos de todos los jugadores
+        this.players.forEach(p => {
+            p.hand = [];
+            p.initialHand = [];
+        });
+
+        // Reparto de 3 cartas a cada jugador (una a una, en orden a partir del Mano)
+        for (let round = 0; round < 3; round++) {
+            for (let s = 0; s < this.numJugadores; s++) {
+                const targetSeat = (this.manoSeat + s) % this.numJugadores;
+                const card = this.mazo.pop();
+                if (card && this.players[targetSeat]) {
+                    this.players[targetSeat].hand.push(card);
+                }
             }
         }
 
         // Carta de la Muestra
         this.muestra = this.mazo.pop();
-        this.paloMuestra = this.muestra.palo;
+        this.paloMuestra = this.muestra ? this.muestra.palo : null;
 
         // Definir cuáles son las piezas matemáticas de esta mano
         this.definirPiezas();
 
-        // Actualizar la jerarquía (poder) y puntos de envido para todas las cartas en juego
-        this.actualizarMatrizDePoder(...this.manoJugador, ...this.manoOponente);
+        // Actualizar la jerarquía (poder) y puntos de envido para todas las cartas repartidas
+        const todasLasCartas = [];
+        this.players.forEach(p => todasLasCartas.push(...p.hand));
+        this.actualizarMatrizDePoder(...todasLasCartas);
 
         // Guardar copia inmutable de las manos para cantos desfasados de Envido/Flor
-        this.manoInicialJugador = [...this.manoJugador];
-        this.manoInicialOponente = [...this.manoOponente];
+        this.players.forEach(p => {
+            p.initialHand = [...p.hand];
+        });
     }
 
     definirPiezas() {
@@ -198,15 +292,18 @@ class GameStateManager {
 
         // REGLA DEL ALCAHUETE
         // Si la muestra es una de las piezas base, el 12 de ese palo toma su lugar natural
-        const indexAlcahuete = this.piezasActivas.indexOf(this.muestra.valor);
-        if (indexAlcahuete !== -1) {
-            this.piezasActivas[indexAlcahuete] = 12;
+        if (this.muestra) {
+            const indexAlcahuete = this.piezasActivas.indexOf(this.muestra.valor);
+            if (indexAlcahuete !== -1) {
+                this.piezasActivas[indexAlcahuete] = 12;
+            }
         }
     }
 
     actualizarMatrizDePoder(...cartas) {
         // Resetea y define dinámicamente el poder y propiedades de cada carta repartida
         cartas.forEach(carta => {
+            if (!carta) return;
             carta.esPieza = false;
             carta.poder = this.obtenerPoderEstandar(carta);
             carta.puntosEnvido = carta.valor >= 10 ? 0 : carta.valor; // Figuras = 0, resto = su número
@@ -230,6 +327,7 @@ class GameStateManager {
     }
 
     obtenerPoderEstandar(carta) {
+        if (!carta) return 0;
         // Jerarquía normal del truco (sin pensar en piezas)
         if (carta.valor === 1 && carta.palo === 'Espada') return 20;
         if (carta.valor === 1 && carta.palo === 'Basto') return 19;
@@ -251,10 +349,10 @@ class GameStateManager {
     calcularPuntosEnvidoFlor(mano) {
         if (!mano || mano.length === 0) return { tieneFlor: false, puntos: 0, tipo: '-' };
         
-        let piezas = mano.filter(c => c.esPieza);
+        let piezas = mano.filter(c => c && c.esPieza);
         piezas.sort((a, b) => b.puntosEnvido - a.puntosEnvido); // Ordenadas de mejor a peor pieza
         
-        let comunes = mano.filter(c => !c.esPieza);
+        let comunes = mano.filter(c => c && !c.esPieza);
 
         let tieneFlor = false;
         let puntosEnvido = 0;
@@ -263,7 +361,7 @@ class GameStateManager {
         // -- CHEQUEO DE FLOR (Obligatoria en Truco Uruguayo) --
         // Condición 1: Tres cartas del mismo palo
         if (mano.length === 3 && mano[0].palo === mano[1].palo && mano[1].palo === mano[2].palo) tieneFlor = true;
-        // Condición 2: Dos piezas (cualquier tercera carta, asumiendo 3 en la mano inicial real, pero en el bucle puede quedar menos)
+        // Condición 2: Dos piezas
         if (piezas.length >= 2) tieneFlor = true;
         // Condición 3: Una pieza + dos cartas del mismo palo (no necesario que sean del palo de la pieza)
         if (piezas.length === 1 && comunes.length >= 2 && comunes[0].palo === comunes[1].palo) tieneFlor = true;
@@ -288,7 +386,7 @@ class GameStateManager {
                 
                 tipoCalculo = 'Flor con Pieza(s)';
             } else {
-                // Es Solo ENVIDO, por lo que es la Pieza + la carta SUELTA más alta de las restantes.
+                // Es Solo ENVIDO: la Pieza + la carta SUELTA más alta de las restantes.
                 let ptsAdicionales = 0;
                 
                 if (piezas.length >= 2) {
@@ -344,62 +442,109 @@ class GameStateManager {
 
     // --- LÓGICA DE JUEGO EN MESA (TRUCO) ---
 
-    jugarCarta(quien, indexCarta) {
+    jugarCarta(quienOrSeat, indexCarta) {
         if (this.rondaTerminada) return false;
-        if (this.turno !== quien) return false;
+
+        let seat = 0;
+        if (typeof quienOrSeat === 'number') {
+            seat = quienOrSeat;
+        } else if (quienOrSeat === 'jugador') {
+            seat = 0;
+        } else if (quienOrSeat === 'oponente') {
+            seat = 1;
+        }
+
+        if (this.turnoSeat !== seat) return false;
+        const player = this.players[seat];
+        if (!player || !player.hand || player.hand.length <= indexCarta) return false;
 
         // Si tiran carta, se quema la fase de cantos silenciosamente
         if (this.fase === 'cantos') this.fase = 'truco';
 
-        let carta = null;
-        if (quien === 'jugador') {
-            carta = this.manoJugador.splice(indexCarta, 1)[0];
+        const carta = player.hand.splice(indexCarta, 1)[0];
+        this.mesaSlots[seat] = carta;
+
+        // Mantener compatibilidad con mesa legacy
+        if (seat === 0) {
             this.mesa.jugador = carta;
             this.registrarAccionRival('carta', carta);
-            this.turno = 'oponente';
-        } else {
-            carta = this.manoOponente.splice(indexCarta, 1)[0];
+        } else if (seat === 1) {
             this.mesa.oponente = carta;
-            this.turno = 'jugador';
         }
+
+        // Pasar turno al siguiente asiento en orden
+        this.turnoSeat = (seat + 1) % this.numJugadores;
+
         return carta;
     }
 
     evaluarMesa() {
-        if (!this.mesa.jugador || !this.mesa.oponente) return null; // Faltan jugar
+        // Sincronizar mesa legacy si fue asignada directamente como propiedad
+        if (this.mesa) {
+            if (this.mesa.jugador && !this.mesaSlots[0]) this.mesaSlots[0] = this.mesa.jugador;
+            if (this.mesa.oponente && !this.mesaSlots[1]) this.mesaSlots[1] = this.mesa.oponente;
+        }
 
-        let ganador = null;
-        let pJugador = this.mesa.jugador.poder;
-        let pOponente = this.mesa.oponente.poder;
+        // Verificar que todos los jugadores activos hayan tirado carta en la baza
+        const cartasJugadas = this.mesaSlots.filter(c => c !== null);
+        if (cartasJugadas.length < this.numJugadores) return null; // Faltan jugar
 
-        if (pJugador > pOponente) {
+        // Determinar la carta más alta de cada equipo
+        let maxPoderTeam0 = -1;
+        let maxSeatTeam0 = -1;
+        let maxPoderTeam1 = -1;
+        let maxSeatTeam1 = -1;
+
+        for (let seat = 0; seat < this.numJugadores; seat++) {
+            const carta = this.mesaSlots[seat];
+            if (!carta) continue;
+            const team = this.players[seat].team;
+
+            if (team === 0) {
+                if (carta.poder > maxPoderTeam0) {
+                    maxPoderTeam0 = carta.poder;
+                    maxSeatTeam0 = seat;
+                }
+            } else {
+                if (carta.poder > maxPoderTeam1) {
+                    maxPoderTeam1 = carta.poder;
+                    maxSeatTeam1 = seat;
+                }
+            }
+        }
+
+        let ganador = null; // 'jugador' (Team 0), 'oponente' (Team 1), o 'empate'
+
+        if (maxPoderTeam0 > maxPoderTeam1) {
             ganador = 'jugador';
             this.manosGanadas.jugador++;
-            this.turno = 'jugador'; // El que gana, sale
-        } else if (pOponente > pJugador) {
+            // El jugador que tiró la carta más alta sale jugando en la próxima baza
+            this.turnoSeat = maxSeatTeam0;
+        } else if (maxPoderTeam1 > maxPoderTeam0) {
             ganador = 'oponente';
             this.manosGanadas.oponente++;
-            this.turno = 'oponente';
+            this.turnoSeat = maxSeatTeam1;
         } else {
             ganador = 'empate';
             this.manosGanadas.empates++;
-            // En empate el turno vuelve a quien era "Mano" original de toda la ronda
-            this.turno = this.manoDelPartido; 
+            // En empate el turno vuelve a quien era "Mano" original de la ronda
+            this.turnoSeat = this.manoSeat; 
         }
 
         this.registroBazas.push(ganador);
 
-        // Limpiar la mesa para la próxima "baza" (enfrentamiento)
+        // Limpiar la mesa para la próxima baza
+        this.mesaSlots = new Array(this.numJugadores).fill(null);
         this.mesa.jugador = null;
         this.mesa.oponente = null;
 
-        // Comprobar ganador definitivo (Parda, 2 ganadas, etc)
+        // Comprobar ganador definitivo (Parda, 2 ganadas, etc.)
         const gJ = this.manosGanadas.jugador;
         const gO = this.manosGanadas.oponente;
         const emp = this.manosGanadas.empates;
         const bazasTotales = gJ + gO + emp;
 
-        // Reglas oficiales de Truco para definición de manos
+        // Reglas oficiales de Truco para definición de rondas
         if (gJ >= 2) {
             this.rondaTerminada = true;
             return { ganadorMesa: ganador, ganadorRonda: 'jugador' };
@@ -412,7 +557,7 @@ class GameStateManager {
         // Si hay al menos un empate (parda)
         if (emp >= 1) {
             if (this.registroBazas[0] === 'empate') {
-                // Empate en primera: el que gane cualquier otra, gana.
+                // Empate en primera: el que gane cualquier otra baza, gana la ronda
                 if (gJ === 1) { this.rondaTerminada = true; return { ganadorMesa: ganador, ganadorRonda: 'jugador' }; }
                 if (gO === 1) { this.rondaTerminada = true; return { ganadorMesa: ganador, ganadorRonda: 'oponente' }; }
             } else {
@@ -425,13 +570,15 @@ class GameStateManager {
         // Triple parda
         if (emp === 3) {
             this.rondaTerminada = true;
-            return { ganadorMesa: ganador, ganadorRonda: this.manoDelPartido };
+            const manoTeam = this.players[this.manoSeat] ? this.players[this.manoSeat].team : 0;
+            return { ganadorMesa: ganador, ganadorRonda: (manoTeam === 0 ? 'jugador' : 'oponente') };
         }
 
-        // Falla de seguridad (no debería ocurrir nunca)
+        // Falla de seguridad (no debería ocurrir)
         if (bazasTotales === 3) {
             this.rondaTerminada = true;
-            return { ganadorMesa: ganador, ganadorRonda: this.manoDelPartido };
+            const manoTeam = this.players[this.manoSeat] ? this.players[this.manoSeat].team : 0;
+            return { ganadorMesa: ganador, ganadorRonda: (manoTeam === 0 ? 'jugador' : 'oponente') };
         }
 
         return { ganadorMesa: ganador, ganadorRonda: null };
@@ -441,25 +588,21 @@ class GameStateManager {
     
     evaluarPoderMano(mano) {
         if (!mano || mano.length === 0) return 0;
-        // El poder de la mano se calcula sumando el poder de las cartas restantes
-        // y dándole un peso explosivo a las piezas.
         let total = 0;
         mano.forEach(c => {
-            if (c.esPieza) total += (c.poder * 2); // Factor determinante
+            if (!c) return;
+            if (c.esPieza) total += (c.poder * 2);
             else total += c.poder;
         });
         return total;
     }
 
     obtenerMejorRespuesta(mano, poderRival) {
-        // Estratégicamente: Buscar la carta más baja que gane al rival.
-        // Si ninguna gana, devolver la más baja posible (regalar la mano).
-        let ganadoras = mano.filter(c => c.poder > poderRival);
+        let ganadoras = mano.filter(c => c && c.poder > poderRival);
         if (ganadoras.length > 0) {
-            ganadoras.sort((a, b) => a.poder - b.poder); // De menor a mayor poder
+            ganadoras.sort((a, b) => a.poder - b.poder);
             return ganadoras[0]; // La más baja de las que ganan
         }
-        // No hay ganadoras, devolver la peor carta para no quemar piezas/matas
         let todas = [...mano].sort((a, b) => a.poder - b.poder);
         return todas[0];
     }
@@ -468,13 +611,11 @@ class GameStateManager {
         this.memoriaRival.puntosEnvido = puntos;
         this.memoriaRival.tieneFlor = tieneFlor;
 
-        // Deducción de Piezas (Reglas de Truco Uruguayo)
-        // 30 -> 2 | 29 -> 4 | 28 -> 5 | 27 -> 10 u 11
         if (puntos === 30) this.memoriaRival.piezaProbable = 2;
         else if (puntos === 29) this.memoriaRival.piezaProbable = 4;
         else if (puntos === 28) this.memoriaRival.piezaProbable = 5;
-        else if (puntos === 27) this.memoriaRival.piezaProbable = 11; // Perico/a
-        else if (puntos > 30) this.memoriaRival.piezaProbable = 'fuerte'; // Pieza + carta alta
+        else if (puntos === 27) this.memoriaRival.piezaProbable = 11;
+        else if (puntos > 30) this.memoriaRival.piezaProbable = 'fuerte';
     }
 
     registrarAccionRival(tipo, data) {
@@ -482,7 +623,7 @@ class GameStateManager {
             this.perfilRival.totalCantos++;
             if (data === 'truco') this.perfilRival.frecuenciaTruco++;
         }
-        if (tipo === 'carta') {
+        if (tipo === 'carta' && data && data.palo) {
             this.memoriaPalos[data.palo]++;
         }
     }
