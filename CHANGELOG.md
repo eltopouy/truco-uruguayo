@@ -22,12 +22,18 @@ Todas las mejoras notables y correcciones aplicadas al proyecto se documentan en
   - Estrategia de asistencia en el compañero (Asiento 2): no gasta cartas altas ni piezas si el jugador (Asiento 0) ya tiene la baza ganada.
   - Lectura de mesa y selección de mejor respuesta (`obtenerMejorRespuesta`).
 
-### 🎨 Tablero y UI de 4 Asientos
+### 🎨 Tablero y UI de 4 Asientos y Optimización Móvil
 - **Diseño del Paño**:
   - Posicionamiento responsive de 4 manos: Jugador (Sur), Rival 1 (Este), Compañero (Norte), Rival 2 (Oeste).
   - Animación de reparto de 12 cartas distribuidas secuencialmente desde el Asiento Mano.
   - Mesa central con cuadrante cardinal de 4 cartas.
   - Nuevas opciones de menú en inicio: **🤖 1 vs 1** y **👥 2 vs 2**.
+- **📱 Optimización Móvil y Vista Vertical**:
+  - Cartas dinámicas y agrandadas para pantallas táctiles (`clamp(105px, 29.5vw, 135px)`), permitiendo una lectura nítida de números, palos y etiquetas de Pieza sin forzar la vista.
+  - Centro de mesa agrandado y destacado, eliminando escalados que miniaturizaban las cartas jugadas.
+  - Muestra y mazo reposicionados con escala legible (`scale(0.82)`) a los laterales.
+  - Barra de acciones táctil fija al fondo con soporte de Safe Area (`env(safe-area-inset-bottom)`).
+  - Ocultación de elementos decorativos flotantes no esenciales (como el mate de adorno) en pantallas móviles para evitar solapamientos.
 
 ### 🔒 Reglas de Seguridad de Base de Datos (`database.rules.json`)
 - **Esquema de Validación Firebase**:
