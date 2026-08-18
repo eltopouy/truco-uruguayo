@@ -4,6 +4,20 @@ Todas las mejoras notables y correcciones aplicadas al proyecto se documentan en
 
 ---
 
+## [v2.4.0] - 2026-08-18
+
+### 🛡️ Resiliencia de Inicio y Tests E2E Pre-Deploy
+- **Corrección de Bloqueo al Iniciar Partidas (1v1 y 2v2)**:
+  - Inicialización resiliente de Firebase: si la conexión es lenta o falla el CDN de Firebase, el juego en solitario continúa funcionando de manera 100% aislada e ininterrumpida.
+  - Protección de `SoundManager`: manejo seguro de Web Audio y síntesis vocal sin arrojar excepciones en navegadores con autoplay bloqueado.
+  - Bloque `try...finally` en `animarReparto()` e `iniciarSolo()` para garantizar que la interfaz nunca quede bloqueada en estado `isAnimatingDeal`.
+  - Soporte de Flor por equipos en `resolverFlorSingleplayer` para partidas de 4 jugadores.
+- **🧪 Nueva Suite de Tests E2E de Pre-Deploy (`npm test`)**:
+  - Archivo `test/e2e.test.js` añadido con 5 pruebas de simulación completa de flujo de inicio, reparto de cartas, resolución de rondas con bots y robustez de audio.
+  - Comando `npm test` unificado para ejecutar tanto la suite unitaria de 29 tests como las pruebas E2E.
+
+---
+
 ## [v2.3.0] - 2026-08-14
 
 ### 👥 Modo 4 Jugadores (2 vs 2 / Parejas)

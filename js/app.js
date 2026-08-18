@@ -140,105 +140,90 @@ window.florResuelta = false; // Reset por ronda
 async function resolverFlorSingleplayer() {
     if (window.modoJuego !== 'singleplayer') return;
     if (game.envidoCantado || window.florResuelta) return;
-    if (game.manoJugador.length !== 3 || game.manoOponente.length !== 3) return;
 
-    const objJG = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
-    const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
-    const soyMano = game.manoDelPartido === 'jugador';
+    // Verificar que todos los jugadores tengan cartas repartidas
+    const allHave3 = game.players && game.players.length >= 2 && game.players.every(p => p.hand && p.hand.length === 3);
+    if (!allHave3) return;
 
-    // Ninguno tiene flor → no hacer nada
-    if (!objJG.tieneFlor && !objIA.tieneFlor) return;
+    // Calcular Flor de cada jugador
+    const flores = game.players.map((p, idx) => {
+        const calc = game.calcularPuntosEnvidoFlor(p.initialHand && p.initialHand.length === 3 ? p.initialHand : p.hand);
+        return { seat: idx, team: p.team, name: p.name, tieneFlor: calc.tieneFlor, puntos: calc.puntos };
+    });
+
+    const jugadoresConFlor = flores.filter(f => f.tieneFlor);
+    if (jugadoresConFlor.length === 0) return; // Nadie tiene flor
 
     window.florResuelta = true;
     game.envidoCantado = true;
 
-    // ── CASO 1: Solo el jugador tiene Flor ──
-    if (objJG.tieneFlor && !objIA.tieneFlor) {
-        logJugada('🌸 Tú: ¡FLOR! (Automático)', 'propio');
-        window.audio.play && window.audio.play('flor');
-        await window.UI.alert(`🌸 ¡Tenés FLOR!<br>Cobrás 3 pts automáticamente. El rival no puede cantar Envido.`);
-        game.puntosPartido.jugador += 3;
-        if (await verificarLimitesPartido()) return;
-        game.fase = 'truco';
-        renderJuego();
-        return;
-    }
+    const floresTeam0 = jugadoresConFlor.filter(f => f.team === 0);
+    const floresTeam1 = jugadoresConFlor.filter(f => f.team === 1);
 
-    // ── CASO 2: Solo la IA tiene Flor ──
-    if (objIA.tieneFlor && !objJG.tieneFlor) {
-        logJugada('🤖 IA: ¡FLOR!', 'rival');
-        window.audio.play && window.audio.play('flor');
-        await window.UI.alert(`🤖 IA: ¡FLOR!<br>La IA cobra 3 pts automáticamente. No podés cantar Envido.`);
-        game.puntosPartido.oponente += 3;
-        if (await verificarLimitesPartido()) return;
-        game.fase = 'truco';
-        renderJuego();
-        return;
-    }
-
-    // ── CASO 3: Ambos tienen Flor — respetando turno Mano/Pie ──
-    // Mano canta primero; Pie puede achicarse o ¡Contra Flor!
-    const ptsJG = objJG.puntos;
-    const ptsIA = objIA.puntos;
-    logJugada('🌸 IA y Jugador: ¡CHOQUE DE FLORES!', 'sistema');
-    window.audio.play && window.audio.play('flor');
-
-    let ganaJugador = ptsJG > ptsIA || (ptsJG === ptsIA && soyMano);
-
-    if (soyMano) {
-        // Jugador es Mano → canta primero
-        const contraFlor = await window.UI.options(
-            `🌸 ¡CHOQUE DE FLORES!<br>Tú (Mano): ${ptsJG} pts · IA (Pie): ${ptsIA} pts<br><br>Cantaste Flor primero. La IA puede replicar:`,
-            [
-                { label: '¡CONTRA FLOR AL RESTO!', value: 'contra', danger: true },
-                { label: 'Con Flor me achico (ambos +3)', value: 'achico', neutral: true }
-            ],
-            '🌸 Flor vs Flor'
-        );
-        if (contraFlor === 'contra') {
-            const lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
-            const premio = game.config.limitePuntos - lider;
-            window.shakeCards && window.shakeCards();
-            await window.UI.alert(`🗣️ Tú: ¡CONTRA FLOR AL RESTO!<br>🤖 IA: ¡QUIERO VALE!<br><br>${ptsJG} vs ${ptsIA}`);
-            if (ganaJugador) {
-                await window.UI.alert(`¡Tu Flor aplastó la de la IA! (+${premio} pts) 🌸`);
-                game.puntosPartido.jugador += premio;
-            } else {
-                await window.UI.alert(`¡La Flor de la IA te aplastó! (+${premio} pts) 🤖`);
-                game.puntosPartido.oponente += premio;
-            }
-        } else {
-            // Ambos cobran 3
-            await window.UI.alert(`Nadie se la jugó. Ambos cobran 3 pts de su Flor.`);
-            game.puntosPartido.jugador += 3;
-            game.puntosPartido.oponente += 3;
+    // CASO 1: Solo Team 0 (Nosotros / Jugador) tiene Flor
+    if (floresTeam0.length > 0 && floresTeam1.length === 0) {
+        const ptsTotal = floresTeam0.length * 3;
+        const nombres = floresTeam0.map(f => f.name).join(' y ');
+        logJugada(`🌸 ${nombres}: ¡FLOR! (+${ptsTotal} pts)`, 'propio');
+        if (window.audio && typeof window.audio.play === 'function') window.audio.play('flor');
+        if (window.UI && typeof window.UI.alert === 'function') {
+            await window.UI.alert(`🌸 ¡FLOR en tu equipo (${nombres})!<br>Suman ${ptsTotal} pts automáticamente. El rival no puede cantar Envido.`);
         }
-    } else {
-        // IA es Mano → canta primero; jugador responde
-        const resp = await window.UI.options(
-            `🤖 IA (Mano): ¡FLOR! (${ptsIA} pts)<br>Tú también tenés Flor (${ptsJG} pts).<br><br>¿Qué hacés?`,
-            [
-                { label: '¡CONTRA FLOR AL RESTO!', value: 'contra', danger: true },
-                { label: 'Con Flor me achico (ambos +3)', value: 'achico', neutral: true }
-            ],
-            '🌸 Flor vs Flor'
-        );
-        if (resp === 'contra') {
-            const lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
-            const premio = game.config.limitePuntos - lider;
-            window.shakeCards && window.shakeCards();
-            await window.UI.alert(`🗣️ Tú: ¡CONTRA FLOR AL RESTO!<br>🤖 IA: ¡QUIERO VALE!<br><br>${ptsJG} vs ${ptsIA}`);
-            if (ganaJugador) {
-                await window.UI.alert(`¡Tu Flor aplastó la de la IA! (+${premio} pts) 🌸`);
-                game.puntosPartido.jugador += premio;
+        game.puntosPartido.jugador += ptsTotal;
+    } 
+    // CASO 2: Solo Team 1 (Ellos / Rivales) tiene Flor
+    else if (floresTeam1.length > 0 && floresTeam0.length === 0) {
+        const ptsTotal = floresTeam1.length * 3;
+        const nombres = floresTeam1.map(f => f.name).join(' y ');
+        logJugada(`🤖 ${nombres}: ¡FLOR! (+${ptsTotal} pts)`, 'rival');
+        if (window.audio && typeof window.audio.play === 'function') window.audio.play('flor');
+        if (window.UI && typeof window.UI.alert === 'function') {
+            await window.UI.alert(`🤖 ${nombres} tienen FLOR.<br>La IA cobra ${ptsTotal} pts automáticamente. No podés cantar Envido.`);
+        }
+        game.puntosPartido.oponente += ptsTotal;
+    } 
+    // CASO 3: Ambos equipos tienen Flor (Choque de flores)
+    else {
+        logJugada('🌸 ¡CHOQUE DE FLORES ENTRE EQUIPOS!', 'sistema');
+        if (window.audio && typeof window.audio.play === 'function') window.audio.play('flor');
+
+        const maxT0 = floresTeam0.reduce((prev, curr) => curr.puntos > prev.puntos ? curr : prev, floresTeam0[0]);
+        const maxT1 = floresTeam1.reduce((prev, curr) => curr.puntos > prev.puntos ? curr : prev, floresTeam1[0]);
+        const ganaTeam0 = maxT0.puntos > maxT1.puntos || (maxT0.puntos === maxT1.puntos && (game.players[game.manoSeat]?.team === 0));
+
+        if (floresTeam0.some(f => f.seat === 0) && window.UI && typeof window.UI.options === 'function') {
+            const resp = await window.UI.options(
+                `🌸 ¡CHOQUE DE FLORES!<br>Tu equipo: ${maxT0.puntos} pts (${maxT0.name}) · Rivales: ${maxT1.puntos} pts (${maxT1.name})<br><br>¿Qué querés hacer?`,
+                [
+                    { label: '¡CONTRA FLOR AL RESTO!', value: 'contra', danger: true },
+                    { label: 'Con Flor me achico (ambos +3)', value: 'achico', neutral: true }
+                ],
+                '🌸 Choque de Flores'
+            );
+
+            if (resp === 'contra') {
+                const lider = Math.max(game.puntosPartido.jugador, game.puntosPartido.oponente);
+                const premio = game.config.limitePuntos - lider;
+                if (window.shakeCards) window.shakeCards();
+                await window.UI.alert(`🗣️ ¡CONTRA FLOR AL RESTO!<br>🤖 Rivales: ¡QUIERO VALE!<br><br>${maxT0.puntos} vs ${maxT1.puntos}`);
+                if (ganaTeam0) {
+                    await window.UI.alert(`¡Tu equipo ganó la Contra Flor! (+${premio} pts) 🌸`);
+                    game.puntosPartido.jugador += premio;
+                } else {
+                    await window.UI.alert(`¡Los rivales ganaron la Contra Flor! (+${premio} pts) 🤖`);
+                    game.puntosPartido.oponente += premio;
+                }
             } else {
-                await window.UI.alert(`¡La Flor de la IA te aplastó! (+${premio} pts) 🤖`);
-                game.puntosPartido.oponente += premio;
+                if (window.UI.alert) await window.UI.alert(`Nadie arriesgó. Ambos bandos cobran 3 pts por cada Flor.`);
+                game.puntosPartido.jugador += floresTeam0.length * 3;
+                game.puntosPartido.oponente += floresTeam1.length * 3;
             }
         } else {
-            await window.UI.alert(`Con Flor me achico. Ambos cobran 3 pts.`);
-            game.puntosPartido.jugador += 3;
-            game.puntosPartido.oponente += 3;
+            if (window.UI && typeof window.UI.alert === 'function') {
+                await window.UI.alert(`🌸 Choque de Flores: ${maxT0.name} (${maxT0.puntos} pts) vs ${maxT1.name} (${maxT1.puntos} pts). Ambos bandos cobran sus puntos.`);
+            }
+            game.puntosPartido.jugador += floresTeam0.length * 3;
+            game.puntosPartido.oponente += floresTeam1.length * 3;
         }
     }
 
@@ -263,13 +248,20 @@ function logJugada(texto, tipo = 'sistema') {
 }
 
 window.iniciarSolo = function(num = 2) {
-    document.getElementById('pantalla-inicio').style.display = 'none';
-    window.modoJuego = 'singleplayer';
-    game.configurarJugadores(num);
-    game.iniciarRonda();
-    const txt = num === 4 ? "👥 ¡Partida en Parejas (2 vs 2) iniciada!" : "🧉 ¡Suerte en el paño, gurí!";
-    logJugada(txt, "sistema");
-    window.animarReparto();
+    try {
+        const inicioEl = document.getElementById('pantalla-inicio');
+        if (inicioEl) inicioEl.style.display = 'none';
+        window.modoJuego = 'singleplayer';
+        game.configurarJugadores(num);
+        game.iniciarRonda();
+        const txt = num === 4 ? "👥 ¡Partida en Parejas (2 vs 2) iniciada!" : "🧉 ¡Suerte en el paño, gurí!";
+        logJugada(txt, "sistema");
+        window.animarReparto();
+    } catch(err) {
+        console.error("Error iniciando partida en solitario:", err);
+        window.isAnimatingDeal = false;
+        renderJuego();
+    }
 };
 
 function crearCartaDOM(carta, bocaAbajo = false, isMuestra = false) {
@@ -313,102 +305,110 @@ window.animarReparto = async function() {
     if (window.isAnimatingDeal) return;
     window.isAnimatingDeal = true;
     
-    const oppHandEl = document.getElementById('opponent-hand');
-    const plyHandEl = document.getElementById('player-hand');
-    const partnerHandEl = document.getElementById('partner-hand');
-    const rivalLeftHandEl = document.getElementById('rival-left-hand');
-    const rivalRightHandEl = document.getElementById('rival-right-hand');
-    const deckArea = document.querySelector('.deck-area');
-    
-    // Limpieza inicial para la animación
-    if (oppHandEl) oppHandEl.innerHTML = '';
-    if (plyHandEl) plyHandEl.innerHTML = '';
-    if (partnerHandEl) partnerHandEl.innerHTML = '';
-    if (rivalLeftHandEl) rivalLeftHandEl.innerHTML = '';
-    if (rivalRightHandEl) rivalRightHandEl.innerHTML = '';
+    try {
+        const oppHandEl = document.getElementById('opponent-hand');
+        const plyHandEl = document.getElementById('player-hand');
+        const partnerHandEl = document.getElementById('partner-hand');
+        const rivalLeftHandEl = document.getElementById('rival-left-hand');
+        const rivalRightHandEl = document.getElementById('rival-right-hand');
+        const deckArea = document.querySelector('.deck-area');
+        
+        // Limpieza inicial para la animación
+        if (oppHandEl) oppHandEl.innerHTML = '';
+        if (plyHandEl) plyHandEl.innerHTML = '';
+        if (partnerHandEl) partnerHandEl.innerHTML = '';
+        if (rivalLeftHandEl) rivalLeftHandEl.innerHTML = '';
+        if (rivalRightHandEl) rivalRightHandEl.innerHTML = '';
 
-    if (deckArea) {
-        deckArea.innerHTML = '';
-        deckArea.className = 'deck-area';
-        deckArea.classList.add((game.manoDelPartido === 'oponente' || game.manoSeat !== 0) ? 'deck-mi-derecha' : 'deck-su-derecha');
-        
-        // El mazo visual (pixel art dorso)
-        const mazoVisual = document.createElement('div');
-        mazoVisual.classList.add('card', 'pixel-card', 'card-deck');
-        deckArea.appendChild(mazoVisual);
-        
-        // La muestra (carta debajo del mazo)
-        if (game.muestra) {
-            const muestraDiv = crearCartaDOM(game.muestra, false, true);
-            deckArea.appendChild(muestraDiv);
+        if (deckArea) {
+            deckArea.innerHTML = '';
+            deckArea.className = 'deck-area';
+            deckArea.classList.add((game.manoDelPartido === 'oponente' || game.manoSeat !== 0) ? 'deck-mi-derecha' : 'deck-su-derecha');
+            
+            // El mazo visual (pixel art dorso)
+            const mazoVisual = document.createElement('div');
+            mazoVisual.classList.add('card', 'pixel-card', 'card-deck');
+            deckArea.appendChild(mazoVisual);
+            
+            // La muestra (carta debajo del mazo)
+            if (game.muestra) {
+                const muestraDiv = crearCartaDOM(game.muestra, false, true);
+                deckArea.appendChild(muestraDiv);
+            }
         }
-    }
 
-    if (game.numJugadores === 4) {
-        if (partnerHandEl) partnerHandEl.style.display = 'flex';
-        if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'flex';
-        if (rivalRightHandEl) rivalRightHandEl.style.display = 'flex';
-        if (oppHandEl) oppHandEl.style.display = 'none';
+        if (game.numJugadores === 4) {
+            if (partnerHandEl) partnerHandEl.style.display = 'flex';
+            if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'flex';
+            if (rivalRightHandEl) rivalRightHandEl.style.display = 'flex';
+            if (oppHandEl) oppHandEl.style.display = 'none';
 
-        for (let round = 0; round < 3; round++) {
-            for (let s = 0; s < 4; s++) {
-                const targetSeat = (game.manoSeat + s) % 4;
-                window.audio.play('card-deal');
-                const card = game.players[targetSeat]?.hand[round];
-                
-                if (targetSeat === 0 && card) {
-                    const cardDOM = crearCartaDOM(card, false);
-                    cardDOM.classList.add('animate-deal');
-                    cardDOM.addEventListener('click', () => jugarUI(round));
-                    if (plyHandEl) plyHandEl.appendChild(cardDOM);
-                } else if (targetSeat === 2 && partnerHandEl && card) {
-                    partnerHandEl.appendChild(crearCartaDOM(card, true));
-                } else if (targetSeat === 1 && rivalRightHandEl && card) {
-                    rivalRightHandEl.appendChild(crearCartaDOM(card, true));
-                } else if (targetSeat === 3 && rivalLeftHandEl && card) {
-                    rivalLeftHandEl.appendChild(crearCartaDOM(card, true));
+            for (let round = 0; round < 3; round++) {
+                for (let s = 0; s < 4; s++) {
+                    const targetSeat = (game.manoSeat + s) % 4;
+                    if (window.audio && typeof window.audio.play === 'function') window.audio.play('card-deal');
+                    const card = game.players[targetSeat]?.hand[round];
+                    
+                    if (targetSeat === 0 && card && plyHandEl) {
+                        const cardDOM = crearCartaDOM(card, false);
+                        cardDOM.classList.add('animate-deal');
+                        cardDOM.addEventListener('click', () => jugarUI(round));
+                        plyHandEl.appendChild(cardDOM);
+                    } else if (targetSeat === 2 && partnerHandEl && card) {
+                        partnerHandEl.appendChild(crearCartaDOM(card, true));
+                    } else if (targetSeat === 1 && rivalRightHandEl && card) {
+                        rivalRightHandEl.appendChild(crearCartaDOM(card, true));
+                    } else if (targetSeat === 3 && rivalLeftHandEl && card) {
+                        rivalLeftHandEl.appendChild(crearCartaDOM(card, true));
+                    }
+                    await new Promise(r => setTimeout(r, 120));
                 }
-                await new Promise(r => setTimeout(r, 150));
+            }
+        } else {
+            if (partnerHandEl) partnerHandEl.style.display = 'none';
+            if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'none';
+            if (rivalRightHandEl) rivalRightHandEl.style.display = 'none';
+            if (oppHandEl) oppHandEl.style.display = 'flex';
+
+            for (let i = 0; i < 3; i++) {
+                if (window.audio && typeof window.audio.play === 'function') window.audio.play('card-deal');
+                const c0 = game.manoJugador[i];
+                if (c0 && plyHandEl) {
+                    const cardDOM = crearCartaDOM(c0, false);
+                    cardDOM.classList.add('animate-deal');
+                    cardDOM.addEventListener('click', () => jugarUI(i));
+                    plyHandEl.appendChild(cardDOM);
+                }
+
+                const c1 = game.manoOponente[i];
+                if (oppHandEl && c1) oppHandEl.appendChild(crearCartaDOM(c1, true));
+                await new Promise(r => setTimeout(r, 200));
             }
         }
-    } else {
-        if (partnerHandEl) partnerHandEl.style.display = 'none';
-        if (rivalLeftHandEl) rivalLeftHandEl.style.display = 'none';
-        if (rivalRightHandEl) rivalRightHandEl.style.display = 'none';
-        if (oppHandEl) oppHandEl.style.display = 'flex';
 
-        for (let i = 0; i < 3; i++) {
-            window.audio.play('card-deal');
-            const c0 = game.manoJugador[i];
-            if (c0) {
-                const cardDOM = crearCartaDOM(c0, false);
-                cardDOM.classList.add('animate-deal');
-                cardDOM.addEventListener('click', () => jugarUI(i));
-                if (plyHandEl) plyHandEl.appendChild(cardDOM);
-            }
-
-            const c1 = game.manoOponente[i];
-            if (oppHandEl && c1) oppHandEl.appendChild(crearCartaDOM(c1, true));
-            await new Promise(r => setTimeout(r, 300));
+        // Muestra (Al final, debajo del mazo)
+        if (game.muestra && deckArea) {
+            if (window.audio && typeof window.audio.play === 'function') window.audio.play('card-play');
+            const muestraDOM = crearCartaDOM(game.muestra, false, true);
+            muestraDOM.classList.add('appearing');
+            deckArea.insertBefore(muestraDOM, deckArea.firstChild);
         }
+    } catch(err) {
+        console.error("Error durante animarReparto:", err);
+    } finally {
+        window.isAnimatingDeal = false;
+        renderJuego(); // Render final para asegurar estado correcto y listeners
     }
-
-    // Muestra (Al final, debajo del mazo)
-    if (game.muestra && deckArea) {
-        window.audio.play('card-play');
-        const muestraDOM = crearCartaDOM(game.muestra, false, true);
-        muestraDOM.classList.add('appearing');
-        deckArea.insertBefore(muestraDOM, deckArea.firstChild);
-    }
-
-    window.isAnimatingDeal = false;
-    renderJuego(); // Render final para asegurar estado correcto y listeners
     
     // Solo en singleplayer: resolver flor primero; si no hay flor y es turno del bot, que juegue
     if (window.modoJuego === 'singleplayer') {
-        await resolverFlorSingleplayer();
-        if (game.turnoSeat !== 0 && !game.rondaTerminada) {
-            setTimeout(async () => { await jugarBot(); }, 600);
+        try {
+            await resolverFlorSingleplayer();
+            if (game.turnoSeat !== 0 && !game.rondaTerminada) {
+                setTimeout(async () => { await jugarBot(); }, 600);
+            }
+        } catch(e) {
+            console.error("Error en flujo posterior al reparto:", e);
         }
     }
 };

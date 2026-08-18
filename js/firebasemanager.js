@@ -9,14 +9,17 @@ const firebaseConfig = {
     appId: "1:828862963964:web:c505946d1e30420af23779"
 };
 
-try {
-    firebase.initializeApp(firebaseConfig);
-    console.log("🔥 Servidor Firebase Conectado");
-} catch(e) {
-    console.error("Error inicializando Firebase", e);
+let db = null;
+if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = (typeof firebase.database === 'function') ? firebase.database() : null;
+        console.log("🔥 Servidor Firebase Conectado");
+    } catch(e) {
+        console.warn("Error inicializando Firebase:", e);
+    }
 }
 
-const db = firebase.database();
 let miRol = null; 
 let codigoSalaActual = null;
 let roomSubscription = null;
@@ -27,22 +30,28 @@ window.esperandoRespuestaRevancha = false;
 
 // Persistencia de Sesión
 function guardarSesionLocal(codigo, rol) {
-    localStorage.setItem('truco_room_code', codigo);
-    localStorage.setItem('truco_role', rol);
+    try {
+        localStorage.setItem('truco_room_code', codigo);
+        localStorage.setItem('truco_role', rol);
+    } catch(e) {}
 }
 
 function borrarSesionLocal() {
-    localStorage.removeItem('truco_room_code');
-    localStorage.removeItem('truco_role');
+    try {
+        localStorage.removeItem('truco_room_code');
+        localStorage.removeItem('truco_role');
+    } catch(e) {}
 }
 
 // Escuchar salas públicas en tiempo real
-db.ref('salas').orderByChild('estado').equalTo('esperando').on('value', (snap) => {
-    const container = document.getElementById('lista-salas-publicas');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    let count = 0;
+if (db) {
+    try {
+        db.ref('salas').orderByChild('estado').equalTo('esperando').on('value', (snap) => {
+            const container = document.getElementById('lista-salas-publicas');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            let count = 0;
     
     if (snap.exists()) {
         snap.forEach(child => {
@@ -79,7 +88,11 @@ db.ref('salas').orderByChild('estado').equalTo('esperando').on('value', (snap) =
     if (count === 0) {
         container.innerHTML = '<p style="font-size: 0.8rem; color: #888; font-style: italic;">No hay salas públicas activas...</p>';
     }
-});
+        });
+    } catch(e) {
+        console.warn("Error listening to public rooms:", e);
+    }
+}
 
 function generarCodigo() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
