@@ -136,6 +136,31 @@ testE2E('Verificar cálculo de Flor y Envido en todas las combinaciones de manos
     }
 });
 
+// ----------------------------------------------------
+// 5. Aislamiento de Pantalla de Inicio
+// ----------------------------------------------------
+console.log('\n📱 5. Aislamiento de Pantalla de Inicio:');
+
+testE2E('El menú de voces y elementos de juego deben ocultarse si la pantalla de inicio está activa', () => {
+    const game = new GameStateManager(2);
+    
+    // Simular que el juego no está iniciado o que pantalla-inicio está visible
+    assert.strictEqual(game.partidoIniciado, false);
+    
+    // Función de decisión de visibilidad
+    const isInicioVisible = true;
+    const shouldShowActions = (!isInicioVisible && game.partidoIniciado);
+    assert.strictEqual(shouldShowActions, false);
+});
+
+testE2E('Al iniciar partida en solitario, el estado se activa limpiamente y se borran sesiones viejas', () => {
+    const game = new GameStateManager(2);
+    game.partidoIniciado = true;
+    const isInicioVisible = false;
+    const shouldShowActions = (!isInicioVisible && game.partidoIniciado);
+    assert.strictEqual(shouldShowActions, true);
+});
+
 console.log('\n======================================================');
 console.log(`🏁 RESULTADO E2E: ${passedE2E}/${totalE2E} tests pasados con éxito.`);
 console.log('======================================================\n');

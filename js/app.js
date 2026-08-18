@@ -249,11 +249,14 @@ function logJugada(texto, tipo = 'sistema') {
 
 window.iniciarSolo = function(num = 2) {
     try {
+        if (typeof borrarSesionLocal === 'function') borrarSesionLocal();
         const inicioEl = document.getElementById('pantalla-inicio');
         if (inicioEl) inicioEl.style.display = 'none';
         window.modoJuego = 'singleplayer';
         game.configurarJugadores(num);
         game.iniciarRonda();
+        const actionsPanel = document.getElementById('actions-panel');
+        if (actionsPanel) actionsPanel.style.display = (window.innerWidth <= 768) ? 'flex' : 'block';
         const txt = num === 4 ? "👥 ¡Partida en Parejas (2 vs 2) iniciada!" : "🧉 ¡Suerte en el paño, gurí!";
         logJugada(txt, "sistema");
         window.animarReparto();
@@ -620,10 +623,21 @@ function renderJuego() {
     if(nameJugador) nameJugador.innerText = game.config.nombreJugador;
     if(nameOponente) nameOponente.innerText = game.config.nombreOponente;
 
+    const actionsPanel = document.getElementById('actions-panel');
+    const inicioEl = document.getElementById('pantalla-inicio');
+    const isInicioVisible = inicioEl && inicioEl.style.display !== 'none';
+    if (actionsPanel) {
+        if (isInicioVisible || !game.partidoIniciado) {
+            actionsPanel.style.display = 'none';
+        } else {
+            actionsPanel.style.display = (window.innerWidth <= 768) ? 'flex' : 'block';
+        }
+    }
+
     const btnTogglePuntos = document.getElementById('toggle-puntos-btn');
     if (btnTogglePuntos) {
-        btnTogglePuntos.style.opacity = game.partidoIniciado ? '1' : '0';
-        btnTogglePuntos.style.pointerEvents = game.partidoIniciado ? 'auto' : 'none';
+        btnTogglePuntos.style.opacity = (game.partidoIniciado && !isInicioVisible) ? '1' : '0';
+        btnTogglePuntos.style.pointerEvents = (game.partidoIniciado && !isInicioVisible) ? 'auto' : 'none';
     }
 
     for(let i=1; i<=3; i++) {

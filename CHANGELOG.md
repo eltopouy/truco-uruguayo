@@ -12,9 +12,10 @@ Todas las mejoras notables y correcciones aplicadas al proyecto se documentan en
   - Protección de `SoundManager`: manejo seguro de Web Audio y síntesis vocal sin arrojar excepciones en navegadores con autoplay bloqueado.
   - Bloque `try...finally` en `animarReparto()` e `iniciarSolo()` para garantizar que la interfaz nunca quede bloqueada en estado `isAnimatingDeal`.
   - Soporte de Flor por equipos en `resolverFlorSingleplayer` para partidas de 4 jugadores.
-- **🧪 Nueva Suite de Tests E2E de Pre-Deploy (`npm test`)**:
-  - Archivo `test/e2e.test.js` añadido con 5 pruebas de simulación completa de flujo de inicio, reparto de cartas, resolución de rondas con bots y robustez de audio.
-  - Comando `npm test` unificado para ejecutar tanto la suite unitaria de 29 tests como las pruebas E2E.
+- **Aislamiento de Pantalla de Inicio**:
+  - `#pantalla-inicio` fijada con `position: fixed` y `z-index: 999999` para evitar que el menú de voces o paneles de juego se solapen sobre la selección de partida.
+  - Ocultación garantizada de `#actions-panel` y elementos de juego antes de iniciar cualquier partida.
+  - `checkExistingSession()` ajustado para no secuestrar al usuario en salas viejas al ingresar a la raíz del sitio.
 
 ---
 

@@ -1070,54 +1070,64 @@ function removerEstadoRival() {
 window.checkExistingSession = async function() {
     const savedCode = localStorage.getItem('truco_room_code');
     const savedRole = localStorage.getItem('truco_role');
+    const hasHash = !!window.location.hash;
     
-    if (savedCode && savedRole) {
-        console.log("Reconectando a sesión previa:", savedCode);
-        codigoSalaActual = savedCode;
-        miRol = savedRole;
-        window.modoJuego = 'multiplayer';
-        
-        const roomRef = db.ref('salas/' + codigoSalaActual);
-        roomRef.once('value', (snap) => {
-            if (snap.exists() && snap.val().estado !== 'finalizado') {
-                // Reconectar listeners
-                if (miRol === 'creador') {
-                    // Host reconecta
-                    document.getElementById('pantalla-inicio').style.display = 'none';
-                    const ctBtn1 = document.getElementById('btn-chat-toggle');
-                    if (ctBtn1) ctBtn1.style.display = 'block';
-                    document.getElementById('btn-abandonar').style.display = 'block';
-                    
-                    roomRef.child('estado').on('value', (s) => {
-                        if (s.val() === 'conectado') {
-                            roomRef.onDisconnect().cancel();
-                            roomRef.child('estado').onDisconnect().set('jugador_desconectado');
-                            quitarLobbyEspera();
-                        }
-                    });
-                    roomRef.child('acciones_in').on('child_added', procesarAccionRed);
-                    attachTypingListener(codigoSalaActual, 'invitado');
-                    iniciarHeartbeat(codigoSalaActual, 'creador', 'invitado');
-                    renderJuego();
+    // Si no hay hash y el usuario entró a la raíz, no secuestrarlo en salas viejas
+    if (savedCode && savedRole && db) {
+        try {
+            const roomRef = db.ref('salas/' + savedCode);
+            roomRef.once('value', (snap) => {
+                const roomData = snap.val();
+                // Solo reconectar si la sala existe, está activa y el usuario venía con hash o la partida sigue en curso
+                if (snap.exists() && roomData && roomData.estado !== 'finalizado' && (hasHash || roomData.estado === 'conectado')) {
+                    console.log("Reconectando a sesión previa:", savedCode);
+                    codigoSalaActual = savedCode;
+                    miRol = savedRole;
+                    window.modoJuego = 'multiplayer';
+
+                    // Reconectar listeners
+                    if (miRol === 'creador') {
+                        document.getElementById('pantalla-inicio').style.display = 'none';
+                        const ctBtn1 = document.getElementById('btn-chat-toggle');
+                        if (ctBtn1) ctBtn1.style.display = 'block';
+                        document.getElementById('btn-abandonar').style.display = 'block';
+                        
+                        roomRef.child('estado').on('value', (s) => {
+                            if (s.val() === 'conectado') {
+                                roomRef.onDisconnect().cancel();
+                                roomRef.child('estado').onDisconnect().set('jugador_desconectado');
+                                quitarLobbyEspera();
+                            }
+                        });
+                        roomRef.child('acciones_in').on('child_added', procesarAccionRed);
+                        attachTypingListener(codigoSalaActual, 'invitado');
+                        iniciarHeartbeat(codigoSalaActual, 'creador', 'invitado');
+                        renderJuego();
+                    } else {
+                        document.getElementById('pantalla-inicio').style.display = 'none';
+                        const ctBtn2 = document.getElementById('btn-chat-toggle');
+                        if (ctBtn2) ctBtn2.style.display = 'block';
+                        document.getElementById('btn-abandonar').style.display = 'block';
+                        
+                        roomRef.child('estado_maestro').on('value', (s) => {
+                            const data = s.val();
+                            if (data) asignarEstadoDesdeRed(data);
+                        });
+                        roomRef.child('acciones_host').on('child_added', procesarAccionRed);
+                        attachTypingListener(codigoSalaActual, 'creador');
+                        iniciarHeartbeat(codigoSalaActual, 'invitado', 'creador');
+                    }
                 } else {
-                    // Invitado reconecta
-                    document.getElementById('pantalla-inicio').style.display = 'none';
-                    const ctBtn2 = document.getElementById('btn-chat-toggle');
-                    if (ctBtn2) ctBtn2.style.display = 'block';
-                    document.getElementById('btn-abandonar').style.display = 'block';
-                    
-                    roomRef.child('estado_maestro').on('value', (s) => {
-                        const data = s.val();
-                        if (data) asignarEstadoDesdeRed(data);
-                    });
-                    roomRef.child('acciones_host').on('child_added', procesarAccionRed);
-                    attachTypingListener(codigoSalaActual, 'creador');
-                    iniciarHeartbeat(codigoSalaActual, 'invitado', 'creador');
+                    borrarSesionLocal();
+                    const inicioEl = document.getElementById('pantalla-inicio');
+                    if (inicioEl) inicioEl.style.display = 'flex';
                 }
-            } else {
-                borrarSesionLocal();
-            }
-        });
+            });
+        } catch(e) {
+            borrarSesionLocal();
+        }
+    } else {
+        borrarSesionLocal();
     }
 };
 
