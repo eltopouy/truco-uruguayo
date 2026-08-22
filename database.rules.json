@@ -1,6 +1,8 @@
 {
   "rules": {
     "salas": {
+      ".read": true,
+      ".indexOn": ["estado", "publica"],
       "$salaId": {
         // Cualquier cliente puede leer la información pública de la sala si conoce el código
         ".read": true,

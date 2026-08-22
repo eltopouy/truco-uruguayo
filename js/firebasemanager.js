@@ -103,17 +103,52 @@ function generarCodigo() {
  */
 function aislarManoParaInvitado(gameObj) {
     if (!gameObj) return null;
+
+    // Invertir el array players para que players[0] sea el invitado (TÚ) y players[1] sea el creador (RIVAL)
+    let playersInvertidos = [];
+    if (gameObj.players && Array.isArray(gameObj.players) && gameObj.players.length >= 2) {
+        playersInvertidos = [
+            {
+                ...(gameObj.players[1] || {}),
+                id: 'p1_guest',
+                seat: 0,
+                team: 0,
+                name: gameObj.config?.nombreOponente || "TÚ",
+                isBot: false,
+                hand: gameObj.manoOponente || (gameObj.players[1] ? gameObj.players[1].hand : []),
+                initialHand: gameObj.manoInicialOponente || (gameObj.players[1] ? gameObj.players[1].initialHand : [])
+            },
+            {
+                ...(gameObj.players[0] || {}),
+                id: 'p0_host',
+                seat: 1,
+                team: 1,
+                name: gameObj.config?.nombreJugador || "RIVAL",
+                isBot: false,
+                hand: gameObj.manoJugador || (gameObj.players[0] ? gameObj.players[0].hand : []),
+                initialHand: gameObj.manoInicialJugador || (gameObj.players[0] ? gameObj.players[0].initialHand : [])
+            }
+        ];
+    }
+
     return {
         ...gameObj,
+        players: playersInvertidos,
         manoJugador: gameObj.manoOponente || [],
         manoOponente: gameObj.manoJugador || [],
         manoInicialJugador: gameObj.manoInicialOponente || [],
         manoInicialOponente: gameObj.manoInicialJugador || [],
+        mesaSlots: [
+            gameObj.mesaSlots ? gameObj.mesaSlots[1] : (gameObj.mesa?.oponente || null),
+            gameObj.mesaSlots ? gameObj.mesaSlots[0] : (gameObj.mesa?.jugador || null)
+        ],
         puntosPartido: {
             jugador: gameObj.puntosPartido?.oponente || 0,
             oponente: gameObj.puntosPartido?.jugador || 0
         },
         turno: gameObj.turno === 'jugador' ? 'oponente' : 'jugador',
+        turnoSeat: gameObj.turnoSeat === 0 ? 1 : 0,
+        manoSeat: gameObj.manoSeat === 0 ? 1 : 0,
         mesa: {
             jugador: gameObj.mesa?.oponente || null,
             oponente: gameObj.mesa?.jugador || null
@@ -135,8 +170,8 @@ function aislarManoParaInvitado(gameObj) {
         },
         config: {
             ...gameObj.config,
-            nombreJugador: gameObj.config?.nombreOponente || "RIVAL",
-            nombreOponente: gameObj.config?.nombreJugador || "TÚ"
+            nombreJugador: gameObj.config?.nombreOponente || "TÚ",
+            nombreOponente: gameObj.config?.nombreJugador || "RIVAL"
         }
     };
 }
@@ -153,9 +188,19 @@ function ocultarMenusOnline() {
  */
 window.crearSalaFirebase = async function(isPublica = false) {
     ocultarMenusOnline();
+    
+    if (!db) {
+        await window.UI.alert("❌ No se pudo conectar con el servidor de Firebase. Verifica tu conexión a internet.", "Error de Conexión");
+        const pi = document.getElementById('pantalla-inicio');
+        if (pi) pi.style.display = 'flex';
+        return;
+    }
+
     window.modoJuego = 'multiplayer';
     codigoSalaActual = generarCodigo();
     miRol = 'creador';
+    
+    mostrarLobbyEspera(codigoSalaActual, isPublica);
     
     const roomRef = db.ref('salas/' + codigoSalaActual);
     
@@ -166,13 +211,12 @@ window.crearSalaFirebase = async function(isPublica = false) {
         estado: 'esperando',
         publica: isPublica,
         timestamp: Date.now(),
-        creadorName: game.config.nombreJugador,
+        creadorName: game.config.nombreJugador || 'Jugador',
         config: {
-            limitePuntos: game.config.limitePuntos
+            limitePuntos: game.config.limitePuntos || 30
         }
     }).then(() => {
         guardarSesionLocal(codigoSalaActual, miRol);
-        mostrarLobbyEspera(codigoSalaActual, isPublica);
         
         // Escuchar cuando alguien se une
         roomRef.child('estado').on('value', async (snap) => {
@@ -183,12 +227,17 @@ window.crearSalaFirebase = async function(isPublica = false) {
                 
                 quitarLobbyEspera();
                 
-                document.getElementById('pantalla-inicio').style.display = 'none';
+                const pi = document.getElementById('pantalla-inicio');
+                if (pi) pi.style.display = 'none';
                 const chatToggle = document.getElementById('btn-chat-toggle');
                 if (chatToggle) chatToggle.style.display = 'block';
-                document.getElementById('btn-abandonar').style.display = 'block';
+                const btnAb = document.getElementById('btn-abandonar');
+                if (btnAb) btnAb.style.display = 'block';
+                const actionsPanel = document.getElementById('actions-panel');
+                if (actionsPanel) actionsPanel.style.display = (window.innerWidth <= 768) ? 'flex' : 'block';
                 
                 if (miRol === 'creador') {
+                    game.configurarJugadores(2);
                     game.iniciarRonda();
                     window.myActionSeq = 0;
                     window.expectedRivalSeq = 0;
@@ -204,6 +253,12 @@ window.crearSalaFirebase = async function(isPublica = false) {
         // Escuchar acciones (Solo desde este milisegundo)
         const initTime = Date.now();
         roomRef.child('acciones_in').orderByChild('ts').startAt(initTime).on('child_added', procesarAccionRed);
+    }).catch(async (err) => {
+        quitarLobbyEspera();
+        console.error("Error al crear sala en Firebase:", err);
+        await window.UI.alert("❌ Error al crear la sala: " + (err.message || "Error de red"), "Error");
+        const pi = document.getElementById('pantalla-inicio');
+        if (pi) pi.style.display = 'flex';
     });
 };
 
@@ -212,59 +267,92 @@ window.crearSalaFirebase = async function(isPublica = false) {
  */
 window.buscarPartidaRapida = async function() {
     ocultarMenusOnline();
-    window.modoJuego = 'multiplayer';
     
+    if (!db) {
+        await window.UI.alert("❌ No se pudo conectar con Firebase. Revisa tu conexión a internet.", "Error");
+        const pi = document.getElementById('pantalla-inicio');
+        if (pi) pi.style.display = 'flex';
+        return;
+    }
+
+    window.modoJuego = 'multiplayer';
     mostrarLobbyEspera("BUSCANDO...", true);
     
-    db.ref('salas').orderByChild('estado').equalTo('esperando').once('value', async (snap) => {
-        let salaEncontrada = null;
-        if (snap.exists()) {
-            snap.forEach(child => {
-                const data = child.val();
-                if (data.publica && !salaEncontrada) {
-                    salaEncontrada = child.key;
-                }
-            });
-        }
-        
-        if (salaEncontrada) {
-            console.log("Conectando a sala pública: ", salaEncontrada);
-            unirseSalaFirebase(salaEncontrada, true);
-        } else {
-            console.log("No hay públicas, creando una...");
+    try {
+        db.ref('salas').orderByChild('estado').equalTo('esperando').once('value', async (snap) => {
+            let salaEncontrada = null;
+            if (snap && snap.exists()) {
+                snap.forEach(child => {
+                    const data = child.val();
+                    if (data && data.publica && !salaEncontrada) {
+                        salaEncontrada = child.key;
+                    }
+                });
+            }
+            
+            if (salaEncontrada) {
+                console.log("Conectando a sala pública: ", salaEncontrada);
+                unirseSalaFirebase(salaEncontrada, true);
+            } else {
+                console.log("No hay públicas, creando una...");
+                crearSalaFirebase(true);
+            }
+        }, (err) => {
+            console.warn("Fallo al buscar salas públicas, creando nueva:", err);
             crearSalaFirebase(true);
-        }
-    });
+        });
+    } catch(err) {
+        console.warn("Excepción en búsqueda rápida, creando sala:", err);
+        crearSalaFirebase(true);
+    }
 };
 
 /**
  * Se une a una sala existente mediante código.
  */
 window.unirseSalaFirebase = async function(codigo, isPublica = false) {
-    if (!codigo || typeof codigo !== 'string') { await window.UI.alert("Ingresa un código, che."); return; }
+    if (!codigo || typeof codigo !== 'string') { await window.UI.alert("Ingresá un código, che."); return; }
     codigo = codigo.trim().toUpperCase();
     if (!/^[A-Z0-9]{1,12}$/.test(codigo)) {
         await window.UI.alert("❌ Código inválido. Solo debe contener letras y números (máx 12 caracteres).");
         return;
     }
+    
     ocultarMenusOnline();
+
+    if (!db) {
+        await window.UI.alert("❌ No se pudo conectar con Firebase. Revisa tu conexión a internet.", "Error");
+        const pi = document.getElementById('pantalla-inicio');
+        if (pi) pi.style.display = 'flex';
+        return;
+    }
+
     window.modoJuego = 'multiplayer';
     codigoSalaActual = codigo;
     miRol = 'invitado';
+
+    mostrarLobbyEspera("CONECTANDO...", isPublica);
 
     const roomRef = db.ref('salas/' + codigoSalaActual);
 
     roomRef.once('value', async (snap) => {
         if (!snap.exists()) {
             quitarLobbyEspera();
-            await window.UI.alert("❌ ¡Esa sala no existe!");
+            await window.UI.alert("❌ ¡Esa sala no existe o ya caducó!", "Sala no encontrada");
+            const pi = document.getElementById('pantalla-inicio');
+            if (pi) pi.style.display = 'flex';
             return;
         }
         const roomData = snap.val();
         if (roomData.estado !== 'esperando') {
             quitarLobbyEspera();
-            if (!isPublica) await window.UI.alert("❌ La sala ya está ocupada o terminó.");
-            else buscarPartidaRapida(); 
+            if (!isPublica) {
+                await window.UI.alert("❌ La sala ya está ocupada o terminó.", "Sala no disponible");
+                const pi = document.getElementById('pantalla-inicio');
+                if (pi) pi.style.display = 'flex';
+            } else {
+                buscarPartidaRapida();
+            }
             return;
         }
 
@@ -273,14 +361,19 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
 
         roomRef.update({
             estado: 'conectado',
-            invitadoName: game.config.nombreJugador
+            invitadoName: game.config.nombreJugador || 'Invitado'
         }).then(() => {
             guardarSesionLocal(codigoSalaActual, miRol);
             quitarLobbyEspera();
-            document.getElementById('pantalla-inicio').style.display = 'none';
+            
+            const pi = document.getElementById('pantalla-inicio');
+            if (pi) pi.style.display = 'none';
             const chatToggle2 = document.getElementById('btn-chat-toggle');
             if (chatToggle2) chatToggle2.style.display = 'block';
-            document.getElementById('btn-abandonar').style.display = 'block';
+            const btnAb = document.getElementById('btn-abandonar');
+            if (btnAb) btnAb.style.display = 'block';
+            const actionsPanel = document.getElementById('actions-panel');
+            if (actionsPanel) actionsPanel.style.display = (window.innerWidth <= 768) ? 'flex' : 'block';
             
             // Sincronización del estado del motor (el invitado solo recibe)
             roomRef.child('estado_maestro').on('value', (snap) => {
@@ -298,8 +391,20 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
             attachTypingListener(codigoSalaActual, 'creador');
             iniciarHeartbeat(codigoSalaActual, 'invitado', 'creador');
             
-            if(isPublica) logJugada("Te conectaste a una partida al azar.", "sistema");
+            if(isPublica) logJugada("Te conectaste a una partida pública.", "sistema");
+        }).catch(async (err) => {
+            quitarLobbyEspera();
+            console.error("Error al unirse a la sala:", err);
+            await window.UI.alert("❌ No se pudo conectar a la sala: " + (err.message || "Error"), "Error");
+            const pi = document.getElementById('pantalla-inicio');
+            if (pi) pi.style.display = 'flex';
         });
+    }, async (err) => {
+        quitarLobbyEspera();
+        console.error("Error de consulta en Firebase:", err);
+        await window.UI.alert("❌ Error al consultar la sala: " + (err.message || "Error de red"), "Error");
+        const pi = document.getElementById('pantalla-inicio');
+        if (pi) pi.style.display = 'flex';
     });
 };
 
@@ -770,10 +875,15 @@ window.finalizarSalaFirebase = function() {
 };
 
 function mostrarLobbyEspera(codigo, isPublica) {
+    const inicioEl = document.getElementById('pantalla-inicio');
+    if (inicioEl) inicioEl.style.display = 'none';
+
     const lobby = document.getElementById('lobby-espera') || crearElementoLobby();
     lobby.style.display = 'flex';
-    document.getElementById('lobby-codigo').innerText = codigo;
-    document.getElementById('lobby-tipo').innerText = isPublica ? "Buscando oponente público..." : "Esperando a tu amigo...";
+    const codEl = document.getElementById('lobby-codigo');
+    if (codEl) codEl.innerText = codigo;
+    const tipoEl = document.getElementById('lobby-tipo');
+    if (tipoEl) tipoEl.innerText = isPublica ? "Buscando oponente público..." : "Esperando a tu rival...";
 }
 
 function quitarLobbyEspera() {
@@ -781,28 +891,50 @@ function quitarLobbyEspera() {
     if (lobby) lobby.style.display = 'none';
 }
 
+window.cancelarLobbyEspera = function() {
+    quitarLobbyEspera();
+    borrarSesionLocal();
+    try {
+        if (codigoSalaActual && db && miRol === 'creador') {
+            db.ref('salas/' + codigoSalaActual).remove();
+        }
+    } catch(e) {}
+    codigoSalaActual = null;
+    miRol = null;
+    window.modoJuego = 'singleplayer';
+    const inicioEl = document.getElementById('pantalla-inicio');
+    if (inicioEl) inicioEl.style.display = 'flex';
+};
+
 function crearElementoLobby() {
-    const div = document.createElement('div');
+    let div = document.getElementById('lobby-espera');
+    if (div) return div;
+    
+    div = document.createElement('div');
     div.id = 'lobby-espera';
     div.className = 'glass';
     div.style.position = 'fixed';
     div.style.top = '50%';
     div.style.left = '50%';
     div.style.transform = 'translate(-50%, -50%)';
-    div.style.zIndex = '10005';
+    div.style.zIndex = '60000';
     div.style.textAlign = 'center';
+    div.style.display = 'none';
     div.style.flexDirection = 'column';
-    div.style.gap = '20px';
-    div.style.minWidth = '300px';
+    div.style.gap = '18px';
+    div.style.minWidth = '320px';
+    div.style.maxWidth = '90vw';
+    div.style.boxShadow = '0 15px 50px rgba(0,0,0,0.85)';
+    div.style.border = '1px solid var(--gold)';
 
     div.innerHTML = `
-        <h2 id="lobby-tipo">Esperando Rival</h2>
-        <div style="font-size: 3rem; font-weight: bold; color: var(--gold); letter-spacing: 5px;" id="lobby-codigo">---</div>
-        <p>Compartí este código con tu oponente para que se una.</p>
-        <div class="loader"></div>
-        <div style="display:flex; gap:10px; justify-content:center;">
-            <button class="btn-primary" style="background: var(--gold); color: black;" onclick="window.copyRoomLink()">Copiar Enlace Directo</button>
-            <button class="btn-primary" style="background: #c0392b;" onclick="location.reload()">Cancelar Búsqueda</button>
+        <h2 id="lobby-tipo" style="color:var(--gold); margin:0;">Esperando Rival</h2>
+        <div style="font-size: 2.8rem; font-weight: bold; color: var(--gold); letter-spacing: 5px; font-family: monospace;" id="lobby-codigo">---</div>
+        <p style="margin:0; font-size:0.9rem; color:#ccc;">Compartí este código con tu amigo para que se una al paño.</p>
+        <div class="loader" style="margin: 5px auto;"></div>
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <button class="btn-primary" style="background: var(--gold); color: black; font-weight: bold; padding: 10px 15px;" onclick="window.copyRoomLink()">📋 Copiar Enlace</button>
+            <button class="btn-primary" style="background: #c0392b; padding: 10px 15px;" onclick="window.cancelarLobbyEspera()">❌ Cancelar</button>
         </div>
     `;
     document.body.appendChild(div);

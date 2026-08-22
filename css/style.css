@@ -32,7 +32,10 @@ body, html {
 }
 
 .play-area {
-    position: relative;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 4000;
 }
 
@@ -251,18 +254,20 @@ body, html {
     gap: 15px;
     padding: 10px 30px;
     justify-content: center;
-    position: relative;
-    z-index: 1000;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     perspective: 1000px;
 }
 
 .opponent-hand {
-    margin-top: 55px;
+    top: 35px;
+    z-index: 1000;
 }
 
 .player-hand {
+    bottom: 25px;
     z-index: 5000;
-    position: relative;
 }
 
 .player-hand .card {

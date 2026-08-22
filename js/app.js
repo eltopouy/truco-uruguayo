@@ -486,7 +486,8 @@ function renderJuego() {
         if (oppHandEl) {
             oppHandEl.style.display = 'flex';
             oppHandEl.innerHTML = '';
-            (game.manoOponente || []).forEach(c => oppHandEl.appendChild(crearCartaDOM(c, true)));
+            const rivalCards = (game.players && game.players[1] && game.players[1].hand) ? game.players[1].hand : (game.manoOponente || []);
+            rivalCards.forEach(c => oppHandEl.appendChild(crearCartaDOM(c, true)));
         }
         if (playArea2p) {
             playArea2p.style.display = 'flex';
@@ -494,18 +495,21 @@ function renderJuego() {
             const mesaPly = document.getElementById('mesa-jugador');
             if (mesaOpp) {
                 mesaOpp.innerHTML = '';
-                if (game.mesaSlots[1] || game.mesa.oponente) mesaOpp.appendChild(crearCartaDOM(game.mesaSlots[1] || game.mesa.oponente));
+                const cOpp = game.mesaSlots[1] || game.mesa?.oponente;
+                if (cOpp) mesaOpp.appendChild(crearCartaDOM(cOpp));
             }
             if (mesaPly) {
                 mesaPly.innerHTML = '';
-                if (game.mesaSlots[0] || game.mesa.jugador) mesaPly.appendChild(crearCartaDOM(game.mesaSlots[0] || game.mesa.jugador));
+                const cPly = game.mesaSlots[0] || game.mesa?.jugador;
+                if (cPly) mesaPly.appendChild(crearCartaDOM(cPly));
             }
         }
     }
 
     if (plyHandEl) {
         plyHandEl.innerHTML = '';
-        (game.players[0]?.hand || []).forEach((c, index) => {
+        const myCards = (game.players && game.players[0] && game.players[0].hand) ? game.players[0].hand : (game.manoJugador || []);
+        myCards.forEach((c, index) => {
             const cardDOM = crearCartaDOM(c, false);
             cardDOM.addEventListener('click', () => jugarUI(index));
             plyHandEl.appendChild(cardDOM);

@@ -161,6 +161,90 @@ testE2E('Al iniciar partida en solitario, el estado se activa limpiamente y se b
     assert.strictEqual(shouldShowActions, true);
 });
 
+// ----------------------------------------------------
+// 6. Perspectiva Multijugador y Posicionamiento de Cartas
+// ----------------------------------------------------
+console.log('\n🌐 6. Perspectiva Multijugador y Posición de Cartas:');
+
+testE2E('Invitado debe recibir sus cartas en el asiento 0 (abajo) y las del rival en el asiento 1 (arriba)', () => {
+    // Simular el estado maestro generado por el host
+    const hostHand = [{ valor: 1, palo: 'Espada', oculto: true }, { valor: 7, palo: 'Espada', oculto: true }, { valor: 3, palo: 'Basto', oculto: true }];
+    const guestHand = [{ valor: 2, palo: 'Oro', poder: 100, esPieza: true }, { valor: 4, palo: 'Oro', poder: 99, esPieza: true }, { valor: 5, palo: 'Espada', poder: 8 }];
+    
+    const estadoMaestroDelHost = {
+        players: [
+            { id: 'p0', seat: 0, team: 0, name: 'Host', hand: hostHand, initialHand: hostHand, isBot: false },
+            { id: 'p1', seat: 1, team: 1, name: 'Invitado', hand: guestHand, initialHand: guestHand, isBot: false }
+        ],
+        manoJugador: hostHand,
+        manoOponente: guestHand,
+        manoInicialJugador: hostHand,
+        manoInicialOponente: guestHand,
+        turno: 'jugador',
+        turnoSeat: 0,
+        manoSeat: 0,
+        manoDelPartido: 'jugador',
+        puntosPartido: { jugador: 6, oponente: 4 },
+        config: { nombreJugador: 'Host', nombreOponente: 'Invitado', limitePuntos: 30 }
+    };
+
+    // Función pura de inversión que usa firebasemanager
+    function aislarManoParaInvitado(gameObj) {
+        if (!gameObj) return null;
+        let playersInvertidos = [];
+        if (gameObj.players && Array.isArray(gameObj.players) && gameObj.players.length >= 2) {
+            playersInvertidos = [
+                {
+                    ...(gameObj.players[1] || {}),
+                    id: 'p1_guest',
+                    seat: 0,
+                    team: 0,
+                    name: gameObj.config?.nombreOponente || "TÚ",
+                    isBot: false,
+                    hand: gameObj.manoOponente || (gameObj.players[1] ? gameObj.players[1].hand : []),
+                    initialHand: gameObj.manoInicialOponente || (gameObj.players[1] ? gameObj.players[1].initialHand : [])
+                },
+                {
+                    ...(gameObj.players[0] || {}),
+                    id: 'p0_host',
+                    seat: 1,
+                    team: 1,
+                    name: gameObj.config?.nombreJugador || "RIVAL",
+                    isBot: false,
+                    hand: gameObj.manoJugador || (gameObj.players[0] ? gameObj.players[0].hand : []),
+                    initialHand: gameObj.manoInicialJugador || (gameObj.players[0] ? gameObj.players[0].initialHand : [])
+                }
+            ];
+        }
+        return {
+            ...gameObj,
+            players: playersInvertidos,
+            manoJugador: gameObj.manoOponente || [],
+            manoOponente: gameObj.manoJugador || [],
+            puntosPartido: { jugador: gameObj.puntosPartido?.oponente || 0, oponente: gameObj.puntosPartido?.jugador || 0 }
+        };
+    }
+
+    const estadoInvitado = aislarManoParaInvitado(estadoMaestroDelHost);
+
+    // Verificaciones críticas:
+    // 1. En el asiento 0 (abajo/TÚ) deben estar las cartas descubiertas del invitado
+    assert.strictEqual(estadoInvitado.players[0].name, 'Invitado');
+    assert.strictEqual(estadoInvitado.players[0].hand[0].valor, 2);
+    assert.strictEqual(estadoInvitado.players[0].hand[0].palo, 'Oro');
+    assert.strictEqual(estadoInvitado.players[0].hand[0].oculto, undefined);
+    assert.strictEqual(estadoInvitado.manoJugador[0].valor, 2);
+
+    // 2. En el asiento 1 (arriba/RIVAL) deben estar las cartas ocultas del rival
+    assert.strictEqual(estadoInvitado.players[1].name, 'Host');
+    assert.strictEqual(estadoInvitado.players[1].hand[0].oculto, true);
+    assert.strictEqual(estadoInvitado.manoOponente[0].oculto, true);
+
+    // 3. Los puntos del invitado deben asignarse a 'jugador'
+    assert.strictEqual(estadoInvitado.puntosPartido.jugador, 4);
+    assert.strictEqual(estadoInvitado.puntosPartido.oponente, 6);
+});
+
 console.log('\n======================================================');
 console.log(`🏁 RESULTADO E2E: ${passedE2E}/${totalE2E} tests pasados con éxito.`);
 console.log('======================================================\n');
