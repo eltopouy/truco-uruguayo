@@ -4,7 +4,7 @@
  */
 
 const assert = require('assert');
-const { Carta, GameStateManager, PALOS, VALORES } = require('../js/gamestatemanager');
+const { Carta, GameStateManager, PALOS, VALORES, PODER_ESTANDAR } = require('../js/gamestatemanager');
 
 // Test utilities
 let totalTests = 0;
@@ -588,6 +588,254 @@ test('Rotación de Mano en 4 Jugadores: Rota cíclicamente 0 -> 1 -> 2 -> 3', ()
 
     game.iniciarRonda(); // 5ta ronda -> vuelve a 0
     assert.strictEqual(game.manoSeat, 0);
+});
+
+// ----------------------------------------------------
+// 9. IA y Sistema de Decisión Táctica
+// ----------------------------------------------------
+console.log('\n🤖 9. IA y Sistema de Decisión Táctica:');
+
+test('evaluarPoderMano: las piezas duplican su ponderación estratégica', () => {
+    const game = new GameStateManager();
+    game.paloMuestra = 'Espada';
+    game.piezasActivas = [2, 4, 5, 11, 10];
+
+    const pieza2 = new Carta(2, 'Espada'); // Pieza mayor, poder 100
+    const tresComun = new Carta(3, 'Copa');  // Común, poder 16
+    const cuatroComun = new Carta(4, 'Oro'); // Común, poder 7
+    game.actualizarMatrizDePoder(pieza2, tresComun, cuatroComun);
+
+    const poder = game.evaluarPoderMano([pieza2, tresComun, cuatroComun]);
+    // 100*2 + 16 + 7 = 223
+    assert.strictEqual(poder, 223);
+});
+
+test('obtenerMejorRespuesta: selecciona la carta ganadora más baja disponible', () => {
+    const game = new GameStateManager();
+    game.paloMuestra = 'Oro';
+    game.piezasActivas = [2, 4, 5, 11, 10];
+
+    const asEspada = new Carta(1, 'Espada'); // Poder 20
+    const sieteEspada = new Carta(7, 'Espada'); // Poder 18
+    const tresCopa = new Carta(3, 'Copa'); // Poder 16
+    game.actualizarMatrizDePoder(asEspada, sieteEspada, tresCopa);
+
+    // Rival tiró carta con poder 17 (ej: 7 de Oro)
+    const mejor = game.obtenerMejorRespuesta([asEspada, sieteEspada, tresCopa], 17);
+    assert.strictEqual(mejor, sieteEspada); // Poder 18 gana con el menor gasto
+});
+
+test('obtenerMejorRespuesta: si no puede ganar la baza, entrega la carta más baja (descarte)', () => {
+    const game = new GameStateManager();
+    game.paloMuestra = 'Copa';
+    game.piezasActivas = [2, 4, 5, 11, 10];
+
+    const dosOro = new Carta(2, 'Oro'); // Poder 15
+    const reyEspada = new Carta(12, 'Espada'); // Poder 13
+    const cuatroBasto = new Carta(4, 'Basto'); // Poder 7
+    game.actualizarMatrizDePoder(dosOro, reyEspada, cuatroBasto);
+
+    // Rival tiró As de Espadas (Poder 20)
+    const mejor = game.obtenerMejorRespuesta([dosOro, reyEspada, cuatroBasto], 20);
+    assert.strictEqual(mejor, cuatroBasto); // Se desprende de la más baja (4 de Basto)
+});
+
+test('decidirEnvido: responde adecuadamente según puntaje y modo kamikaze', () => {
+    const game = new GameStateManager();
+    // Envido común
+    assert.strictEqual(game.decidirEnvido('envido', 20, 0), 'no');
+    assert.strictEqual(game.decidirEnvido('envido', 27, 0), 'si');
+    assert.strictEqual(game.decidirEnvido('envido', 31, 0), 'real');
+
+    // Real Envido
+    assert.strictEqual(game.decidirEnvido('real_envido', 26, 0), 'no');
+    assert.strictEqual(game.decidirEnvido('real_envido', 29, 0), 'si');
+    assert.strictEqual(game.decidirEnvido('real_envido', 33, 0), 'real');
+
+    // Falta Envido
+    assert.strictEqual(game.decidirEnvido('falta_envido', 28, 0), 'no');
+    assert.strictEqual(game.decidirEnvido('falta_envido', 30, 0), 'si');
+
+    // Modo Kamikaze (diferencia > 10 puntos)
+    assert.strictEqual(game.decidirEnvido('falta_envido', 25, 12), 'si');
+    assert.strictEqual(game.decidirEnvido('envido', 21, 12), 'si');
+});
+
+test('decidirTruco: responde correctamente con manos altas, bajas o rival bluffeador', () => {
+    const game = new GameStateManager();
+    // Mano monstruosa (>80 poder) -> voto (Retruco)
+    assert.strictEqual(game.decidirTruco(95, false, 0), 'voto');
+
+    // Mano decente (35) sin bluffs -> si (quiero)
+    assert.strictEqual(game.decidirTruco(35, false, 0), 'si');
+
+    // Mano débil (15) sin bluffs -> no (al mazo)
+    assert.strictEqual(game.decidirTruco(15, false, 0), 'no');
+
+    // Mano débil (15) pero con rival mentiroso -> si (lo desafía)
+    assert.strictEqual(game.decidirTruco(15, true, 0), 'si');
+});
+
+// ----------------------------------------------------
+// 10. Deducción de IA y Análisis de Rival
+// ----------------------------------------------------
+console.log('\n🧠 10. Deducción de IA y Análisis de Rival:');
+
+test('recordarPuntosRival: infiere pieza probable según puntos declarados', () => {
+    const game = new GameStateManager();
+    game.recordarPuntosRival(30, false);
+    assert.strictEqual(game.memoriaRival.piezaProbable, 2);
+
+    game.recordarPuntosRival(29, false);
+    assert.strictEqual(game.memoriaRival.piezaProbable, 4);
+
+    game.recordarPuntosRival(28, false);
+    assert.strictEqual(game.memoriaRival.piezaProbable, 5);
+
+    game.recordarPuntosRival(27, false);
+    assert.strictEqual(game.memoriaRival.piezaProbable, 11);
+
+    game.recordarPuntosRival(33, true);
+    assert.strictEqual(game.memoriaRival.tieneFlor, true);
+    assert.strictEqual(game.memoriaRival.piezaProbable, 'fuerte');
+});
+
+test('analizarBluff y registrarAccionRival: detecta bluffs y actualiza perfil del rival', () => {
+    const game = new GameStateManager();
+    assert.strictEqual(game.perfilRival.bluffsDetectados, 0);
+
+    // Si el rival cantó y mostró menos de 20 puntos, es un bluff
+    game.analizarBluff(18, true);
+    assert.strictEqual(game.perfilRival.bluffsDetectados, 1);
+    assert(game.perfilRival.agresividad > 0.5);
+
+    // Registro de palos y cantos
+    game.registrarAccionRival('canto', 'truco');
+    game.registrarAccionRival('carta', { palo: 'Espada' });
+    assert.strictEqual(game.perfilRival.frecuenciaTruco, 1);
+    assert.strictEqual(game.memoriaPalos.Espada, 1);
+});
+
+// ----------------------------------------------------
+// 11. Validación de Jugadas y Fases de Turno
+// ----------------------------------------------------
+console.log('\n⚡ 11. Validación de Jugadas y Fases:');
+
+test('jugarCarta: rechaza jugadas fuera de turno o con índices inválidos', () => {
+    const game = new GameStateManager(2);
+    game.iniciarRonda();
+    game.turnoSeat = 0; // Turno del jugador (seat 0)
+
+    // Intento de jugada por parte del oponente fuera de turno
+    const resOponente = game.jugarCarta(1, 0);
+    assert.strictEqual(resOponente, false);
+
+    // Intento con índice fuera de rango
+    const resInvalido = game.jugarCarta(0, 99);
+    assert.strictEqual(resInvalido, false);
+
+    // Jugada válida
+    const carta0 = game.manoJugador[0];
+    const jugadaOk = game.jugarCarta(0, 0);
+    assert.strictEqual(jugadaOk, carta0);
+    assert.strictEqual(game.turnoSeat, 1); // Turno pasa a seat 1
+    assert.strictEqual(game.fase, 'truco'); // Se quema fase de cantos
+});
+
+// ----------------------------------------------------
+// 12. Nombres Criollos Tradicionales
+// ----------------------------------------------------
+console.log('\n🇺🇾 12. Nombres Criollos Tradicionales:');
+
+test('getNombreCriollo: nombra correctamente Matapuercos y Figuras Comunes', () => {
+    const macho = new Carta(1, 'Espada');
+    const bastillo = new Carta(1, 'Basto');
+    const sieteBravo = new Carta(7, 'Espada');
+    const sieteBello = new Carta(7, 'Oro');
+    const rey = new Carta(12, 'Copa');
+    const caballo = new Carta(11, 'Copa');
+    const asFalso = new Carta(1, 'Oro');
+
+    assert(macho.getNombreCriollo('Oro', [2, 4, 5, 11, 10]).includes('El Macho'));
+    assert(bastillo.getNombreCriollo('Oro', [2, 4, 5, 11, 10]).includes('El Bastillo'));
+    assert(sieteBravo.getNombreCriollo('Oro', [2, 4, 5, 11, 10]).includes('Siete Bravo'));
+    assert(sieteBello.getNombreCriollo('Oro', [2, 4, 5, 11, 10]).includes('Siete Bello'));
+    assert(rey.getNombreCriollo('Oro', [2, 4, 5, 11, 10]).includes('Rey (Negra'));
+    assert(caballo.getNombreCriollo('Oro', [2, 4, 5, 11, 10]).includes('Caballo (Negra'));
+    assert(asFalso.getNombreCriollo('Espada', [2, 4, 5, 11, 10]).includes('As Falso'));
+});
+
+test('getNombreCriollo: nombra correctamente Perico, Perica y Alcahuete', () => {
+    const perico = new Carta(11, 'Espada');
+    const perica = new Carta(10, 'Espada');
+    const alcahuete = new Carta(12, 'Espada');
+
+    // Muestra normal de Espada
+    assert.strictEqual(perico.getNombreCriollo('Espada', [2, 4, 5, 11, 10]), '¡El Perico! 🦜');
+    assert.strictEqual(perica.getNombreCriollo('Espada', [2, 4, 5, 11, 10]), '¡La Perica! 💃');
+
+    // Muestra 2 de Espada -> Regla del Alcahuete activa para el 12
+    assert.strictEqual(alcahuete.getNombreCriollo('Espada', [12, 4, 5, 11, 10]), '¡El Alcahuete! 👑');
+});
+
+// ----------------------------------------------------
+// 13. Casos Borde de Falta Envido
+// ----------------------------------------------------
+console.log('\n📊 13. Casos Borde de Falta Envido:');
+
+test('calcPuntosFalta: calcula exactamente en inicio, buenas y límite', () => {
+    const game = new GameStateManager();
+    game.config.limitePuntos = 30;
+
+    // Al inicio (0 a 0) -> Faltan 30
+    game.puntosPartido = { jugador: 0, oponente: 0 };
+    assert.strictEqual(game.calcPuntosFalta(), 30);
+
+    // En las buenas (24 a 18) -> Faltan 6 (30 - 24)
+    game.puntosPartido = { jugador: 24, oponente: 18 };
+    assert.strictEqual(game.calcPuntosFalta(), 6);
+
+    // En 29 puntos -> Falta 1 punto mínimo
+    game.puntosPartido = { jugador: 29, oponente: 28 };
+    assert.strictEqual(game.calcPuntosFalta(), 1);
+
+    // En empate a 30 -> Devuelve mínimo 1 punto seguro
+    game.puntosPartido = { jugador: 30, oponente: 30 };
+    assert.strictEqual(game.calcPuntosFalta(), 1);
+});
+
+// ----------------------------------------------------
+// 14. Exportación e Importación de Estado (Snapshot & Replay)
+// ----------------------------------------------------
+console.log('\n💾 14. Snapshot y Replay de Estado:');
+
+test('exportarEstado e importarEstado: serializa y restaura íntegramente la partida', () => {
+    const game1 = new GameStateManager(2);
+    game1.iniciarRonda();
+    game1.puntosPartido = { jugador: 14, oponente: 18 };
+    game1.apuestaTruco = { valor: 2, estado: 'truco', turnoCantar: 'oponente' };
+    game1.jugarCarta(game1.turnoSeat, 0); // Juega 1 carta
+
+    const snapshot = game1.exportarEstado();
+    assert.strictEqual(typeof snapshot, 'object');
+    assert.strictEqual(snapshot.puntosPartido.jugador, 14);
+    assert.strictEqual(snapshot.puntosPartido.oponente, 18);
+    assert.strictEqual(snapshot.apuestaTruco.estado, 'truco');
+
+    // Crear un nuevo motor y restaurar el snapshot
+    const game2 = new GameStateManager();
+    game2.importarEstado(snapshot);
+
+    assert.strictEqual(game2.idRonda, game1.idRonda);
+    assert.strictEqual(game2.puntosPartido.jugador, 14);
+    assert.strictEqual(game2.puntosPartido.oponente, 18);
+    assert.strictEqual(game2.apuestaTruco.estado, 'truco');
+    assert.strictEqual(game2.apuestaTruco.valor, 2);
+    assert.strictEqual(game2.paloMuestra, game1.paloMuestra);
+    assert.strictEqual(game2.piezasActivas.length, game1.piezasActivas.length);
+    assert.strictEqual(game2.manoJugador.length, game1.manoJugador.length);
+    assert.strictEqual(game2.manoOponente.length, game1.manoOponente.length);
+    assert.strictEqual(game2.mesaSlots[0]?.valor, game1.mesaSlots[0]?.valor);
 });
 
 // ----------------------------------------------------

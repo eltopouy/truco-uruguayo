@@ -4,6 +4,37 @@ Todas las mejoras notables y correcciones aplicadas al proyecto se documentan en
 
 ---
 
+## [v2.5.0] - 2026-08-24
+
+### 🤖 Motor de Inteligencia Artificial y Decisiones Tácticas
+- **Decisiones Centralizadas y Testeables (`GameStateManager`)**:
+  - Implementación de `decidirEnvido(tipoCanto, misPtos, diferenciaPuntos)` con soporte de estrategia táctica y modo kamikaze cuando el bot está en desventaja por más de 10 puntos.
+  - Implementación de `decidirTruco(poderMano, rivalEsMentiroso, sospechaRapidez)` con respuesta a Retruco/Vale 4 ('voto') ante manos de poder > 80 y ajuste de umbral ante rivales bluffeadores.
+  - Integración de los métodos de decisión en los controladores de eventos de Envido y Truco en `app.js`.
+
+### 💾 Snapshot y Replay de Partidas
+- **Serialización Completa del Motor (`exportarEstado` / `importarEstado`)**:
+  - Función de exportación de snapshots completos de la partida (manos, rondas, apuestas, perfil de rival, memorias y estado de mesa).
+  - Función de importación para restaurar instantáneamente el estado completo del motor, facilitando depuración, sincronización y futuras funciones de replay/deshacer jugada.
+
+### 🎮 Mejoras de Experiencia de Usuario (UX)
+- **Indicador de Pensamiento del Bot (`typing-indicator`)**:
+  - Visualización del estado de pensamiento del bot para todos los asientos en 1v1 y 2v2 (asientos 1, 2 y 3).
+  - Limpieza automática del indicador al finalizar el turno del bot o cuando le corresponde jugar al usuario en `renderJuego()`.
+- **Feed y Registro de Bazas Mejorado**:
+  - Notificación en el log de jugadas indicando exactamente qué carta y jugador ganó cada baza intermedia (ej. `⚔️ Rival se lleva la baza con As de Espadas`).
+
+### 📦 Calidad de Código y Arquitectura
+- **Constantes de Jerarquía y Documentación JSDoc**:
+  - Extracción de la matriz de poder estándar a la constante tipada y exportada `PODER_ESTANDAR`.
+  - Cobertura completa de JSDoc en todos los métodos públicos del motor (`Carta`, `GameStateManager`, `calcularPuntosEnvidoFlor`, `evaluarMesa`, `jugarCarta`).
+
+### 🧪 Suite de Pruebas Automatizadas Expandida
+- **41 Pruebas Unitarias en `test/truco.test.js`** (+12 nuevos tests) cubriendo IA táctica, evaluación de poder, perfil de rival, validación de jugadas, nombres criollos tradicionales, casos borde de falta envido y snapshot de estado.
+- **6 Pruebas E2E en Navegador (`test/browser.test.js`)** con Playwright, aislamiento de red con `page.route` y verificación de modales de señas, reglamento y configuración.
+
+---
+
 ## [v2.4.0] - 2026-08-18
 
 ### 🛡️ Resiliencia de Inicio y Tests E2E Pre-Deploy

@@ -9,7 +9,34 @@
 const PALOS = ['Espada', 'Basto', 'Oro', 'Copa'];
 const VALORES = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12]; // Sin 8 y 9
 
+/**
+ * Jerarquía de poder estándar para cartas comunes y matapuercos del Truco Uruguayo.
+ */
+const PODER_ESTANDAR = {
+    'Espada_1': 20, // El Macho
+    'Basto_1': 19,  // El Bastillo
+    'Espada_7': 18, // Siete Bravo
+    'Oro_7': 17,    // Siete Bello
+    'VAL_3': 16,    // Treses
+    'VAL_2': 15,    // Doses comunes
+    'As_Falso': 14, // Ases de Copa y Oro
+    'VAL_12': 13,   // Reyes (Negras)
+    'VAL_11': 12,   // Caballos (Negras)
+    'VAL_10': 11,   // Sotas (Negras)
+    'Siete_Falso': 10, // Sietes de Basto y Copa
+    'VAL_6': 9,     // Seises
+    'VAL_5': 8,     // Cincos comunes
+    'VAL_4': 7      // Cuatros comunes
+};
+
+/**
+ * Representa una carta individual de la baraja española con atributos dinámicos de ronda.
+ */
 class Carta {
+    /**
+     * @param {number} valor - Número de la carta (1..7, 10..12)
+     * @param {string} palo - Palo de la carta ('Espada', 'Basto', 'Oro', 'Copa')
+     */
     constructor(valor, palo) {
         this.valor = valor;
         this.palo = palo;
@@ -24,6 +51,12 @@ class Carta {
         return `${this.valor} de ${this.palo}`;
     }
 
+    /**
+     * Devuelve el nombre criollo tradicional de la carta según la muestra y piezas activas.
+     * @param {string} paloMuestra 
+     * @param {Array<number>} piezasActivas 
+     * @returns {string} Nombre criollo estilizado
+     */
     getNombreCriollo(paloMuestra, piezasActivas) {
         if (!paloMuestra || !piezasActivas) return this.toString();
         
@@ -326,26 +359,36 @@ class GameStateManager {
         });
     }
 
+    /**
+     * Devuelve el poder numérico estándar de una carta común o matapuerco (sin considerar piezas).
+     * @param {Carta} carta 
+     * @returns {number} Nivel de poder
+     */
     obtenerPoderEstandar(carta) {
         if (!carta) return 0;
         // Jerarquía normal del truco (sin pensar en piezas)
-        if (carta.valor === 1 && carta.palo === 'Espada') return 20;
-        if (carta.valor === 1 && carta.palo === 'Basto') return 19;
-        if (carta.valor === 7 && carta.palo === 'Espada') return 18;
-        if (carta.valor === 7 && carta.palo === 'Oro') return 17;
-        if (carta.valor === 3) return 16;
-        if (carta.valor === 2) return 15;
-        if (carta.valor === 1 && (carta.palo === 'Copa' || carta.palo === 'Oro')) return 14;
-        if (carta.valor === 12) return 13;
-        if (carta.valor === 11) return 12;
-        if (carta.valor === 10) return 11;
-        if (carta.valor === 7 && (carta.palo === 'Basto' || carta.palo === 'Copa')) return 10;
-        if (carta.valor === 6) return 9;
-        if (carta.valor === 5) return 8;
-        if (carta.valor === 4) return 7;
+        if (carta.valor === 1 && carta.palo === 'Espada') return PODER_ESTANDAR['Espada_1'];
+        if (carta.valor === 1 && carta.palo === 'Basto') return PODER_ESTANDAR['Basto_1'];
+        if (carta.valor === 7 && carta.palo === 'Espada') return PODER_ESTANDAR['Espada_7'];
+        if (carta.valor === 7 && carta.palo === 'Oro') return PODER_ESTANDAR['Oro_7'];
+        if (carta.valor === 3) return PODER_ESTANDAR['VAL_3'];
+        if (carta.valor === 2) return PODER_ESTANDAR['VAL_2'];
+        if (carta.valor === 1 && (carta.palo === 'Copa' || carta.palo === 'Oro')) return PODER_ESTANDAR['As_Falso'];
+        if (carta.valor === 12) return PODER_ESTANDAR['VAL_12'];
+        if (carta.valor === 11) return PODER_ESTANDAR['VAL_11'];
+        if (carta.valor === 10) return PODER_ESTANDAR['VAL_10'];
+        if (carta.valor === 7 && (carta.palo === 'Basto' || carta.palo === 'Copa')) return PODER_ESTANDAR['Siete_Falso'];
+        if (carta.valor === 6) return PODER_ESTANDAR['VAL_6'];
+        if (carta.valor === 5) return PODER_ESTANDAR['VAL_5'];
+        if (carta.valor === 4) return PODER_ESTANDAR['VAL_4'];
         return 0;
     }
 
+    /**
+     * Calcula los puntos de Envido y determina si una mano tiene Flor según el reglamento uruguayo.
+     * @param {Array<Carta>} mano - Las 3 cartas del jugador
+     * @returns {{tieneFlor: boolean, puntos: number, tipo: string}} Resultado del cálculo
+     */
     calcularPuntosEnvidoFlor(mano) {
         if (!mano || mano.length === 0) return { tieneFlor: false, puntos: 0, tipo: '-' };
         
@@ -433,6 +476,10 @@ class GameStateManager {
         return { tieneFlor, puntos: puntosEnvido, tipo: tipoCalculo };
     }
 
+    /**
+     * Calcula los puntos en juego de la Falta Envido (los que le faltan al puntero para ganar el partido).
+     * @returns {number} Puntos que otorga la falta envido
+     */
     calcPuntosFalta() {
         // En Uruguay: "Falta envido son los puntos que le faltan al equipo que va primero para terminar el partido".
         const maxPts = Math.max(this.puntosPartido.jugador, this.puntosPartido.oponente);
@@ -442,6 +489,12 @@ class GameStateManager {
 
     // --- LÓGICA DE JUEGO EN MESA (TRUCO) ---
 
+    /**
+     * Ejecuta la jugada de una carta a la mesa por parte de un asiento o jugador.
+     * @param {number|string} quienOrSeat - Número de asiento (0..3) o 'jugador'/'oponente'
+     * @param {number} indexCarta - Índice de la carta en la mano del jugador
+     * @returns {Carta|boolean} La carta jugada o false si no era su turno/inválido
+     */
     jugarCarta(quienOrSeat, indexCarta) {
         if (this.rondaTerminada) return false;
 
@@ -478,6 +531,10 @@ class GameStateManager {
         return carta;
     }
 
+    /**
+     * Evalúa las cartas jugadas en la mesa en la baza actual y determina el ganador de la baza o ronda.
+     * @returns {{ganadorMesa: string, ganadorRonda: string|null}|null} Resultado de la mesa
+     */
     evaluarMesa() {
         // Sincronizar mesa legacy si fue asignada directamente como propiedad
         if (this.mesa) {
@@ -586,6 +643,12 @@ class GameStateManager {
 
     // --- MÉTODOS DE APOYO PARA IA (SISTEMA DE DECISIÓN) ---
     
+    /**
+     * Evalúa el poder total combinado de una mano de cartas.
+     * Las piezas suman el doble para priorizar su peso estratégico.
+     * @param {Array<Carta>} mano 
+     * @returns {number} Poder total
+     */
     evaluarPoderMano(mano) {
         if (!mano || mano.length === 0) return 0;
         let total = 0;
@@ -597,6 +660,12 @@ class GameStateManager {
         return total;
     }
 
+    /**
+     * Selecciona la mejor carta de la mano para responder al poder de la carta más alta en mesa.
+     * @param {Array<Carta>} mano 
+     * @param {number} poderRival 
+     * @returns {Carta} Carta óptima a jugar
+     */
     obtenerMejorRespuesta(mano, poderRival) {
         let ganadoras = mano.filter(c => c && c.poder > poderRival);
         if (ganadoras.length > 0) {
@@ -607,6 +676,11 @@ class GameStateManager {
         return todas[0];
     }
 
+    /**
+     * Registra en memoria los puntos de Envido/Flor declarados por el rival para deducciones.
+     * @param {number} puntos 
+     * @param {boolean} tieneFlor 
+     */
     recordarPuntosRival(puntos, tieneFlor) {
         this.memoriaRival.puntosEnvido = puntos;
         this.memoriaRival.tieneFlor = tieneFlor;
@@ -618,6 +692,11 @@ class GameStateManager {
         else if (puntos > 30) this.memoriaRival.piezaProbable = 'fuerte';
     }
 
+    /**
+     * Registra eventos de juego del rival (cantos o cartas jugadas) para perfilar su estilo.
+     * @param {'canto'|'carta'} tipo 
+     * @param {any} data 
+     */
     registrarAccionRival(tipo, data) {
         if (tipo === 'canto') {
             this.perfilRival.totalCantos++;
@@ -628,15 +707,173 @@ class GameStateManager {
         }
     }
 
+    /**
+     * Analiza si el rival cantó con pocos puntos para detectar bluffs y ajustar agresividad.
+     * @param {number} puntosRival 
+     * @param {boolean} cantado 
+     */
     analizarBluff(puntosRival, cantado) {
         if (cantado && puntosRival < 20) {
             this.perfilRival.bluffsDetectados++;
             this.perfilRival.agresividad += 0.1;
         }
     }
+
+    /**
+     * Evalúa la decisión de respuesta de la IA ante un canto de Envido.
+     * @param {string} tipoCanto - 'envido', 'real_envido', 'falta_envido'
+     * @param {number} misPtos - Puntos de envido de la IA
+     * @param {number} diferenciaPuntos - Puntos que lleva de ventaja el humano (jugador - oponente)
+     * @returns {'no'|'si'|'real'} Decisión: 'no' (rechazar), 'si' (aceptar) o 'real' (revirar)
+     */
+    decidirEnvido(tipoCanto, misPtos, diferenciaPuntos = 0) {
+        const esKamikaze = diferenciaPuntos > 10;
+        if (tipoCanto === 'falta_envido') {
+            if (misPtos >= 30 || (esKamikaze && misPtos >= 24)) return 'si';
+            return 'no';
+        } else if (tipoCanto === 'real_envido') {
+            if (misPtos >= 32) return 'real';
+            if (misPtos >= 28 || (esKamikaze && misPtos >= 24)) return 'si';
+            return 'no';
+        } else {
+            if (misPtos >= 30) return 'real';
+            if (misPtos >= 25 || (esKamikaze && misPtos >= 20)) return 'si';
+            return 'no';
+        }
+    }
+
+    /**
+     * Evalúa la decisión de la IA ante un canto de Truco/Retruco/Vale 4.
+     * @param {number} poderMano - Poder acumulado de la mano
+     * @param {boolean} rivalEsMentiroso - Si se detectaron bluffs previos
+     * @param {number} sospechaRapidez - Puntos de umbral de sospecha por rapidez de respuesta
+     * @returns {'no'|'si'|'voto'} 'no' (irse al mazo), 'si' (quiero), 'voto' (cantar retruco/vale4)
+     */
+    decidirTruco(poderMano, rivalEsMentiroso = false, sospechaRapidez = 0) {
+        if (poderMano > 80) return 'voto';
+        const umbralAceptacion = rivalEsMentiroso ? (10 - sospechaRapidez) : (25 - sospechaRapidez);
+        if (poderMano > umbralAceptacion) return 'si';
+        return 'no';
+    }
+
+    /**
+     * Exporta una captura serializable completa del estado del juego.
+     * @returns {Object} Snapshot del estado
+     */
+    exportarEstado() {
+        return {
+            idRonda: this.idRonda,
+            numJugadores: this.numJugadores,
+            paloMuestra: this.paloMuestra,
+            muestra: this.muestra ? { valor: this.muestra.valor, palo: this.muestra.palo, esPieza: this.muestra.esPieza, poder: this.muestra.poder } : null,
+            piezasActivas: [...this.piezasActivas],
+            manoSeat: this.manoSeat,
+            turnoSeat: this.turnoSeat,
+            fase: this.fase,
+            envidoCantado: this.envidoCantado,
+            rondaTerminada: this.rondaTerminada,
+            partidoIniciado: this.partidoIniciado,
+            partidoFinalizado: this.partidoFinalizado,
+            puntosPartido: { ...this.puntosPartido },
+            apuestaTruco: { ...this.apuestaTruco },
+            manosGanadas: { ...this.manosGanadas },
+            registroBazas: [...this.registroBazas],
+            config: { ...this.config },
+            mesaSlots: this.mesaSlots.map(c => c ? { valor: c.valor, palo: c.palo, esPieza: c.esPieza, poder: c.poder, puntosEnvido: c.puntosEnvido } : null),
+            players: this.players.map(p => ({
+                id: p.id,
+                seat: p.seat,
+                team: p.team,
+                name: p.name,
+                isBot: p.isBot,
+                hand: (p.hand || []).map(c => ({ valor: c.valor, palo: c.palo, esPieza: c.esPieza, poder: c.poder, puntosEnvido: c.puntosEnvido })),
+                initialHand: (p.initialHand || []).map(c => ({ valor: c.valor, palo: c.palo, esPieza: c.esPieza, poder: c.poder, puntosEnvido: c.puntosEnvido }))
+            })),
+            perfilRival: { ...this.perfilRival },
+            memoriaRival: { ...this.memoriaRival },
+            memoriaPalos: { ...this.memoriaPalos }
+        };
+    }
+
+    /**
+     * Restaura el estado del motor a partir de un snapshot exportado.
+     * @param {Object} snapshot 
+     */
+    importarEstado(snapshot) {
+        if (!snapshot) return;
+        this.idRonda = snapshot.idRonda || 0;
+        this.numJugadores = snapshot.numJugadores || 2;
+        this.paloMuestra = snapshot.paloMuestra || null;
+        this.muestra = snapshot.muestra ? new Carta(snapshot.muestra.valor, snapshot.muestra.palo) : null;
+        if (this.muestra && snapshot.muestra) {
+            this.muestra.esPieza = !!snapshot.muestra.esPieza;
+            this.muestra.poder = snapshot.muestra.poder || 0;
+        }
+        this.piezasActivas = Array.isArray(snapshot.piezasActivas) ? [...snapshot.piezasActivas] : [];
+        this.manoSeat = snapshot.manoSeat ?? 0;
+        this.turnoSeat = snapshot.turnoSeat ?? 0;
+        this.fase = snapshot.fase || 'cantos';
+        this.envidoCantado = !!snapshot.envidoCantado;
+        this.rondaTerminada = !!snapshot.rondaTerminada;
+        this.partidoIniciado = !!snapshot.partidoIniciado;
+        this.partidoFinalizado = !!snapshot.partidoFinalizado;
+        this.puntosPartido = snapshot.puntosPartido ? { ...snapshot.puntosPartido } : { jugador: 0, oponente: 0 };
+        this.apuestaTruco = snapshot.apuestaTruco ? { ...snapshot.apuestaTruco } : { valor: 1, estado: 'nada', turnoCantar: 'ambos' };
+        this.manosGanadas = snapshot.manosGanadas ? { ...snapshot.manosGanadas } : { jugador: 0, oponente: 0, empates: 0 };
+        this.registroBazas = Array.isArray(snapshot.registroBazas) ? [...snapshot.registroBazas] : [];
+        this.config = snapshot.config ? { ...snapshot.config } : { limitePuntos: 30, nombreJugador: 'TÚ', nombreOponente: 'RIVAL', mostrarAyuda: true };
+        
+        this.mesaSlots = new Array(this.numJugadores).fill(null);
+        if (Array.isArray(snapshot.mesaSlots)) {
+            snapshot.mesaSlots.forEach((c, idx) => {
+                if (c && idx < this.numJugadores) {
+                    const card = new Carta(c.valor, c.palo);
+                    card.esPieza = !!c.esPieza;
+                    card.poder = c.poder || 0;
+                    card.puntosEnvido = c.puntosEnvido || 0;
+                    this.mesaSlots[idx] = card;
+                }
+            });
+        }
+        this.mesa = {
+            jugador: this.mesaSlots[0] || null,
+            oponente: this.mesaSlots[1] || null
+        };
+
+        if (Array.isArray(snapshot.players)) {
+            this.players = snapshot.players.map(p => {
+                const playerObj = {
+                    id: p.id,
+                    seat: p.seat,
+                    team: p.team,
+                    name: p.name,
+                    isBot: p.isBot,
+                    hand: (p.hand || []).map(c => {
+                        const card = new Carta(c.valor, c.palo);
+                        card.esPieza = !!c.esPieza;
+                        card.poder = c.poder || 0;
+                        card.puntosEnvido = c.puntosEnvido || 0;
+                        return card;
+                    }),
+                    initialHand: (p.initialHand || []).map(c => {
+                        const card = new Carta(c.valor, c.palo);
+                        card.esPieza = !!c.esPieza;
+                        card.poder = c.poder || 0;
+                        card.puntosEnvido = c.puntosEnvido || 0;
+                        return card;
+                    })
+                };
+                return playerObj;
+            });
+        }
+
+        if (snapshot.perfilRival) this.perfilRival = { ...snapshot.perfilRival };
+        if (snapshot.memoriaRival) this.memoriaRival = { ...snapshot.memoriaRival };
+        if (snapshot.memoriaPalos) this.memoriaPalos = { ...snapshot.memoriaPalos };
+    }
 }
 
 // Compatibilidad con entorno Node.js / Jest / Node test runner
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Carta, GameStateManager, PALOS, VALORES };
+    module.exports = { Carta, GameStateManager, PALOS, VALORES, PODER_ESTANDAR };
 }

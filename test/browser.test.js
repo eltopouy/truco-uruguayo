@@ -137,6 +137,8 @@ const assert = require('assert');
                 isMobile: true,
                 hasTouch: true
             });
+            // Interceptar peticiones de red externas para aislamiento 100% offline
+            await page.route('**/*.firebaseio.com/**', route => route.abort());
             await page.goto(filePath);
 
             // Clic en 1 vs 1 en móvil
@@ -159,6 +161,57 @@ const assert = require('assert');
             const firstCard = await page.waitForSelector('.player-hand .card');
             const cardBox = await firstCard.boundingBox();
             assert(cardBox.width >= 80, 'Las cartas en móvil deben tener un ancho adecuado (>= 80px)');
+            await page.close();
+        });
+
+        // TEST 5: Modales de Señas, Jerarquía y Reglamento
+        await runTest('Apertura y navegación fluida de Modales de Señas, Jerarquía y Reglamento', async () => {
+            const page = await browser.newPage();
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2000);
+
+            // Abrir modal de señas
+            const btnSenas = page.locator('#btn-senas');
+            if (await btnSenas.isVisible()) {
+                await btnSenas.click();
+                const modalSenas = page.locator('#modal-senas');
+                assert.strictEqual(await modalSenas.isVisible(), true, 'El modal de señas debe ser visible');
+
+                // Ir a Reglamento desde señas
+                const btnReglamento = page.locator('#btn-ver-reglamento');
+                if (await btnReglamento.isVisible()) {
+                    await btnReglamento.click();
+                    const modalReglamento = page.locator('#modal-reglamento');
+                    assert.strictEqual(await modalReglamento.isVisible(), true, 'El modal de reglamento debe ser visible');
+
+                    // Cerrar reglamento
+                    await page.click('#btn-cerrar-reglamento');
+                    assert.strictEqual(await modalReglamento.isVisible(), false, 'El modal de reglamento debe cerrarse');
+                }
+            }
+            await page.close();
+        });
+
+        // TEST 6: Modal de Configuración y Personalización
+        await runTest('Modal de Configuración permite ajustar nombres y límites', async () => {
+            const page = await browser.newPage();
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2000);
+
+            // Abrir configuración
+            await page.evaluate(() => window.abrirConfig && window.abrirConfig());
+            const modalConfig = page.locator('#modal-config');
+            assert.strictEqual(await modalConfig.isVisible(), true, 'El modal de config debe estar abierto');
+
+            // Modificar inputs
+            await page.fill('#config-name-yo', 'Capitán');
+            await page.evaluate(() => window.guardarConfig && window.guardarConfig());
+
+            assert.strictEqual(await modalConfig.isVisible(), false, 'El modal de config debe cerrarse al guardar');
+            const yoName = await page.textContent('#mini-name-yo');
+            assert.strictEqual(yoName, 'Capitán', 'El nombre del jugador debe haberse actualizado a Capitán');
             await page.close();
         });
 

@@ -664,6 +664,13 @@ function renderJuego() {
         }
     }
 
+    // Ocultar typing indicator en singleplayer si le toca al jugador o si terminó la ronda
+    const typingInd = document.getElementById('typing-indicator');
+    if (typingInd && (game.turnoSeat === 0 || game.rondaTerminada || !game.partidoIniciado)) {
+        typingInd.style.display = 'none';
+        typingInd.innerText = '';
+    }
+
     // --- LÓGICA DE TURNO CENTRALIZADA (Timer vs Rival Pensando) ---
     if (game.partidoIniciado && !game.partidoFinalizado && !game.rondaTerminada && window.modoJuego === 'multiplayer') {
         if (game.turno === 'jugador') {
@@ -794,18 +801,17 @@ async function verificarLimitesPartido() {
 }
 
 async function jugarBot() {
-
     const currentBot = game.players[game.turnoSeat];
     if (!currentBot || !currentBot.isBot || !currentBot.hand || currentBot.hand.length === 0) return;
     
-    // Espera sutil para ritmo orgánico
-    await botDelay();
-
     const indicator = document.getElementById('typing-indicator');
     if (indicator) {
         indicator.innerText = `${currentBot.name} está pensando...`;
         indicator.style.display = 'block';
     }
+
+    // Espera sutil para ritmo orgánico
+    await botDelay();
 
     const hand = currentBot.hand;
     const poderMano = game.evaluarPoderMano(hand);
@@ -891,6 +897,11 @@ async function jugarBot() {
     const indexElegido = hand.indexOf(cartaElegida);
     const cartaJugada = game.jugarCarta(currentBot.seat, indexElegido);
 
+    if (indicator) {
+        indicator.style.display = 'none';
+        indicator.innerText = '';
+    }
+
     if (cartaJugada) {
         const nombre = cartaJugada.getNombreCriollo(game.paloMuestra, game.piezasActivas);
         const emoji = currentBot.seat === 2 ? '🤝' : '🤖';
@@ -914,6 +925,21 @@ async function verificarResolucionMesa() {
 
     await new Promise(r => setTimeout(r, 800));
     
+    // Identificar carta más alta y jugador ganador de la baza antes de limpiar
+    let maxPoderBaza = -1;
+    let winningCardBaza = null;
+    let winningSeatBaza = -1;
+    for (let s = 0; s < game.numJugadores; s++) {
+        const c = game.mesaSlots[s];
+        if (c && c.poder > maxPoderBaza) {
+            maxPoderBaza = c.poder;
+            winningCardBaza = c;
+            winningSeatBaza = s;
+        }
+    }
+    const nombreGanadora = winningCardBaza ? winningCardBaza.getNombreCriollo(game.paloMuestra, game.piezasActivas) : '';
+    const jugadorGanador = (game.players && game.players[winningSeatBaza]) ? game.players[winningSeatBaza].name : (winningSeatBaza === 0 ? 'TÚ' : 'Rival');
+
     const result = game.evaluarMesa();
     renderJuego(); 
     
@@ -942,6 +968,13 @@ async function verificarResolucionMesa() {
         
         await window.manejarFinDeRondaUI();
     } else {
+        if (result && result.ganadorMesa !== 'empate' && winningCardBaza) {
+            const tipoLog = (result.ganadorMesa === 'jugador') ? 'propio' : 'rival';
+            logJugada(`⚔️ ${jugadorGanador} se lleva la baza con ${nombreGanadora}`, tipoLog);
+        } else if (result && result.ganadorMesa === 'empate') {
+            logJugada(`⚖️ ¡Baza parda (empate)!`, 'sistema');
+        }
+
         if (window.modoJuego === 'singleplayer' && game.turnoSeat !== 0 && !game.rondaTerminada) {
             setTimeout(async () => { await jugarBot(); }, 600);
         } else if (game.turnoSeat === 0 && !game.rondaTerminada) {
@@ -1001,23 +1034,9 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
     const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).puntos; // Puntos del BOT para evaluar respuesta
     const tusPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos; // Puntos del JUGADOR (correctos)
     
-    // Bot mejorado (Táctico): Evalúa si quiere, si se achica o si RE-VIRA
-    let botCantoRelleno = 'no'; // 'no', 'si', 'real'
-    
-    // ESTRATEGIA 17: KAMIKAZE FALTA (Si pierde por mucho, se la juega todas)
+    // Bot táctico: Evalúa respuesta centralizada mediante GameStateManager
     const diferencia = game.puntosPartido.jugador - game.puntosPartido.oponente;
-    const esKamikaze = diferencia > 10;
-
-    if (opt === 'falta_envido') {
-        if (misPtos >= 30 || (esKamikaze && misPtos >= 24)) botCantoRelleno = 'si';
-    } else if (opt === 'real_envido') {
-        if (misPtos >= 32) botCantoRelleno = 'real';
-        else if (misPtos >= 28 || (esKamikaze && misPtos >= 24)) botCantoRelleno = 'si';
-    } else {
-        // ESTRATEGIA 20: CANTO INVERSO (Baiting con Envido si es muy alto)
-        if (misPtos >= 30) botCantoRelleno = 'real';
-        else if (misPtos >= 25 || (esKamikaze && misPtos >= 20)) botCantoRelleno = 'si';
-    }
+    const botCantoRelleno = game.decidirEnvido(opt, misPtos, diferencia);
 
     if (botCantoRelleno === 'no') {
         await botDelay();
@@ -1184,9 +1203,7 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
     const rivalEsMentiroso = game.perfilRival.bluffsDetectados > 1;
     const sospechaRapidez = (window.lastPlayerPlayTime && (Date.now() - window.lastPlayerPlayTime < 1500)) ? 10 : 0;
 
-    let decision = 'no'; // 'no', 'si', 'voto'
-    if (poderMano > 80) decision = 'voto';
-    else if (poderMano > (rivalEsMentiroso ? (10 - sospechaRapidez) : (25 - sospechaRapidez))) decision = 'si'; 
+    const decision = game.decidirTruco(poderMano, rivalEsMentiroso, sospechaRapidez); 
 
     if (decision === 'voto' && sigNivel !== 'vale4') {
         const nextCanto = sigNivel === 'truco' ? 'RETRUCO' : (sigNivel === 'retruco' ? 'VALE 4' : '');
