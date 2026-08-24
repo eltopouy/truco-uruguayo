@@ -18,6 +18,11 @@ Todas las mejoras notables y correcciones aplicadas al proyecto se documentan en
   - Función de importación para restaurar instantáneamente el estado completo del motor, facilitando depuración, sincronización y futuras funciones de replay/deshacer jugada.
 
 ### 🎮 Mejoras de Experiencia de Usuario (UX)
+- **Rotación Dinámica del Mazo según Repartidor (2v2 y 1v1)**:
+  - El mazo y la muestra rotan fluidamente alrededor de la mesa ubicándose al lado del jugador al que le correspondió repartir las cartas en cada ronda (`deck-seat-0` al Sur, `deck-seat-1` al Este, `deck-seat-2` al Norte y `deck-seat-3` al Oeste).
+  - Adaptación responsiva tanto en escritorio como en dispositivos móviles, asegurando que la muestra siempre asome orientada hacia el centro del paño.
+- **Corrección de Revancha en Solitario (1 vs 1)**:
+  - Se solucionó el bloqueo visual donde al aceptar "otra partida" tras terminar un partido se mostraba el paño vacío sin menú de acciones ni reparto. Ahora `iniciarSolo()` resetea los estados y despliega limpiamente las cartas y el panel de voces.
 - **Indicador de Pensamiento del Bot (`typing-indicator`)**:
   - Visualización del estado de pensamiento del bot para todos los asientos en 1v1 y 2v2 (asientos 1, 2 y 3).
   - Limpieza automática del indicador al finalizar el turno del bot o cuando le corresponde jugar al usuario en `renderJuego()`.

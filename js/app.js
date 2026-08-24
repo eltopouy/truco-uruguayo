@@ -326,7 +326,11 @@ window.animarReparto = async function() {
         if (deckArea) {
             deckArea.innerHTML = '';
             deckArea.className = 'deck-area';
-            deckArea.classList.add((game.manoDelPartido === 'oponente' || game.manoSeat !== 0) ? 'deck-mi-derecha' : 'deck-su-derecha');
+            
+            const dealerSeat = (game.manoSeat + game.numJugadores - 1) % game.numJugadores;
+            deckArea.classList.add(`deck-seat-${dealerSeat}`);
+            if (dealerSeat === 0) deckArea.classList.add('deck-mi-derecha');
+            else if (dealerSeat === 2 || (game.numJugadores === 2 && dealerSeat === 1)) deckArea.classList.add('deck-su-derecha');
             
             // El mazo visual (pixel art dorso)
             const mazoVisual = document.createElement('div');
@@ -521,11 +525,10 @@ function renderJuego() {
         deckArea.innerHTML = '';
         deckArea.className = 'deck-area';
         
-        if (game.manoDelPartido === 'oponente' || game.manoSeat !== 0) {
-            deckArea.classList.add('deck-mi-derecha');
-        } else {
-            deckArea.classList.add('deck-su-derecha');
-        }
+        const dealerSeat = (game.manoSeat + game.numJugadores - 1) % game.numJugadores;
+        deckArea.classList.add(`deck-seat-${dealerSeat}`);
+        if (dealerSeat === 0) deckArea.classList.add('deck-mi-derecha');
+        else if (dealerSeat === 2 || (game.numJugadores === 2 && dealerSeat === 1)) deckArea.classList.add('deck-su-derecha');
 
         if (game.muestra) {
             const muestraDOM = crearCartaDOM(game.muestra, false, true);
@@ -787,10 +790,10 @@ async function verificarLimitesPartido() {
             if (revancha) {
                 game.puntosPartido.jugador = 0;
                 game.puntosPartido.oponente = 0;
-                game.partidoIniciado = false; 
-                document.getElementById('btn-repartir').style.display = 'none';
-                logJugada("🔄 Comenzando nuevo partido...", "sistema");
-                renderJuego();
+                game.partidoFinalizado = false;
+                const num = game.numJugadores || 2;
+                logJugada("🔄 Comenzando nuevo partido de revancha...", "sistema");
+                window.iniciarSolo(num);
             } else {
                 location.reload();
             }

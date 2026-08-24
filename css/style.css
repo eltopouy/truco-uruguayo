@@ -185,31 +185,57 @@ body, html {
     z-index: 10;
 }
 
-/* Disposición del mazo: Se define dinámicamente con clases (.deck-mi-derecha / .deck-su-derecha) */
+/* Disposición del mazo: Se define dinámicamente con clases (.deck-seat-0..3 / .deck-mi-derecha / .deck-su-derecha) */
 .deck-area {
     display: flex;
     align-items: center;
     transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
     z-index: 4000; 
-    position: relative;
+    position: absolute;
 }
 
-/* El mazo a la derecha del Jugador (Abajo Derecha) */
-.deck-mi-derecha {
+/* El mazo al lado del Jugador Sur (Asiento 0 - Abajo Derecha) */
+.deck-seat-0, .deck-mi-derecha {
     position: absolute;
-    bottom: 25%;
-    right: 15%;
+    bottom: 22%;
+    right: 16%;
+    top: auto;
+    left: auto;
     transform: scale(0.85);
-    z-index: 1;
+    z-index: 2500;
 }
 
-/* El mazo a la derecha del Rival (Arriba Izquierda) */
-.deck-su-derecha {
+/* El mazo al lado del Rival Este (Asiento 1 - Arriba/Centro Derecha) */
+.deck-seat-1 {
     position: absolute;
-    top: 25%;
-    left: 15%;
+    top: 32%;
+    right: 16%;
+    bottom: auto;
+    left: auto;
     transform: scale(0.85);
-    z-index: 1;
+    z-index: 2500;
+}
+
+/* El mazo al lado del Compañero Norte (Asiento 2 - Arriba Izquierda) */
+.deck-seat-2, .deck-su-derecha {
+    position: absolute;
+    top: 22%;
+    left: 16%;
+    bottom: auto;
+    right: auto;
+    transform: scale(0.85);
+    z-index: 2500;
+}
+
+/* El mazo al lado del Rival Oeste (Asiento 3 - Abajo/Centro Izquierda) */
+.deck-seat-3 {
+    position: absolute;
+    bottom: 28%;
+    left: 16%;
+    top: auto;
+    right: auto;
+    transform: scale(0.85);
+    z-index: 2500;
 }
 
 .card-deck {
@@ -236,14 +262,18 @@ body, html {
 }
 
 /* La Muestra asoma hacia el centro de la mesa dependiendo de dónde esté el mazo */
+.deck-seat-0 .card-muestra,
+.deck-seat-1 .card-muestra,
 .deck-mi-derecha .card-muestra {
-    left: -70px;  /* Más hacia la izquierda para verse mejor */
+    left: -70px;  /* Asoma hacia la izquierda (centro) */
     top: 5px;
     transform: rotate(-22deg);
 }
 
+.deck-seat-2 .card-muestra,
+.deck-seat-3 .card-muestra,
 .deck-su-derecha .card-muestra {
-    left: 70px;  /* Más hacia la derecha para verse mejor */
+    left: 70px;  /* Asoma hacia la derecha (centro) */
     top: 5px;
     transform: rotate(22deg);
 }
@@ -685,25 +715,42 @@ body, html {
     /* Mazo y Muestra: Tamaño claro y legible a los lados */
     .deck-area {
         position: absolute !important;
-        top: 45% !important;
         z-index: 2500 !important;
     }
 
-    .deck-mi-derecha {
+    .deck-seat-0, .deck-mi-derecha {
         bottom: auto !important;
-        top: 45% !important;
+        top: 60% !important;
         right: 8px !important;
         left: auto !important;
-        transform: translateY(-50%) scale(0.82) !important;
+        transform: translateY(-50%) scale(0.78) !important;
         transform-origin: right center !important;
     }
 
-    .deck-su-derecha {
+    .deck-seat-1 {
         bottom: auto !important;
-        top: 45% !important;
+        top: 36% !important;
+        right: 8px !important;
+        left: auto !important;
+        transform: translateY(-50%) scale(0.78) !important;
+        transform-origin: right center !important;
+    }
+
+    .deck-seat-2, .deck-su-derecha {
+        bottom: auto !important;
+        top: 22% !important;
         left: 8px !important;
         right: auto !important;
-        transform: translateY(-50%) scale(0.82) !important;
+        transform: translateY(-50%) scale(0.78) !important;
+        transform-origin: left center !important;
+    }
+
+    .deck-seat-3 {
+        bottom: auto !important;
+        top: 48% !important;
+        left: 8px !important;
+        right: auto !important;
+        transform: translateY(-50%) scale(0.78) !important;
         transform-origin: left center !important;
     }
 

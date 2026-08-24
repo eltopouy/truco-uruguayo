@@ -245,6 +245,63 @@ testE2E('Invitado debe recibir sus cartas en el asiento 0 (abajo) y las del riva
     assert.strictEqual(estadoInvitado.puntosPartido.oponente, 6);
 });
 
+// ----------------------------------------------------
+// 7. Rotación del Mazo en 4P y Revancha 1P
+// ----------------------------------------------------
+console.log('\n🔄 7. Rotación del Mazo en 4P y Flujo de Revancha:');
+
+testE2E('Rotación del Mazo en 4P: El repartidor rota en cada ronda (3 -> 0 -> 1 -> 2)', () => {
+    const game = new GameStateManager(4);
+    
+    // Ronda 1: manoSeat = 0 -> dealerSeat = (0 + 4 - 1) % 4 = 3 (Rival Izquierda repartió)
+    game.iniciarRonda();
+    assert.strictEqual(game.manoSeat, 0);
+    const dealerRonda1 = (game.manoSeat + 4 - 1) % 4;
+    assert.strictEqual(dealerRonda1, 3);
+
+    // Ronda 2: manoSeat = 1 -> dealerSeat = 0 (Jugador Sur repartió)
+    game.iniciarRonda();
+    assert.strictEqual(game.manoSeat, 1);
+    const dealerRonda2 = (game.manoSeat + 4 - 1) % 4;
+    assert.strictEqual(dealerRonda2, 0);
+
+    // Ronda 3: manoSeat = 2 -> dealerSeat = 1 (Rival Derecha repartió)
+    game.iniciarRonda();
+    assert.strictEqual(game.manoSeat, 2);
+    const dealerRonda3 = (game.manoSeat + 4 - 1) % 4;
+    assert.strictEqual(dealerRonda3, 1);
+
+    // Ronda 4: manoSeat = 3 -> dealerSeat = 2 (Compañero repartió)
+    game.iniciarRonda();
+    assert.strictEqual(game.manoSeat, 3);
+    const dealerRonda4 = (game.manoSeat + 4 - 1) % 4;
+    assert.strictEqual(dealerRonda4, 2);
+});
+
+testE2E('Flujo de Revancha en Solitario: Reinicia estado de partidoFinalizado y activa partida nueva', () => {
+    const game = new GameStateManager(2);
+    game.iniciarRonda();
+    
+    // Simular que terminó el partido
+    game.puntosPartido.jugador = 30;
+    game.partidoFinalizado = true;
+    assert.strictEqual(game.partidoFinalizado, true);
+
+    // Al pedir revancha:
+    game.puntosPartido.jugador = 0;
+    game.puntosPartido.oponente = 0;
+    game.partidoFinalizado = false;
+    game.iniciarRonda();
+
+    assert.strictEqual(game.puntosPartido.jugador, 0);
+    assert.strictEqual(game.puntosPartido.oponente, 0);
+    assert.strictEqual(game.partidoFinalizado, false);
+    assert.strictEqual(game.partidoIniciado, true);
+    assert.strictEqual(game.manoJugador.length, 3);
+    assert.strictEqual(game.manoOponente.length, 3);
+    assert.notStrictEqual(game.muestra, null);
+});
+
 console.log('\n======================================================');
 console.log(`🏁 RESULTADO E2E: ${passedE2E}/${totalE2E} tests pasados con éxito.`);
 console.log('======================================================\n');
