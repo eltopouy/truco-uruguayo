@@ -656,12 +656,13 @@ async function procesarAccionRed(snap) {
     // ... resto del switch de acciones adaptado ...
     else if (t === 'canto') {
         window.resetTimer();
-        if (d.tipo === 'envido') {
+        if (d.tipo === 'envido' || d.tipo === 'real_envido' || d.tipo === 'falta_envido') {
             game.envidoCantado = true;
+            if (window.audio) window.audio.play(d.tipo === 'real_envido' ? 'real_envido' : (d.tipo === 'falta_envido' ? 'falta_envido' : 'envido'));
             procesarCantoEnvidoRed(d);
         }
         else if (d.tipo === 'truco') {
-            window.audio.play('truco');
+            if (window.audio) window.audio.play('truco');
             procesarCantoTrucoRed(d);
         }
     }
@@ -757,8 +758,18 @@ async function procesarAccionRed(snap) {
 
 // Helpers para modularizar el proceso de red
 async function procesarCantoEnvidoRed(d) {
+    const tipoCanto = d.tipo || 'envido';
+    const cantosNombres = {
+        'envido': '¡Envido!',
+        'real_envido': '¡Real Envido!',
+        'falta_envido': '¡Falta Envido!'
+    };
+    const nombreCanto = cantosNombres[tipoCanto] || '¡Envido!';
+    const ptsFalta = typeof game.calcPuntosFalta === 'function' ? game.calcPuntosFalta() : 15;
+    const ptsBase = d.valor_pts || (tipoCanto === 'real_envido' ? 3 : (tipoCanto === 'falta_envido' ? ptsFalta : 2));
+
     if (game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).tieneFlor) {
-        await window.UI.alert("🌐 Rival cantó Envido, pero tú tienes ¡FLOR!<br>(Se anula el Envido y cobras 3 pts)", "Salto de Flor");
+        await window.UI.alert(`🌐 Rival cantó ${nombreCanto}, pero tú tienes ¡FLOR!<br>(Se anula el Envido y cobras 3 pts)`, "Salto de Flor");
         enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'tengo_flor' });
         if (miRol === 'creador') {
             game.puntosPartido.jugador += 3;
@@ -767,23 +778,33 @@ async function procesarCantoEnvidoRed(d) {
         }
     } else {
         const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos;
-        const accionOpt = await window.UI.options(`Rival: ¡Envido!<br>Tus puntos: ${misPtos}`, [
+        
+        const opciones = [
             { label: "QUIERO", value: "1", success: true, primary: true },
-            { label: "NO QUIERO", value: "2", neutral: true },
-            { label: "Real Envido", value: "4" },
-            { label: "Falta Envido", value: "5", danger: true }
-        ]);
+            { label: "NO QUIERO", value: "2", neutral: true }
+        ];
+
+        if (tipoCanto === 'envido') {
+            opciones.push({ label: "Real Envido (3 pts más)", value: "4" });
+            opciones.push({ label: `Falta Envido (${ptsFalta} pts)`, value: "5", danger: true });
+        } else if (tipoCanto === 'real_envido') {
+            opciones.push({ label: `Falta Envido (${ptsFalta} pts)`, value: "5", danger: true });
+        }
+
+        const accionOpt = await window.UI.options(`Rival: ${nombreCanto}<br>Tus puntos: ${misPtos}`, opciones);
         
         if (accionOpt === '1') {
-            enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'quiero', susPtos: misPtos, apuestaFinal: 2 });
-            resolverEnvidoRed(misPtos, d.pts, 2);
+            enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'quiero', susPtos: misPtos, apuestaFinal: ptsBase });
+            resolverEnvidoRed(misPtos, d.pts, ptsBase);
         } else if (accionOpt === '2') {
-            enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'no_quiero', ptsRival: 1 });
-            if (miRol === 'creador') { game.puntosPartido.oponente += 1; game.fase = 'truco'; sincronizarEstadoMotor(); }
+            const ptsNoQuiero = 1;
+            enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'no_quiero', ptsRival: ptsNoQuiero });
+            if (miRol === 'creador') { game.puntosPartido.oponente += ptsNoQuiero; game.fase = 'truco'; sincronizarEstadoMotor(); }
         } else {
             // Envío subida...
-            let nuevaApue = accionOpt === '4' ? 5 : 30; // Simplificado para red
-            enviarAccionFirebase('canto_subida', { tipo: 'envido', canto: accionOpt === '4' ? 'Real Envido' : 'Falta Envido', apuestaTotal: nuevaApue, misPtos: misPtos, apuestaPrevia: 2 });
+            const nuevaApue = accionOpt === '4' ? (ptsBase + 3) : ptsFalta;
+            const labelSuba = accionOpt === '4' ? 'Real Envido' : 'Falta Envido';
+            enviarAccionFirebase('canto_subida', { tipo: 'envido', canto: labelSuba, apuestaTotal: nuevaApue, misPtos: misPtos, apuestaPrevia: ptsBase });
         }
     }
     renderJuego();
@@ -822,6 +843,7 @@ function detenerHeartbeat() {
 function reiniciarPartidoLocal() {
     game.puntosPartido.jugador = 0;
     game.puntosPartido.oponente = 0;
+    game.partidoFinalizado = false;
     game.partidoIniciado = false;
     if (miRol === 'creador') {
         game.iniciarRonda();

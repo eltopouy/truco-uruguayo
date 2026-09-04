@@ -4,6 +4,29 @@ Todas las mejoras notables y correcciones aplicadas al proyecto se documentan en
 
 ---
 
+## [v2.5.1] - 2026-09-04
+
+### 🐛 Corrección Exhaustiva de Bugs y Estabilidad
+
+- **Multijugador Online (Firebase)**:
+  - **Soporte Completo de Cantos de Envido por Red**: Se corrigió la pérdida silenciosa de paquetes en Firebase cuando se cantaba `real_envido` o `falta_envido`. Ahora ambos jugadores reciben las opciones dinámicas correspondientes, la alerta con el nombre tradicional del canto y el cálculo exacto de puntos mediante `calcPuntosFalta()`.
+  - **Reinicio de Partida / Revancha en Multijugador**: Se aseguró el reset de `partidoFinalizado = false` en `reiniciarPartidoLocal()` para que el invitado no quede bloqueado con la interfaz congelada tras aceptar la revancha.
+  - **Animación de Reparto para el Creador**: Al pulsar "Repartir" en multijugador, el anfitrión ahora también ejecuta la animación fluida de reparto (`animarReparto()`) al igual que el invitado.
+
+- **Motor de Juego (`GameStateManager`)**:
+  - **Cálculo de Mano por Equipos en 4 Jugadores**: Se corrigió el getter `manoDelPartido` para determinar el equipo según el asiento (`manoSeat % 2` o `players[manoSeat].team`), resolviendo correctamente a `'jugador'` cuando el compañero (Asiento 2) es la Mano.
+
+- **Lógica de Partida y Táctica IA (`app.js`)**:
+  - **Derecho a Subir Apuesta tras Aceptar Retruco**: Se corrigió el traspaso de turno de canto cuando el usuario acepta el Retruco del bot (`quiereSuba`). Ahora el jugador retiene el turno (`turnoCantar = 'jugador'`) para poder cantar "Vale 4", y el botón se actualiza visualmente a *"Gritar Vale 4"*.
+  - **Táctica Inteligente del Bot al Abrir Baza**: Si la primera baza terminó en empate (parda) o si el bot perdió la primera baza, al liderar la segunda baza ya no tira automáticamente su peor carta, sino que juega su carta de mayor poder para asegurar la ronda o mantenerse con vida.
+  - **Protección contra Clics en Reparto y Resolución**: Se añadieron protecciones de concurrencia en `jugarUI` para evitar tiros de cartas mientras se ejecuta la animación de reparto (`isAnimatingDeal`) o la resolución de baza (`isResolvingTrick`).
+  - **Bloqueo de Envido con Flor**: Se añadió validación defensiva en el botón de Envido para impedir que se cante Envido si el jugador tiene Flor.
+
+- **Sistema de Modales y Promesas (`uimanager.js`)**:
+  - **Limpieza de Promesas Pendientes (`_cleanupPending`)**: Se implementó cancelación limpia y resolución preventiva de modales encolados o superpuestos para evitar que promesas asíncronas queden esperando indefinidamente por 25 segundos ante eventos concurrentes.
+
+---
+
 ## [v2.5.0] - 2026-08-24
 
 ### 🤖 Motor de Inteligencia Artificial y Decisiones Tácticas

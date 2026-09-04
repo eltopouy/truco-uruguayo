@@ -203,7 +203,8 @@ class GameStateManager {
     }
 
     get manoDelPartido() {
-        return this.manoSeat === 0 ? 'jugador' : 'oponente';
+        const team = (this.players && this.players[this.manoSeat]) ? this.players[this.manoSeat].team : (this.manoSeat % 2);
+        return team === 0 ? 'jugador' : 'oponente';
     }
     set manoDelPartido(val) {
         if (typeof val === 'number') {

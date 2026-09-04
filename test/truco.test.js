@@ -839,6 +839,61 @@ test('exportarEstado e importarEstado: serializa y restaura íntegramente la par
 });
 
 // ----------------------------------------------------
+// 15. Equipos y Mano en 4 Jugadores
+// ----------------------------------------------------
+console.log('\n👥 15. Equipos y Mano en 4 Jugadores:');
+
+test('manoDelPartido en 4P resuelve correctamente el equipo de cada asiento', () => {
+    const game = new GameStateManager(4);
+    
+    // Seat 0: TÚ (Team 0)
+    game.manoSeat = 0;
+    assert.strictEqual(game.manoDelPartido, 'jugador');
+
+    // Seat 1: Rival Derecha (Team 1)
+    game.manoSeat = 1;
+    assert.strictEqual(game.manoDelPartido, 'oponente');
+
+    // Seat 2: Compañero (Team 0) -> Debe ser 'jugador' (nuestro equipo)
+    game.manoSeat = 2;
+    assert.strictEqual(game.manoDelPartido, 'jugador');
+
+    // Seat 3: Rival Izquierda (Team 1)
+    game.manoSeat = 3;
+    assert.strictEqual(game.manoDelPartido, 'oponente');
+});
+
+// ----------------------------------------------------
+// 16. Robustez de Modales UI
+// ----------------------------------------------------
+console.log('\n🖥️ 16. Robustez de Modales UI:');
+
+test('UIManager._cleanupPending resuelve promesas previas para evitar bloqueos', async () => {
+    // Simulación del entorno UI en Node
+    let resolvedValue = null;
+    const fakeUI = {
+        _currentResolver: (val) => { resolvedValue = val; },
+        _pendingTimeout: setTimeout(() => {}, 10000),
+        _cleanupPending: function(defaultVal) {
+            if (this._pendingTimeout) {
+                clearTimeout(this._pendingTimeout);
+                this._pendingTimeout = null;
+            }
+            if (typeof this._currentResolver === 'function') {
+                const res = this._currentResolver;
+                this._currentResolver = null;
+                res(defaultVal);
+            }
+        }
+    };
+
+    fakeUI._cleanupPending(false);
+    assert.strictEqual(resolvedValue, false);
+    assert.strictEqual(fakeUI._pendingTimeout, null);
+    assert.strictEqual(fakeUI._currentResolver, null);
+});
+
+// ----------------------------------------------------
 // Resumen
 // ----------------------------------------------------
 console.log('\n========================================');

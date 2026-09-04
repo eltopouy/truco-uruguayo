@@ -212,15 +212,29 @@ window.UI = {
         document.body.classList.remove('modal-active');
     },
 
+    _cleanupPending: function(defaultVal) {
+        if (this._pendingTimeout) {
+            clearTimeout(this._pendingTimeout);
+            this._pendingTimeout = null;
+        }
+        if (typeof this._currentResolver === 'function') {
+            const res = this._currentResolver;
+            this._currentResolver = null;
+            try { res(defaultVal); } catch(e) {}
+        }
+    },
+
     alert: function(msg, title = "Atención") {
+        this._cleanupPending(undefined);
         return new Promise((resolve) => {
+            this._currentResolver = resolve;
             this._show(title, msg);
             
             // Auto descartar alerta luego de 10 segundos
-            const timeoutHandler = setTimeout(() => {
+            this._pendingTimeout = setTimeout(() => {
                 if (this.modal.style.display === 'block' && this.title.innerText === title) {
                     this._hide();
-                    resolve();
+                    this._cleanupPending(undefined);
                 }
             }, 10000);
 
@@ -228,23 +242,24 @@ window.UI = {
             btn.className = 'btn-primary';
             btn.innerText = 'Entendido';
             btn.onclick = () => {
-                clearTimeout(timeoutHandler);
                 this._hide();
-                resolve();
+                this._cleanupPending(undefined);
             };
             this.buttonsContainer.appendChild(btn);
         });
     },
 
     confirm: function(msg, title = "Decisión") {
+        this._cleanupPending(false);
         return new Promise((resolve) => {
+            this._currentResolver = resolve;
             this._show(title, msg);
             
             // Timeout preventivo antibloqueo (25 segundos)
-            const timeoutHandler = setTimeout(() => {
+            this._pendingTimeout = setTimeout(() => {
                 if (this.modal.style.display === 'block' && this.title.innerText === title) {
                     this._hide();
-                    resolve(false); // Automáticamente "Cancela/No Quiero"
+                    this._cleanupPending(false); // Automáticamente "Cancela/No Quiero"
                 }
             }, 25000);
             
@@ -259,14 +274,12 @@ window.UI = {
             btnNo.innerText = 'Cancelar / No Quiero';
 
             btnYes.onclick = () => {
-                clearTimeout(timeoutHandler);
                 this._hide();
-                resolve(true);
+                this._cleanupPending(true);
             };
             btnNo.onclick = () => {
-                clearTimeout(timeoutHandler);
                 this._hide();
-                resolve(false);
+                this._cleanupPending(false);
             };
 
             this.buttonsContainer.appendChild(btnYes);
@@ -275,15 +288,18 @@ window.UI = {
     },
 
     options: function(msg, optionsList, title = "Opciones") {
+        const defaultSafe = (optionsList && optionsList.find(o => o.neutral || o.danger)) ? (optionsList.find(o => o.neutral || o.danger).value) : (optionsList && optionsList[optionsList.length - 1] ? optionsList[optionsList.length - 1].value : null);
+        this._cleanupPending(defaultSafe);
         return new Promise((resolve) => {
+            this._currentResolver = resolve;
             this._show(title, msg);
             
             // Timeout preventivo (25 segundos)
-            const timeoutHandler = setTimeout(() => {
+            this._pendingTimeout = setTimeout(() => {
                 if (this.modal.style.display === 'block' && this.title.innerText === title) {
                     this._hide();
                     const safeOpt = optionsList.find(o => o.neutral || o.danger) || optionsList[optionsList.length - 1];
-                    resolve(safeOpt.value);
+                    this._cleanupPending(safeOpt ? safeOpt.value : defaultSafe);
                 }
             }, 25000);
 
@@ -306,9 +322,8 @@ window.UI = {
 
                 btn.innerText = opt.label;
                 btn.onclick = () => {
-                    clearTimeout(timeoutHandler);
                     this._hide();
-                    resolve(opt.value);
+                    this._cleanupPending(opt.value);
                 };
                 this.buttonsContainer.appendChild(btn);
             });

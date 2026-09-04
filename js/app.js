@@ -712,7 +712,7 @@ window.startSyncTimeout = function(ms = 4000) {
 };
 
 async function jugarUI(indexCarta) {
-    if (game.turnoSeat !== 0 || game.rondaTerminada || window.isAwaitingStateSync) return;
+    if (game.turnoSeat !== 0 || game.rondaTerminada || window.isAwaitingStateSync || window.isAnimatingDeal || window.isResolvingTrick) return;
     
     window.lastPlayerPlayTime = Date.now();
     const c = game.players[0]?.hand[indexCarta];
@@ -894,7 +894,15 @@ async function jugarBot() {
         cartaElegida = game.obtenerMejorRespuesta(hand, highestPowerOnTable);
     } else {
         const sorted = [...hand].sort((a, b) => b.poder - a.poder);
-        cartaElegida = sorted[sorted.length - 1] || sorted[0];
+        // Táctica de apertura: si empataron en primera (el que gana la 2da gana el partido),
+        // o si el bot perdió la primera baza (debe ganar sí o sí para no perder), sale con su carta más alta
+        const debeAsegurarBaza = (game.registroBazas[0] === 'empate') || 
+            (game.manosGanadas.jugador === 1 && game.manosGanadas.oponente === 0);
+        if (debeAsegurarBaza) {
+            cartaElegida = sorted[0]; // Máximo poder para asegurar
+        } else {
+            cartaElegida = sorted[sorted.length - 1] || sorted[0];
+        }
     }
 
     const indexElegido = hand.indexOf(cartaElegida);
@@ -925,8 +933,11 @@ async function jugarBot() {
 async function verificarResolucionMesa() {
     const cartasJugadas = game.mesaSlots.filter(c => c !== null);
     if (cartasJugadas.length < game.numJugadores) return;
+    if (window.isResolvingTrick) return;
+    window.isResolvingTrick = true;
 
-    await new Promise(r => setTimeout(r, 800));
+    try {
+        await new Promise(r => setTimeout(r, 800));
     
     // Identificar carta más alta y jugador ganador de la baza antes de limpiar
     let maxPoderBaza = -1;
@@ -984,11 +995,20 @@ async function verificarResolucionMesa() {
             window.vibrateAction(100);
         }
     }
+    } finally {
+        window.isResolvingTrick = false;
+    }
 }
 
 document.getElementById('btn-envido').addEventListener('click', async () => {
     if (game.manoJugador.length !== 3 || game.envidoCantado || window.isAwaitingStateSync) return;
     
+    const calcFlor = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
+    if (calcFlor.tieneFlor) {
+        await window.UI.alert("🌸 ¡Tenés Flor! En el Truco Uruguayo la Flor es obligatoria y anula el Envido.", "Flor Obligatoria");
+        return;
+    }
+
     if (game.turno !== 'jugador') {
         window.UI.alert("¡Pará un cacho! Le toca hablar al rival. Esperá a que hable o tire una carta para mandarle tu Envido.", "Aguardá tu turno");
         return;
@@ -1221,7 +1241,15 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
             window.shakeCards();
             game.apuestaTruco.valor = nextVal;
             game.apuestaTruco.estado = nextTarget;
-            game.apuestaTruco.turnoCantar = 'oponente'; 
+            game.apuestaTruco.turnoCantar = 'jugador'; 
+            
+            const btn = document.getElementById('btn-truco');
+            if (btn) {
+                if (nextTarget === 'retruco') btn.innerText = "Gritar Vale 4";
+                else if (nextTarget === 'vale4') btn.innerText = "Vale 4 en Juego";
+            }
+            game.fase = 'truco';
+            renderJuego();
         } else {
             game.puntosPartido.oponente += (nextVal - 1);
             game.rondaTerminada = true;
@@ -1239,8 +1267,11 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
         game.apuestaTruco.turnoCantar = 'oponente'; 
         
         const btn = document.getElementById('btn-truco');
-        if(sigNivel === 'truco') btn.innerText = "Gritar Retruco";
-        if(sigNivel === 'retruco') btn.innerText = "Gritar Vale 4";
+        if (btn) {
+            if (sigNivel === 'truco') btn.innerText = "Gritar Retruco";
+            else if (sigNivel === 'retruco') btn.innerText = "Gritar Vale 4";
+            else if (sigNivel === 'vale4') btn.innerText = "Vale 4 en Juego";
+        }
         
         game.fase = 'truco'; 
         renderJuego();
@@ -1310,7 +1341,7 @@ document.getElementById('btn-repartir').addEventListener('click', () => {
         } else {
             game.iniciarRonda();
             sincronizarEstadoMotor();
-            renderJuego();
+            window.animarReparto();
         }
     } else {
         // Singleplayer: la animación de reparto maneja todo el flujo
