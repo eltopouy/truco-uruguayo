@@ -116,6 +116,7 @@ class GameStateManager {
         
         this.turnoSeat = 0; // Asiento al que le toca jugar (0..3)
         this.manoSeat = 0;  // Asiento que es Mano en la ronda (0..3)
+        this.bazaStarterSeat = 0; // Asiento que inició la baza actual (vuelve a salir en parda)
         this.rondaTerminada = false;
         
         // Partido a 30 o 40 puntos
@@ -270,6 +271,7 @@ class GameStateManager {
         this.registroBazas = [];
         this.rondaTerminada = false;
         this.turnoSeat = this.manoSeat; // Empieza el Mano
+        this.bazaStarterSeat = this.manoSeat;
         this.fase = 'cantos';
         this.envidoCantado = false;
         
@@ -578,15 +580,17 @@ class GameStateManager {
             this.manosGanadas.jugador++;
             // El jugador que tiró la carta más alta sale jugando en la próxima baza
             this.turnoSeat = maxSeatTeam0;
+            this.bazaStarterSeat = maxSeatTeam0;
         } else if (maxPoderTeam1 > maxPoderTeam0) {
             ganador = 'oponente';
             this.manosGanadas.oponente++;
             this.turnoSeat = maxSeatTeam1;
+            this.bazaStarterSeat = maxSeatTeam1;
         } else {
             ganador = 'empate';
             this.manosGanadas.empates++;
-            // En empate el turno vuelve a quien era "Mano" original de la ronda
-            this.turnoSeat = this.manoSeat; 
+            // En caso de parda, vuelve a salir el jugador que inició la baza empatada
+            this.turnoSeat = (typeof this.bazaStarterSeat === 'number') ? this.bazaStarterSeat : this.manoSeat; 
         }
 
         this.registroBazas.push(ganador);
@@ -770,6 +774,7 @@ class GameStateManager {
             piezasActivas: [...this.piezasActivas],
             manoSeat: this.manoSeat,
             turnoSeat: this.turnoSeat,
+            bazaStarterSeat: this.bazaStarterSeat,
             fase: this.fase,
             envidoCantado: this.envidoCantado,
             rondaTerminada: this.rondaTerminada,
@@ -813,6 +818,7 @@ class GameStateManager {
         this.piezasActivas = Array.isArray(snapshot.piezasActivas) ? [...snapshot.piezasActivas] : [];
         this.manoSeat = snapshot.manoSeat ?? 0;
         this.turnoSeat = snapshot.turnoSeat ?? 0;
+        this.bazaStarterSeat = snapshot.bazaStarterSeat ?? this.manoSeat;
         this.fase = snapshot.fase || 'cantos';
         this.envidoCantado = !!snapshot.envidoCantado;
         this.rondaTerminada = !!snapshot.rondaTerminada;

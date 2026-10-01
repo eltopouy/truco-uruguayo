@@ -894,6 +894,46 @@ test('UIManager._cleanupPending resuelve promesas previas para evitar bloqueos',
 });
 
 // ----------------------------------------------------
+// 17. Regla de Parda y Salida de Baza en Truco Uruguayo
+// ----------------------------------------------------
+console.log('\n🇺🇾 17. Regla de Parda y Salida de Baza:');
+
+test('En caso de parda, el turno siguiente corresponde al jugador que inició esa baza', () => {
+    const game = new GameStateManager(2);
+    game.iniciarRonda();
+
+    // Simular que el asiento 0 es mano pero el asiento 1 ganó la primera baza y lideró la 2da
+    game.manoSeat = 0;
+    game.turnoSeat = 1;
+    game.bazaStarterSeat = 1;
+
+    // Cartas de igual poder (empate / parda en 2da baza)
+    game.mesaSlots[1] = new Carta(3, 'Oro');
+    game.mesaSlots[0] = new Carta(3, 'Copa');
+    game.actualizarMatrizDePoder(game.mesaSlots[0], game.mesaSlots[1]);
+
+    const res = game.evaluarMesa();
+    assert.strictEqual(res.ganadorMesa, 'empate');
+    // En el Truco Uruguayo, quien abrió la baza que emparda vuelve a ser mano de la siguiente baza
+    assert.strictEqual(game.turnoSeat, 1, 'El turno de salida debe ser para el iniciador de la baza');
+    assert.strictEqual(game.bazaStarterSeat, 1, 'bazaStarterSeat debe actualizarse para la nueva baza');
+});
+
+test('Snapshot de estado serializa y restaura bazaStarterSeat correctamente', () => {
+    const game1 = new GameStateManager(2);
+    game1.iniciarRonda();
+    game1.bazaStarterSeat = 1;
+    game1.turnoSeat = 1;
+
+    const snap = game1.exportarEstado();
+    assert.strictEqual(snap.bazaStarterSeat, 1);
+
+    const game2 = new GameStateManager(2);
+    game2.importarEstado(snap);
+    assert.strictEqual(game2.bazaStarterSeat, 1);
+});
+
+// ----------------------------------------------------
 // Resumen
 // ----------------------------------------------------
 console.log('\n========================================');

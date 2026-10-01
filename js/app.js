@@ -336,12 +336,6 @@ window.animarReparto = async function() {
             const mazoVisual = document.createElement('div');
             mazoVisual.classList.add('card', 'pixel-card', 'card-deck');
             deckArea.appendChild(mazoVisual);
-            
-            // La muestra (carta debajo del mazo)
-            if (game.muestra) {
-                const muestraDiv = crearCartaDOM(game.muestra, false, true);
-                deckArea.appendChild(muestraDiv);
-            }
         }
 
         const playArea2p = document.getElementById('play-area');
@@ -570,20 +564,27 @@ function renderJuego() {
     
     // Envido y Flor
     if (btnFlor && btnEnvido) {
-        // Ocultar btn-flor: la Flor ya es automática
-        if (btnFlor) btnFlor.style.display = 'none';
-        
-        // Fase de cantos: el envido solo vale antes de tirar la segunda carta
+        // Fase de cantos: el envido y la flor solo valen antes de tirar la segunda carta
         if (game.manoJugador.length === 3 && !game.envidoCantado) {
-            btnEnvido.style.display = calc.tieneFlor ? 'none' : 'block';
-            
-            // Si no es mi turno, se ven opacos (Regla de Mano/Pie) pero los dejamos clickeables para dar feedback
-            if (!esMiTurno) {
-                btnEnvido.style.opacity = '0.5';
-                btnEnvido.style.filter = 'grayscale(80%)';
+            if (calc.tieneFlor) {
+                btnFlor.style.display = 'block';
+                btnEnvido.style.display = 'none';
+                if (!esMiTurno) {
+                    btnFlor.style.opacity = '0.7';
+                } else {
+                    btnFlor.style.opacity = '1';
+                }
             } else {
-                btnEnvido.style.opacity = '1';
-                btnEnvido.style.filter = 'none';
+                btnFlor.style.display = 'none';
+                btnEnvido.style.display = 'block';
+                // Si no es mi turno, se ven opacos (Regla de Mano/Pie) pero los dejamos clickeables para dar feedback
+                if (!esMiTurno) {
+                    btnEnvido.style.opacity = '0.5';
+                    btnEnvido.style.filter = 'grayscale(80%)';
+                } else {
+                    btnEnvido.style.opacity = '1';
+                    btnEnvido.style.filter = 'none';
+                }
             }
         } else {
             btnFlor.style.display = 'none';

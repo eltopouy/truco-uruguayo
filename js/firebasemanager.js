@@ -149,6 +149,7 @@ function aislarManoParaInvitado(gameObj) {
         turno: gameObj.turno === 'jugador' ? 'oponente' : 'jugador',
         turnoSeat: gameObj.turnoSeat === 0 ? 1 : 0,
         manoSeat: gameObj.manoSeat === 0 ? 1 : 0,
+        bazaStarterSeat: gameObj.bazaStarterSeat === 0 ? 1 : (gameObj.bazaStarterSeat === 1 ? 0 : (gameObj.bazaStarterSeat ?? 0)),
         mesa: {
             jugador: gameObj.mesa?.oponente || null,
             oponente: gameObj.mesa?.jugador || null
@@ -243,6 +244,15 @@ window.crearSalaFirebase = async function(isPublica = false) {
                     window.expectedRivalSeq = 0;
                     sincronizarEstadoMotor();
                 }
+
+                roomRef.child('invitadoName').once('value', (snapName) => {
+                    if (snapName.exists() && snapName.val()) {
+                        game.config.nombreOponente = snapName.val();
+                        if (game.players[1]) game.players[1].name = snapName.val();
+                        renderJuego();
+                    }
+                });
+
                 renderJuego();
                 logJugada("🎮 ¡Rival Conectado! Empieza el partido...", "sistema");
                 attachTypingListener(codigoSalaActual, 'invitado');
@@ -363,6 +373,10 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
             estado: 'conectado',
             invitadoName: game.config.nombreJugador || 'Invitado'
         }).then(() => {
+            if (roomData.creadorName) {
+                game.config.nombreOponente = roomData.creadorName;
+                if (game.players[1]) game.players[1].name = roomData.creadorName;
+            }
             guardarSesionLocal(codigoSalaActual, miRol);
             quitarLobbyEspera();
             
@@ -965,15 +979,56 @@ function crearElementoLobby() {
 
 // Funciones placeholder que faltaban asignar o conectar bien
 async function procesarCantoTrucoRed(d) {
-    const quiero = await window.UI.confirm(`🌐 Rival: ¡${d.canto}!<br><br>¿Deseas aceptar?`);
-    if (quiero) {
+    const opciones = [
+        { label: "QUIERO", value: "quiero", success: true, primary: true },
+        { label: "NO QUIERO", value: "no_quiero", neutral: true }
+    ];
+
+    if (d.sigNivel === 'truco') {
+        opciones.push({ label: "¡RETRUCO! (3 pts)", value: "retruco", danger: true });
+    } else if (d.sigNivel === 'retruco') {
+        opciones.push({ label: "¡VALE 4! (4 pts)", value: "vale4", danger: true });
+    }
+
+    const eleccion = await window.UI.options(`🌐 Rival: ¡${d.canto}!<br><br>¿Qué respondes?`, opciones, `Canto de Truco`);
+
+    if (eleccion === 'quiero') {
         if (miRol === 'creador') {
             game.apuestaTruco.valor = d.sigValor;
             game.apuestaTruco.estado = d.sigNivel;
             game.apuestaTruco.turnoCantar = 'jugador';
             sincronizarEstadoMotor();
+        } else {
+            game.apuestaTruco.valor = d.sigValor;
+            game.apuestaTruco.estado = d.sigNivel;
+            game.apuestaTruco.turnoCantar = 'jugador';
         }
-        enviarAccionFirebase('respuesta_canto', { tipo: 'truco', resp: 'quiero' });
+        enviarAccionFirebase('respuesta_canto', { tipo: 'truco', resp: 'quiero', valorAceptado: d.sigValor, nivelAceptado: d.sigNivel });
+        game.fase = 'truco';
+        desbloquearSyncLocal();
+    } else if (eleccion === 'retruco' || eleccion === 'vale4') {
+        const nextCanto = eleccion === 'retruco' ? 'Retruco' : 'Vale Cuatro';
+        const nextSigValor = eleccion === 'retruco' ? 3 : 4;
+        const nextSigNivel = eleccion === 'retruco' ? 'retruco' : 'vale4';
+
+        if (miRol === 'creador') {
+            game.apuestaTruco.estado = d.sigNivel;
+            game.apuestaTruco.turnoCantar = 'jugador';
+        }
+        window.isAwaitingStateSync = true;
+        window.startSyncTimeout();
+        if (window.audio && typeof window.audio.play === 'function') {
+            window.audio.play(nextSigNivel === 'vale4' ? 'vale_4' : nextSigNivel);
+        }
+        enviarAccionFirebase('canto', {
+            tipo: 'truco',
+            nivel: d.sigNivel,
+            sigValor: nextSigValor,
+            sigNivel: nextSigNivel,
+            canto: nextCanto
+        });
+        await window.UI.alert(`🗣️ Tú: ¡${nextCanto}!<br>(Esperando respuesta por la red...)`);
+        game.apuestaTruco.turnoCantar = 'oponente';
         game.fase = 'truco';
     } else {
         if (miRol === 'creador') {
@@ -983,6 +1038,7 @@ async function procesarCantoTrucoRed(d) {
         }
         game.rondaTerminada = true; // Forzar local para UI freeze fix
         enviarAccionFirebase('respuesta_canto', { tipo: 'truco', resp: 'no_quiero' });
+        desbloquearSyncLocal();
         await window.manejarFinDeRondaUI();
     }
     renderJuego();
@@ -1029,18 +1085,29 @@ async function procesarRespuestaCantoRed(d) {
                 sincronizarEstadoMotor();
             }
             desbloquearSyncLocal();
+        } else if (d.resp === 'tengo_flor') {
+            await window.UI.alert("🌐 Rival: ¡Tengo FLOR! 🌸<br>Anula el Envido y el rival cobra 3 Pts.");
+            setTimeout(() => { if (window.UI.modal.style.display === 'block') window.UI._hide(); }, 3000);
+            if (miRol === 'creador') {
+                game.puntosPartido.oponente += 3;
+                game.fase = 'truco';
+                sincronizarEstadoMotor();
+            }
+            desbloquearSyncLocal();
         } else if (d.resp === 'con_flor_me_achico') {
             await window.UI.alert("🌐 Rival: 'Con Flor me Achico'. Ganás 3 Pts.");
             if (miRol === 'creador') {
                 game.puntosPartido.jugador += 3;
                 sincronizarEstadoMotor();
             }
+            desbloquearSyncLocal();
         } else if (d.resp === 'no_flor') {
             await window.UI.alert("🌐 Rival no tiene Flor. ¡Cobrás 3 Pts redonditos! 🌸");
             if (miRol === 'creador') {
                 game.puntosPartido.jugador += 3;
                 sincronizarEstadoMotor();
             }
+            desbloquearSyncLocal();
         } else if (d.resp === 'quiero_contra_flor') {
             const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos;
             resolverFlorRed(misPtos, d.susPtos, true);
@@ -1050,6 +1117,7 @@ async function procesarRespuestaCantoRed(d) {
                 game.puntosPartido.jugador += 3;
                 sincronizarEstadoMotor();
             }
+            desbloquearSyncLocal();
         }
     } else if (d.tipo === 'truco') {
         if (d.resp === 'quiero') {
@@ -1126,6 +1194,7 @@ async function procesarRespuestaFlorRed(d) {
             game.fase = 'truco';
             sincronizarEstadoMotor();
         }
+        desbloquearSyncLocal();
     } else if (d.resp === 'con_flor_me_achico') {
         await window.UI.alert("🌐 Rival se achicó con su Flor. Nadie cantó contra.<br>(Ambos cobran 3 pts).");
         if (miRol === 'creador') {
@@ -1134,6 +1203,7 @@ async function procesarRespuestaFlorRed(d) {
             game.fase = 'truco';
             sincronizarEstadoMotor();
         }
+        desbloquearSyncLocal();
     } else if (d.resp === 'contra_flor_resto') {
         const quiero = await window.UI.confirm(`🌐 Rival pica fuerte: ¡CONTRA FLOR AL RESTO! 🌸💀<br><br>¿Te le animás?`);
         if (quiero) {
@@ -1148,6 +1218,7 @@ async function procesarRespuestaFlorRed(d) {
                 game.puntosPartido.oponente += 3;
                 sincronizarEstadoMotor();
             }
+            desbloquearSyncLocal();
         }
     }
     renderJuego();

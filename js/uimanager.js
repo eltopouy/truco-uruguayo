@@ -48,7 +48,11 @@ window.UI = {
         if (typeof game === 'undefined' || !game.muestra || !game.partidoIniciado) return '';
 
         const muestra = game.muestra;
-        const url = `assets/cards/${muestra.palo}_${muestra.valor}.png`;
+        const NOMBRES_VALORES = {1: 'As', 2: 'Dos', 3: 'Tres', 4: 'Cuatro', 5: 'Cinco', 6: 'Seis', 7: 'Siete', 10: 'Sota', 11: 'Caballo', 12: 'Rey'};
+        const NOMBRES_PALOS = {'Espada': 'Espadas', 'Basto': 'Bastos', 'Copa': 'Copas', 'Oro': 'Oros'};
+        const url = (NOMBRES_VALORES[muestra.valor] && NOMBRES_PALOS[muestra.palo])
+            ? `assets/cards_tatu/${NOMBRES_VALORES[muestra.valor]}_de_${NOMBRES_PALOS[muestra.palo]}.png`
+            : `assets/cards_tatu/carta_reverso.png`;
 
         // Colores por palo
         const paloColors = { 'Oro': '#d35400', 'Copa': '#c0392b', 'Espada': '#2c3e50', 'Basto': '#27ae60' };

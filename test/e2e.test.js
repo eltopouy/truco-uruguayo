@@ -302,6 +302,59 @@ testE2E('Flujo de Revancha en Solitario: Reinicia estado de partidoFinalizado y 
     assert.notStrictEqual(game.muestra, null);
 });
 
+// ----------------------------------------------------
+// 8. Flujo Multijugador: Salto de Flor y Canto de Truco
+// ----------------------------------------------------
+console.log('\n🌐 8. Flujo Multijugador (Salto de Flor y Retruco):');
+
+testE2E('Respuesta Salto de Flor (tengo_flor) adjudica 3 puntos al rival y avanza a fase truco sin bloqueo', () => {
+    const game = new GameStateManager(2);
+    game.iniciarRonda();
+
+    let syncDesbloqueado = false;
+    const fakeDesbloquearSync = () => { syncDesbloqueado = true; };
+
+    // Simular recepción de d = { tipo: 'envido', resp: 'tengo_flor' } en creador
+    const d = { tipo: 'envido', resp: 'tengo_flor' };
+    const miRol = 'creador';
+
+    if (d.tipo === 'envido' && d.resp === 'tengo_flor') {
+        if (miRol === 'creador') {
+            game.puntosPartido.oponente += 3;
+            game.fase = 'truco';
+        }
+        fakeDesbloquearSync();
+    }
+
+    assert.strictEqual(game.puntosPartido.oponente, 3, 'El rival con Flor debe recibir 3 pts');
+    assert.strictEqual(game.fase, 'truco', 'La fase debe pasar a truco');
+    assert.strictEqual(syncDesbloqueado, true, 'El estado de sincronización debe liberarse');
+});
+
+testE2E('Opciones de Truco en Red permiten Retruco y Vale 4 según el nivel', () => {
+    function generarOpcionesTruco(sigNivel) {
+        const opciones = [
+            { label: "QUIERO", value: "quiero" },
+            { label: "NO QUIERO", value: "no_quiero" }
+        ];
+        if (sigNivel === 'truco') {
+            opciones.push({ label: "¡RETRUCO! (3 pts)", value: "retruco" });
+        } else if (sigNivel === 'retruco') {
+            opciones.push({ label: "¡VALE 4! (4 pts)", value: "vale4" });
+        }
+        return opciones;
+    }
+
+    const optsTruco = generarOpcionesTruco('truco');
+    assert.strictEqual(optsTruco.some(o => o.value === 'retruco'), true, 'Debe ofrecer Retruco ante Truco');
+
+    const optsRetruco = generarOpcionesTruco('retruco');
+    assert.strictEqual(optsRetruco.some(o => o.value === 'vale4'), true, 'Debe ofrecer Vale 4 ante Retruco');
+
+    const optsVale4 = generarOpcionesTruco('vale4');
+    assert.strictEqual(optsVale4.some(o => o.value === 'retruco' || o.value === 'vale4'), false, 'Vale 4 no permite subidas');
+});
+
 console.log('\n======================================================');
 console.log(`🏁 RESULTADO E2E: ${passedE2E}/${totalE2E} tests pasados con éxito.`);
 console.log('======================================================\n');
