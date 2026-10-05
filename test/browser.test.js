@@ -382,6 +382,62 @@ const assert = require('assert');
             await page.close();
         });
 
+        // TEST 10: Botón de Repartir / Siguiente Mano nunca se muestra durante una ronda activa
+        await runTest('Botón de Repartir / Siguiente Mano nunca está visible en ronda activa y se oculta al jugar', async () => {
+            const page = await browser.newPage({
+                viewport: { width: 1280, height: 800 }
+            });
+            await page.route('**/*.firebaseio.com/**', route => route.abort());
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2500);
+
+            const isModal = await page.isVisible('#modal-custom');
+            if (isModal) {
+                const btnOk = await page.$('#modal-buttons button');
+                if (btnOk) await btnOk.click();
+                await page.waitForTimeout(300);
+            }
+
+            // 1. Durante la ronda activa, el botón de repartir debe estar 100% oculto
+            const btnRepartirVisible1 = await page.isVisible('#btn-repartir');
+            assert.strictEqual(btnRepartirVisible1, false, 'El botón de repartir NO debe ser visible durante la ronda');
+
+            // 2. Invocar renderJuego explícitamente no debe activar el botón
+            await page.evaluate(() => {
+                window.renderJuego();
+            });
+            const btnRepartirVisible2 = await page.isVisible('#btn-repartir');
+            assert.strictEqual(btnRepartirVisible2, false, 'renderJuego no debe mostrar el botón mientras rondaTerminada es false');
+
+            // 3. Simular fin de ronda legítimo y verificar que aparece con el texto correcto
+            await page.evaluate(async () => {
+                window.game.rondaTerminada = true;
+                await window.manejarFinDeRondaUI();
+            });
+            await page.waitForTimeout(200);
+
+            const btnRepartirVisible3 = await page.isVisible('#btn-repartir');
+            assert.strictEqual(btnRepartirVisible3, true, 'El botón de siguiente mano debe ser visible al terminar la ronda');
+
+            const btnText = await page.innerText('#btn-repartir');
+            assert(btnText.toLowerCase().includes('siguiente mano'), `El botón debe decir 'Siguiente Mano' (texto actual: '${btnText}')`);
+
+            // 4. Al hacer clic en el botón, debe ocultarse de inmediato y comenzar la nueva ronda
+            await page.click('#btn-repartir');
+            await page.waitForTimeout(100);
+
+            const btnRepartirVisible4 = await page.isVisible('#btn-repartir');
+            assert.strictEqual(btnRepartirVisible4, false, 'El botón debe ocultarse inmediatamente al hacer clic');
+
+            // Esperar animación de reparto y verificar que sigue oculto durante la nueva ronda
+            await page.waitForTimeout(2000);
+            const btnRepartirVisible5 = await page.isVisible('#btn-repartir');
+            assert.strictEqual(btnRepartirVisible5, false, 'El botón debe permanecer oculto durante la nueva ronda');
+
+            await page.close();
+        });
+
     } finally {
         if (browser) await browser.close();
     }

@@ -37,6 +37,21 @@ let turnTimerInterval = null;
 let autoRepartirInterval = null;
 const TURN_TIME = 25; // 25 Segundos para jugar
 
+window.ocultarBotonRepartir = function() {
+    if (autoRepartirInterval) {
+        clearInterval(autoRepartirInterval);
+        autoRepartirInterval = null;
+    }
+    if (window._finDeRondaTimeout) {
+        clearTimeout(window._finDeRondaTimeout);
+        window._finDeRondaTimeout = null;
+    }
+    const btn = document.getElementById('btn-repartir');
+    if (btn) {
+        btn.style.display = 'none';
+    }
+};
+
 // Helper para que la IA parezca más humana al responder (espera entre 1.2 y 2.2 seg)
 const botDelay = () => new Promise(res => setTimeout(res, 1200 + Math.random() * 1000));
 window.isAwaitingStateSync = false; 
@@ -271,6 +286,7 @@ function logJugada(texto, tipo = 'sistema') {
 
 window.iniciarSolo = function(num = 2) {
     try {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
         if (typeof borrarSesionLocal === 'function') borrarSesionLocal();
         const inicioEl = document.getElementById('pantalla-inicio');
         if (inicioEl) inicioEl.style.display = 'none';
@@ -327,6 +343,7 @@ function crearCartaDOM(carta, bocaAbajo = false, isMuestra = false) {
 window.isAnimatingDeal = false;
 
 window.animarReparto = async function() {
+    if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
     if (window.isAnimatingDeal) return;
     window.isAnimatingDeal = true;
     
@@ -432,6 +449,7 @@ window.animarReparto = async function() {
     } catch(err) {
         console.error("Error durante animarReparto:", err);
     } finally {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
         window.isAnimatingDeal = false;
         renderJuego(); // Render final para asegurar estado correcto y listeners
     }
@@ -625,6 +643,12 @@ function habilitarArrastreYJuego(cardDOM, index, myCards, plyHandEl) {
 function renderJuego() {
     window.renderJuego = renderJuego;
     if (typeof window.updateSyncUIState === 'function') window.updateSyncUIState();
+
+    // GUARD: El botón de repartir/siguiente mano NUNCA debe mostrarse mientras se juegue una ronda o tras finalizar el partido
+    if (!game || !game.partidoIniciado || game.partidoFinalizado || !game.rondaTerminada) {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+    }
+
     if (window.isAnimatingDeal) return;
 
     const plyHandEl = document.getElementById('player-hand');
@@ -960,6 +984,7 @@ async function verificarLimitesPartido() {
     const oLlega = game.puntosPartido.oponente >= lim;
 
     if (jLlega || oLlega) {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
         window.isWinnerAlertShowing = true; // Bloqueo de entrada
         let ganadorPartido = null;
         if (jLlega && !oLlega) ganadorPartido = 'jugador';
@@ -982,6 +1007,7 @@ async function verificarLimitesPartido() {
             window.finalizarSalaFirebase();
             const revancha = await window.UI.confirm("¿Querés pedirle una revancha al rival?", "Revancha");
             if (revancha) {
+                if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
                 window.esperandoRespuestaRevancha = true; // Flag anti-duplicados por lag
                 enviarAccionFirebase('pedir_revancha');
                 await window.UI.alert("Esperando respuesta del rival...");
@@ -992,6 +1018,7 @@ async function verificarLimitesPartido() {
         } else {
             const revancha = await window.UI.confirm("¿Querés jugar otro partido de revancha contra la IA?");
             if (revancha) {
+                if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
                 game.puntosPartido.jugador = 0;
                 game.puntosPartido.oponente = 0;
                 game.partidoFinalizado = false;
@@ -1533,9 +1560,14 @@ document.getElementById('btn-mazo').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-repartir').addEventListener('click', () => {
-    document.getElementById('btn-repartir').style.display = 'none';
-    if (autoRepartirInterval) clearInterval(autoRepartirInterval);
-    document.getElementById('btn-truco').innerText = "Gritar Truco";
+    if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+    const btnTruco = document.getElementById('btn-truco');
+    if (btnTruco) btnTruco.innerText = "¡TRUCO!";
+    
+    // GUARD CRÍTICO: Si el juego no está iniciado, o ya terminó el partido, o la ronda NO terminó, abortar
+    if (!game || !game.partidoIniciado || game.partidoFinalizado || !game.rondaTerminada) {
+        return;
+    }
     
     if (window.modoJuego === 'multiplayer') {
         if (typeof miRol !== 'undefined' && miRol === 'invitado') {
@@ -1549,7 +1581,6 @@ document.getElementById('btn-repartir').addEventListener('click', () => {
         }
     } else {
         // Singleplayer: la animación de reparto maneja todo el flujo
-        // (renderJuego → resolverFlor → jugarBot si corresponde)
         game.iniciarRonda();
         window.animarReparto();
     }
@@ -1601,34 +1632,64 @@ document.getElementById('overlay-jerarquia').addEventListener('click', () => {
 });
 
 window.manejarFinDeRondaUI = async function() {
-    if (await verificarLimitesPartido()) return; // Si terminó el partido
+    // GUARD: Si el juego no está iniciado, o ya finalizó, o la ronda NO terminó, ocultar botón y abortar
+    if (!game || !game.partidoIniciado || game.partidoFinalizado || !game.rondaTerminada) {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+        return;
+    }
+
+    if (await verificarLimitesPartido()) {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+        return; // Si terminó el partido
+    }
     
-    clearInterval(autoRepartirInterval);
+    if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+    
+    const btn = document.getElementById('btn-repartir');
+    if (!btn) return;
     
     if (window.modoJuego === 'multiplayer') {
         const yoRepartoProxima = (game.manoDelPartido === 'jugador');
         if (yoRepartoProxima) {
-            const btn = document.getElementById('btn-repartir');
             btn.style.display = 'block';
-            btn.innerText = "🔄 Repartir (5s)";
-            
             let count = 5;
+            btn.innerText = `🃏 Siguiente Mano (${count}s)`;
+            
             autoRepartirInterval = setInterval(() => {
                 count--;
-                btn.innerText = `🔄 Repartir (${count}s)`;
                 if (count <= 0) {
-                    clearInterval(autoRepartirInterval);
-                    btn.click();
+                    if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+                    if (game && game.rondaTerminada && !game.partidoFinalizado) {
+                        btn.click();
+                    }
+                } else {
+                    btn.innerText = `🃏 Siguiente Mano (${count}s)`;
                 }
             }, 1000);
         } else {
-            document.getElementById('btn-repartir').style.display = 'none';
+            btn.style.display = 'none';
             if (document.getElementById('modal-custom').style.display !== 'block') {
                 logJugada("⏳ Esperando a que el rival reparta las cartas...", 'sistema');
             }
         }
     } else {
-        document.getElementById('btn-repartir').style.display = 'block'; 
+        // Singleplayer: cuenta regresiva de 3s con botón visible para que el usuario pueda avanzar de inmediato o esperar
+        btn.style.display = 'block';
+        let count = 3;
+        btn.innerText = `🃏 Siguiente Mano (${count}s)`;
+        
+        autoRepartirInterval = setInterval(() => {
+            count--;
+            if (count <= 0) {
+                if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+                if (game && game.rondaTerminada && !game.partidoFinalizado) {
+                    game.iniciarRonda();
+                    window.animarReparto();
+                }
+            } else {
+                btn.innerText = `🃏 Siguiente Mano (${count}s)`;
+            }
+        }, 1000);
     }
 };
 
@@ -1703,6 +1764,7 @@ window.toggleScoreModal = function() {
 window.abandonarSala = async function() {
     const seguro = await window.UI.confirm("¿Estás seguro que querés abandonar el partido y salir a la pantalla principal?", "Cagazo Inminente");
     if (seguro) {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
         if (window.modoJuego === 'multiplayer') {
             if (miRol === 'creador') window.finalizarSalaFirebase();
             enviarAccionFirebase('abandonar_sala');

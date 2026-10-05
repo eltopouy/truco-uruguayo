@@ -515,12 +515,16 @@ function asignarEstadoDesdeRed(dataStr) {
     }
 
     if (isNewRound) {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
         window.animarReparto();
     } else if (!window.isAnimatingDeal) {
         renderJuego();
     }
     
-    // Si la mano cambió (nueva ronda), aseguramos limpiar mensajes de espera
+    // Si la mano cambió (nueva ronda), aseguramos limpiar mensajes de espera y botón de reparto
+    if (data.rondaTerminada === false) {
+        if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+    }
     if (data.rondaTerminada === false && game.manoJugador.length === 3 && !game.mesa.jugador && !game.mesa.oponente) {
         if (window.UI.modal && window.UI.modal.style.display === 'block') {
             // No cerramos si es un modal de decisión crítica (Truco/Envido), solo avisos
@@ -530,12 +534,23 @@ function asignarEstadoDesdeRed(dataStr) {
         }
     }
     
+    // Prevenir race conditions en llamadas asíncronas a manejarFinDeRondaUI
+    if (window._finDeRondaTimeout) {
+        clearTimeout(window._finDeRondaTimeout);
+        window._finDeRondaTimeout = null;
+    }
+
     if (game.puntosPartido.jugador >= game.config.limitePuntos || game.puntosPartido.oponente >= game.config.limitePuntos) {
         if (!game.partidoFinalizado && typeof verificarLimitesPartido === 'function') {
-            setTimeout(verificarLimitesPartido, 500);
+            window._finDeRondaTimeout = setTimeout(verificarLimitesPartido, 500);
         }
     } else if (game.rondaTerminada && typeof window.manejarFinDeRondaUI === 'function') {
-        setTimeout(window.manejarFinDeRondaUI, 500);
+        window._finDeRondaTimeout = setTimeout(() => {
+            window._finDeRondaTimeout = null;
+            if (game.rondaTerminada && !game.partidoFinalizado) {
+                window.manejarFinDeRondaUI();
+            }
+        }, 500);
     }
 }
 
@@ -715,8 +730,10 @@ async function procesarAccionRed(snap) {
             if (d.aceptada) window.audio.play('flor');
             procesarRespuestaFlorRed(d);
         } else if (d.tipo === 'repartir' && miRol === 'creador') {
+            if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
             game.iniciarRonda();
             sincronizarEstadoMotor({ timerStartTime: Date.now() });
+            window.animarReparto();
         }
     }
     else if (t === 'chat') {
@@ -860,6 +877,7 @@ function detenerHeartbeat() {
 }
 
 function reiniciarPartidoLocal() {
+    if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
     game.puntosPartido.jugador = 0;
     game.puntosPartido.oponente = 0;
     game.partidoFinalizado = false;
@@ -869,10 +887,10 @@ function reiniciarPartidoLocal() {
         sincronizarEstadoMotor();
     }
     renderJuego();
-    document.getElementById('btn-repartir').style.display = 'none';
 }
 
 window.finalizarSalaFirebase = function() {
+    if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
     if (modoJuego !== 'multiplayer' || !codigoSalaActual) return;
     
     detenerHeartbeat();

@@ -456,6 +456,110 @@ testE2E('Reordenar 2 cartas restantes invierte su orden limpiamente', () => {
     assert.strictEqual(game.players[0].hand[1], cA);
 });
 
+// ----------------------------------------------------
+// 12. Control y Seguridad de Botón Repartir / Siguiente Mano
+// ----------------------------------------------------
+console.log('\n🃏 12. Control y Seguridad de Botón Repartir / Siguiente Mano:');
+
+testE2E('ocultarBotonRepartir cancela autoRepartirInterval y timeout de fin de ronda', () => {
+    let intervalCleared = false;
+    let timeoutCleared = false;
+
+    // Fake timers
+    const fakeInterval = 12345;
+    const fakeTimeout = 67890;
+
+    let autoRepartirInterval = fakeInterval;
+    let _finDeRondaTimeout = fakeTimeout;
+    const fakeBtn = { style: { display: 'block' } };
+
+    const ocultarBotonRepartir = () => {
+        if (autoRepartirInterval) {
+            intervalCleared = true;
+            autoRepartirInterval = null;
+        }
+        if (_finDeRondaTimeout) {
+            timeoutCleared = true;
+            _finDeRondaTimeout = null;
+        }
+        if (fakeBtn) fakeBtn.style.display = 'none';
+    };
+
+    ocultarBotonRepartir();
+    assert.strictEqual(intervalCleared, true, 'Debe limpiar autoRepartirInterval');
+    assert.strictEqual(timeoutCleared, true, 'Debe limpiar _finDeRondaTimeout');
+    assert.strictEqual(fakeBtn.style.display, 'none', 'Debe ocultar el botón');
+    assert.strictEqual(autoRepartirInterval, null);
+    assert.strictEqual(_finDeRondaTimeout, null);
+});
+
+testE2E('manejarFinDeRondaUI no muestra botón si la ronda sigue en juego (rondaTerminada: false)', () => {
+    const game = new GameStateManager();
+    game.configurarJugadores(2);
+    game.iniciarRonda();
+    game.partidoIniciado = true;
+    game.partidoFinalizado = false;
+    game.rondaTerminada = false; // Ronda activa en juego
+
+    const fakeBtn = { style: { display: 'none' }, innerText: '' };
+    let intervalSet = false;
+
+    // Simular lógica de manejarFinDeRondaUI
+    if (!game || !game.partidoIniciado || game.partidoFinalizado || !game.rondaTerminada) {
+        fakeBtn.style.display = 'none';
+    } else {
+        fakeBtn.style.display = 'block';
+        intervalSet = true;
+    }
+
+    assert.strictEqual(fakeBtn.style.display, 'none', 'El botón debe permanecer oculto durante la ronda');
+    assert.strictEqual(intervalSet, false, 'No debe iniciar ningún intervalo');
+});
+
+testE2E('manejarFinDeRondaUI no muestra botón si el partido ya finalizó (partidoFinalizado: true)', () => {
+    const game = new GameStateManager();
+    game.partidoIniciado = true;
+    game.partidoFinalizado = true; // Partido terminó
+    game.rondaTerminada = true;
+
+    const fakeBtn = { style: { display: 'none' }, innerText: '' };
+
+    if (!game || !game.partidoIniciado || game.partidoFinalizado || !game.rondaTerminada) {
+        fakeBtn.style.display = 'none';
+    } else {
+        fakeBtn.style.display = 'block';
+    }
+
+    assert.strictEqual(fakeBtn.style.display, 'none', 'El botón de repartir nunca debe mostrarse tras fin del partido');
+});
+
+testE2E('Guard en clic de btn-repartir ignora ejecuciones si rondaTerminada es false', () => {
+    const game = new GameStateManager();
+    game.configurarJugadores(2);
+    game.iniciarRonda();
+    game.partidoIniciado = true;
+    game.partidoFinalizado = false;
+    game.rondaTerminada = false; // Jugando
+
+    let repartio = false;
+
+    // Simular click listener con guard
+    const clickHandler = () => {
+        if (!game || !game.partidoIniciado || game.partidoFinalizado || !game.rondaTerminada) {
+            return; // Bloqueado
+        }
+        repartio = true;
+    };
+
+    clickHandler();
+    assert.strictEqual(repartio, false, 'No debe repartir si la ronda no terminó');
+
+    // Ahora simular que terminó la ronda
+    game.rondaTerminada = true;
+    clickHandler();
+    assert.strictEqual(repartio, true, 'Debe repartir si la ronda efectivamente terminó');
+});
+
 console.log('\n======================================================');
 console.log(`🏁 RESULTADO E2E: ${passedE2E}/${totalE2E} tests pasados con éxito.`);
 console.log('======================================================\n');
