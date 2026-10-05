@@ -322,6 +322,66 @@ const assert = require('assert');
             await page.close();
         });
 
+        // TEST 9: Visual Fan Layout de las cartas del rival y separación del mazo con la muestra
+        await runTest('Cartas del rival se presentan inclinadas en abanico y el mazo no solapa las cartas', async () => {
+            const page = await browser.newPage({
+                viewport: { width: 390, height: 844 },
+                isMobile: true,
+                hasTouch: true
+            });
+            await page.route('**/*.firebaseio.com/**', route => route.abort());
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2500);
+
+            const isModal = await page.isVisible('#modal-custom');
+            if (isModal) {
+                const btnOk = await page.$('#modal-buttons button');
+                if (btnOk) await btnOk.click();
+                await page.waitForTimeout(300);
+            }
+
+            // 1. Verificar clases de abanico en las cartas del rival
+            const oppCards = await page.$$('.opponent-hand .card');
+            assert.strictEqual(oppCards.length, 3, 'El rival debe tener 3 cartas');
+
+            const cls0 = await oppCards[0].getAttribute('class');
+            const cls1 = await oppCards[1].getAttribute('class');
+            const cls2 = await oppCards[2].getAttribute('class');
+
+            assert(cls0.includes('fan-3-0'), 'La carta izquierda del rival debe tener clase fan-3-0');
+            assert(cls1.includes('fan-3-1'), 'La carta central del rival debe tener clase fan-3-1');
+            assert(cls2.includes('fan-3-2'), 'La carta derecha del rival debe tener clase fan-3-2');
+
+            // 2. Separación vertical limpia entre mano del rival y el mazo con la muestra
+            const metrics = await page.evaluate(() => {
+                const opp = document.querySelector('.opponent-hand').getBoundingClientRect();
+                const deck = document.querySelector('.deck-area').getBoundingClientRect();
+                const muestra = document.querySelector('.card-muestra').getBoundingClientRect();
+                return {
+                    gapOppToDeck: deck.top - opp.bottom,
+                    gapOppToMuestra: muestra.top - opp.bottom
+                };
+            });
+
+            assert(metrics.gapOppToDeck >= 5, `El mazo debe ubicarse más abajo sin solapar al rival (gap: ${metrics.gapOppToDeck}px)`);
+            assert(metrics.gapOppToMuestra >= 5, `La muestra debe ubicarse más abajo sin solapar al rival (gap: ${metrics.gapOppToMuestra}px)`);
+
+            // 3. Verificar que al quedar 2 cartas se mantiene el abanico fan-2
+            await page.evaluate(() => {
+                window.game.players[1].hand = window.game.players[1].hand.slice(0, 2);
+                window.renderJuego();
+            });
+            await page.waitForTimeout(200);
+            const remaining2 = await page.$$('.opponent-hand .card');
+            assert.strictEqual(remaining2.length, 2);
+            const remCls0 = await remaining2[0].getAttribute('class');
+            const remCls1 = await remaining2[1].getAttribute('class');
+            assert(remCls0.includes('fan-2-0') && remCls1.includes('fan-2-1'), 'Con 2 cartas el rival debe tener clases fan-2');
+
+            await page.close();
+        });
+
     } finally {
         if (browser) await browser.close();
     }
