@@ -5,6 +5,8 @@
  */
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const SoundManager = require('../js/soundmanager');
 const { Carta, GameStateManager, PALOS, VALORES } = require('../js/gamestatemanager');
 
@@ -353,6 +355,57 @@ testE2E('Opciones de Truco en Red permiten Retruco y Vale 4 según el nivel', ()
 
     const optsVale4 = generarOpcionesTruco('vale4');
     assert.strictEqual(optsVale4.some(o => o.value === 'retruco' || o.value === 'vale4'), false, 'Vale 4 no permite subidas');
+});
+
+// ----------------------------------------------------
+// 9. PWA, Service Worker e Íconos
+// ----------------------------------------------------
+console.log('\n📱 9. PWA, Service Worker y Manifiesto:');
+
+testE2E('Service Worker sw.js existe y contiene lista de precaché', () => {
+    const swPath = path.join(__dirname, '..', 'sw.js');
+    assert.strictEqual(fs.existsSync(swPath), true, 'sw.js debe existir en la raíz');
+    const content = fs.readFileSync(swPath, 'utf8');
+    assert.strictEqual(content.includes('CACHE_NAME'), true);
+    assert.strictEqual(content.includes('PRECACHE_ASSETS'), true);
+});
+
+testE2E('manifest.json es válido y todos sus íconos existen en el disco', () => {
+    const manifestPath = path.join(__dirname, '..', 'manifest.json');
+    assert.strictEqual(fs.existsSync(manifestPath), true);
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    assert.strictEqual(manifest.name, 'Truco Uruguayo Premium');
+    assert.strictEqual(manifest.start_url, '/');
+    assert.strictEqual(Array.isArray(manifest.icons), true);
+    assert.strictEqual(manifest.icons.length >= 2, true);
+
+    manifest.icons.forEach(ico => {
+        const cleanPath = ico.src.replace(/^\//, '');
+        const fullIconPath = path.join(__dirname, '..', cleanPath);
+        assert.strictEqual(fs.existsSync(fullIconPath), true, `El ícono ${ico.src} debe existir físicamente`);
+    });
+});
+
+// ----------------------------------------------------
+// 10. SoundManager: Fallback Procedural y Mute
+// ----------------------------------------------------
+console.log('\n🔊 10. Resiliencia de Audio y Síntesis Procedural:');
+
+testE2E('SoundManager permite mutear y desmutear correctamente', () => {
+    const sm = new SoundManager();
+    sm.setMuted(true);
+    assert.strictEqual(sm.muted, true);
+    sm.setMuted(false);
+    assert.strictEqual(sm.muted, false);
+});
+
+testE2E('SoundManager métodos de fallback procedural no lanzan excepciones', () => {
+    const sm = new SoundManager();
+    assert.doesNotThrow(() => sm._playSynthFallback('card-play'));
+    assert.doesNotThrow(() => sm._playSynthFallback('card-deal'));
+    assert.doesNotThrow(() => sm._playSynthFallback('win-baza'));
+    assert.doesNotThrow(() => sm._playSynthFallback('loss'));
+    assert.doesNotThrow(() => sm.unlock());
 });
 
 console.log('\n======================================================');

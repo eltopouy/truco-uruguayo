@@ -1,8 +1,9 @@
-﻿{
+{
   "name": "Truco Uruguayo Premium",
   "short_name": "Truco UY",
   "description": "El mejor simulador de Truco Uruguayo online. Jugá contra la IA o con amigos en salas multijugador con reglas charrúas auténticas.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a1a0f",
   "theme_color": "#1a3a20",
@@ -10,6 +11,11 @@
   "lang": "es",
   "categories": ["games", "entertainment"],
   "icons": [
+    {
+      "src": "/assets/icons/favicon-64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
     {
       "src": "/assets/icons/icon-192.png",
       "sizes": "192x192",
@@ -23,10 +29,24 @@
       "purpose": "any maskable"
     }
   ],
+  "shortcuts": [
+    {
+      "name": "Jugar 1 vs 1",
+      "short_name": "1 vs 1",
+      "description": "Partida mano a mano contra la Inteligencia Artificial",
+      "url": "/#solo"
+    },
+    {
+      "name": "Jugar 2 vs 2",
+      "short_name": "Parejas",
+      "description": "Partida en parejas con compañeros y rivales",
+      "url": "/#parejas"
+    }
+  ],
   "screenshots": [
     {
       "src": "/assets/thumb.jpg",
-      "sizes": "1280x720",
+      "sizes": "1024x480",
       "type": "image/jpeg",
       "label": "Mesa de juego del Truco Uruguayo"
     }

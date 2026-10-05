@@ -8,6 +8,27 @@ const PALS_SVG = {
 const game = new GameStateManager();
 window.modoJuego = 'singleplayer';
 
+// Cargar preferencias guardadas del usuario
+function cargarConfig() {
+    try {
+        if (typeof localStorage === 'undefined') return;
+        const guardado = localStorage.getItem('truco_user_config');
+        if (guardado) {
+            const cfg = JSON.parse(guardado);
+            if (cfg.nombreJugador) game.config.nombreJugador = cfg.nombreJugador;
+            if (cfg.nombreOponente) game.config.nombreOponente = cfg.nombreOponente;
+            if (cfg.limitePuntos) game.config.limitePuntos = cfg.limitePuntos;
+            if (typeof cfg.sonido !== 'undefined' && window.audio && typeof window.audio.setMuted === 'function') {
+                window.audio.setMuted(!cfg.sonido);
+            }
+            if (typeof cfg.vibracion !== 'undefined') {
+                game.config.vibration = !!cfg.vibracion;
+            }
+        }
+    } catch(e) {}
+}
+cargarConfig();
+
 let lastJugadorPts = 0;
 let lastOponentePts = 0;
 
@@ -1433,16 +1454,33 @@ window.guardarConfig = function() {
     const rawYo = (document.getElementById('config-name-yo').value || '').trim();
     const rawRival = (document.getElementById('config-name-rival').value || '').trim();
     const rawLim = parseInt(document.getElementById('config-limite').value);
+    const soundEnabled = document.getElementById('config-sound').checked;
+    const vibrateEnabled = document.getElementById('config-vibrate').checked;
 
     game.config.nombreJugador = rawYo.substring(0, 20) || "TÚ";
     game.config.nombreOponente = rawRival.substring(0, 20) || "RIVAL";
     game.config.limitePuntos = (rawLim === 40) ? 40 : 30;
     
     // Config de Sonido y Vibración
-    if (window.audio) {
-        window.audio.muted = !document.getElementById('config-sound').checked;
+    if (window.audio && typeof window.audio.setMuted === 'function') {
+        window.audio.setMuted(!soundEnabled);
+    } else if (window.audio) {
+        window.audio.muted = !soundEnabled;
     }
-    game.config.vibration = document.getElementById('config-vibrate').checked;
+    game.config.vibration = vibrateEnabled;
+
+    // Persistencia Local
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('truco_user_config', JSON.stringify({
+                nombreJugador: game.config.nombreJugador,
+                nombreOponente: game.config.nombreOponente,
+                limitePuntos: game.config.limitePuntos,
+                sonido: soundEnabled,
+                vibracion: vibrateEnabled
+            }));
+        }
+    } catch(e) {}
 
     document.getElementById('modal-config').style.display = 'none';
     document.getElementById('overlay-custom').style.display = 'none';
@@ -1490,3 +1528,93 @@ window.abandonarSala = async function() {
         location.reload();
     }
 };
+
+// ═════════════════════════════════════════════════════════════
+// ATAJOS DE TECLADO PARA ESCRITORIO (ACCESIBILIDAD Y FLUIDEZ)
+// ═════════════════════════════════════════════════════════════
+window.addEventListener('keydown', (e) => {
+    // Si el usuario está escribiendo en campos de texto (chat, código de sala, configuración), no capturar
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) {
+        return;
+    }
+
+    const key = e.key ? e.key.toLowerCase() : '';
+
+    // Cerrar modales con Escape
+    if (e.key === 'Escape') {
+        if (window.UI && typeof window.UI._hide === 'function') window.UI._hide();
+        const mc = document.getElementById('modal-config');
+        if (mc && mc.style.display === 'block') mc.style.display = 'none';
+        const ms = document.getElementById('modal-senas');
+        if (ms && ms.style.display === 'block') ms.style.display = 'none';
+        const mj = document.getElementById('modal-jerarquia');
+        if (mj && mj.style.display === 'block') mj.style.display = 'none';
+        const mr = document.getElementById('modal-reglamento');
+        if (mr && mr.style.display === 'block') mr.style.display = 'none';
+        const ov = document.getElementById('overlay-custom');
+        if (ov && ov.style.display === 'block') ov.style.display = 'none';
+        return;
+    }
+
+    // Si la partida no está en curso o está animando/resolviendo, ignorar atajos de jugada
+    if (!game || !game.partidoIniciado || game.partidoFinalizado || window.isAnimatingDeal || window.isResolvingTrick) {
+        return;
+    }
+
+    // Jugar cartas: Teclas 1, 2, 3
+    if (key === '1') {
+        e.preventDefault();
+        jugarUI(0);
+    } else if (key === '2') {
+        e.preventDefault();
+        jugarUI(1);
+    } else if (key === '3') {
+        e.preventDefault();
+        jugarUI(2);
+    } 
+    // Cantos
+    else if (key === 't') {
+        const btnT = document.getElementById('btn-truco');
+        if (btnT && btnT.style.pointerEvents !== 'none' && btnT.style.opacity !== '0.4') {
+            e.preventDefault();
+            btnT.click();
+        }
+    } else if (key === 'e') {
+        const btnE = document.getElementById('btn-envido');
+        if (btnE && btnE.style.display !== 'none' && btnE.style.opacity !== '0.5') {
+            e.preventDefault();
+            btnE.click();
+        }
+    } else if (key === 'f') {
+        const btnF = document.getElementById('btn-flor');
+        if (btnF && btnF.style.display !== 'none') {
+            e.preventDefault();
+            btnF.click();
+        }
+    } else if (key === 'm') {
+        const btnM = document.getElementById('btn-mazo');
+        if (btnM && btnM.style.display !== 'none') {
+            e.preventDefault();
+            btnM.click();
+        }
+    } else if (key === 's') {
+        const btnS = document.getElementById('btn-senas');
+        if (btnS) {
+            e.preventDefault();
+            btnS.click();
+        }
+    }
+});
+
+// Eventos de Conectividad de Red
+window.addEventListener('online', () => {
+    if (typeof logJugada === 'function') {
+        logJugada("🌐 Conexión a internet restablecida.", "sistema");
+    }
+});
+window.addEventListener('offline', () => {
+    if (typeof logJugada === 'function') {
+        logJugada("📶 Modo sin conexión activo. Podés seguir jugando contra la IA.", "sistema");
+    }
+});
+
