@@ -652,7 +652,12 @@ async function procesarAccionRed(snap) {
     
     if (t === 'jugar_carta') {
         window.resetTimer(); // El rival ya jugó, paro mi espera visual
-        const cartaJugada = game.jugarCarta('oponente', d.index);
+        let targetIndex = d.index;
+        if (d.carta && game.players && game.players[1] && Array.isArray(game.players[1].hand)) {
+            const foundIdx = game.players[1].hand.findIndex(c => c && c.valor === d.carta.valor && c.palo === d.carta.palo);
+            if (foundIdx !== -1) targetIndex = foundIdx;
+        }
+        const cartaJugada = game.jugarCarta('oponente', targetIndex);
         if (cartaJugada) {
             const nombre = cartaJugada.getNombreCriollo(game.paloMuestra, game.piezasActivas);
             logJugada(`🌐 Rival juega ${nombre}`, 'rival');

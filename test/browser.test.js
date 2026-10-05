@@ -215,6 +215,85 @@ const assert = require('assert');
             await page.close();
         });
 
+        // TEST 7: Visual Fan Layout de las cartas del jugador
+        await runTest('Cartas del jugador se presentan en abanico (izquierda inclinada, centro vertical, derecha inclinada)', async () => {
+            const page = await browser.newPage();
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2000);
+
+            // Obtener las 3 cartas de la mano del jugador
+            const cartas = await page.$$('.player-hand .card');
+            assert.strictEqual(cartas.length, 3, 'Debe haber 3 cartas en la mano');
+
+            // Verificar clases de abanico fan-3-0, fan-3-1, fan-3-2
+            const cls0 = await cartas[0].getAttribute('class');
+            const cls1 = await cartas[1].getAttribute('class');
+            const cls2 = await cartas[2].getAttribute('class');
+
+            assert(cls0.includes('fan-3-0'), 'La carta izquierda debe tener clase fan-3-0');
+            assert(cls1.includes('fan-3-1'), 'La carta central debe tener clase fan-3-1');
+            assert(cls2.includes('fan-3-2'), 'La carta derecha debe tener clase fan-3-2');
+
+            // Verificar transformaciones CSS computadas
+            const transforms = await page.evaluate(() => {
+                const els = document.querySelectorAll('.player-hand .card');
+                return Array.from(els).map(el => window.getComputedStyle(el).transform);
+            });
+            assert.strictEqual(transforms.length, 3);
+            await page.close();
+        });
+
+        // TEST 8: Arrastre con clic izquierdo reordena las cartas
+        await runTest('Arrastre con botón izquierdo del mouse reordena las cartas en mano', async () => {
+            const page = await browser.newPage();
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2000);
+
+            // Cerrar cualquier modal que haya saltado (ej. Flor)
+            const isModal = await page.isVisible('#modal-custom');
+            if (isModal) {
+                const btnOk = await page.$('#modal-buttons button');
+                if (btnOk) await btnOk.click();
+                await page.waitForTimeout(400);
+            }
+
+            // Identificar cartas antes del arrastre
+            const ordenInicial = await page.evaluate(() => {
+                return window.game.players[0].hand.map(c => `${c.valor}_${c.palo}`);
+            });
+            assert.strictEqual(ordenInicial.length, 3);
+
+            // Obtener bounding boxes de la carta del medio (índice 1) y de la izquierda (índice 0)
+            const cartas = await page.$$('.player-hand .card');
+            const box0 = await cartas[0].boundingBox();
+            const box1 = await cartas[1].boundingBox();
+
+            assert(box0 && box1, 'Las cartas deben tener dimensiones válidas');
+
+            // Arrastrar la carta del medio (box1) hacia la posición de la izquierda (box0)
+            await page.mouse.move(box1.x + box1.width / 2, box1.y + box1.height / 2);
+            await page.mouse.down({ button: 'left' });
+            await page.waitForTimeout(100);
+
+            // Mover hacia la izquierda
+            await page.mouse.move(box0.x + box0.width / 2, box0.y + box0.height / 2, { steps: 10 });
+            await page.waitForTimeout(100);
+            await page.mouse.up({ button: 'left' });
+            await page.waitForTimeout(400);
+
+            // Verificar que el orden en el estado y DOM cambió: la que estaba en medio ahora está a la izquierda
+            const ordenNuevo = await page.evaluate(() => {
+                return window.game.players[0].hand.map(c => `${c.valor}_${c.palo}`);
+            });
+
+            assert.strictEqual(ordenNuevo[0], ordenInicial[1], 'La carta del medio ahora debe ser la de la izquierda');
+            assert.strictEqual(ordenNuevo[1], ordenInicial[0], 'La carta de la izquierda ahora debe estar en el medio');
+            assert.strictEqual(ordenNuevo[2], ordenInicial[2], 'La carta derecha debe permanecer igual');
+            await page.close();
+        });
+
     } finally {
         if (browser) await browser.close();
     }

@@ -279,7 +279,7 @@ body, html {
 }
 
 /* Manos de jugadores */
-.player-hand, .opponent-hand {
+.opponent-hand {
     display: flex;
     gap: 15px;
     padding: 10px 30px;
@@ -288,25 +288,90 @@ body, html {
     left: 50%;
     transform: translateX(-50%);
     perspective: 1000px;
-}
-
-.opponent-hand {
     top: 35px;
     z-index: 1000;
 }
 
 .player-hand {
-    bottom: 25px;
+    display: flex;
+    gap: 12px;
+    padding: 10px 30px 20px 30px;
+    justify-content: center;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    perspective: 1200px;
+    bottom: 22px;
     z-index: 5000;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .player-hand .card {
-    cursor: pointer;
+    cursor: grab;
+    transform-origin: 50% 125%;
+    transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s ease;
+    touch-action: none;
+    position: relative;
 }
 
-.player-hand .card:hover {
-    transform: translateY(-20px) scale(1.05);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+.player-hand .card:active {
+    cursor: grabbing;
+}
+
+/* Efecto Abanico (Fan) según cantidad de cartas en mano */
+/* 3 cartas */
+.player-hand .card.fan-3-0 {
+    transform: rotate(-8deg) translateY(6px);
+    z-index: 10;
+}
+.player-hand .card.fan-3-1 {
+    transform: rotate(0deg) translateY(-2px);
+    z-index: 20;
+}
+.player-hand .card.fan-3-2 {
+    transform: rotate(8deg) translateY(6px);
+    z-index: 30;
+}
+
+/* 2 cartas */
+.player-hand .card.fan-2-0 {
+    transform: rotate(-5deg) translateY(3px);
+    z-index: 10;
+}
+.player-hand .card.fan-2-1 {
+    transform: rotate(5deg) translateY(3px);
+    z-index: 20;
+}
+
+/* 1 carta */
+.player-hand .card.fan-1-0 {
+    transform: rotate(0deg) translateY(0);
+    z-index: 10;
+}
+
+/* Hover: carta erguida, elevada y destacada */
+.player-hand .card:not(.is-dragging):hover {
+    transform: translateY(-26px) scale(1.08) rotate(0deg) !important;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.75), 0 0 12px rgba(255, 255, 255, 0.2);
+    z-index: 100 !important;
+}
+
+/* Estado de la carta arrastrada para reordenar */
+.player-hand .card.is-dragging {
+    cursor: grabbing !important;
+    opacity: 0.95;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.85), 0 0 20px rgba(241, 196, 15, 0.5) !important;
+    z-index: 1000 !important;
+    transition: none !important;
+}
+
+/* Clases de apoyo para desplazamiento fluido de cartas vecinas */
+.player-hand .card.shift-left {
+    transform: translateX(calc(-1 * (var(--card-width) + 12px))) !important;
+}
+.player-hand .card.shift-right {
+    transform: translateX(calc(var(--card-width) + 12px)) !important;
 }
 
 .pieza-glowing {
@@ -810,16 +875,12 @@ body, html {
         border-radius: 8px !important;
         box-shadow: 0 8px 22px rgba(0,0,0,0.65) !important;
         transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.18s ease !important;
-        touch-action: manipulation;
+        touch-action: none !important;
     }
 
-    .player-hand .card:active {
+    .player-hand .card:not(.is-dragging):active {
         transform: translateY(-22px) scale(1.06) !important;
         box-shadow: 0 16px 35px rgba(0,0,0,0.85) !important;
-    }
-
-    .player-hand .card:hover {
-        transform: none;
     }
 
     /* Etiqueta PIEZA en móvil */

@@ -1,10 +1,10 @@
 /**
  * Service Worker para Truco Uruguayo (PWA)
- * Versión 2.6.0
+ * Versión 2.7.0
  * Soporte Offline, Caché de Cartas, Sonidos y Motor de Juego.
  */
 
-const CACHE_NAME = 'truco-uy-v2.6.0';
+const CACHE_NAME = 'truco-uy-v2.7.0';
 
 const PRECACHE_ASSETS = [
     '/',

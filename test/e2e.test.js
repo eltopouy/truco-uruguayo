@@ -408,6 +408,54 @@ testE2E('SoundManager métodos de fallback procedural no lanzan excepciones', ()
     assert.doesNotThrow(() => sm.unlock());
 });
 
+// ----------------------------------------------------
+// 11. Reordenamiento de Cartas en Mano
+// ----------------------------------------------------
+console.log('\n🃏 11. Reordenamiento de Cartas en Mano:');
+
+testE2E('Reordenar cartas en mano actualiza game.players[0].hand y game.manoJugador correctamente', () => {
+    const game = new GameStateManager();
+    game.configurarJugadores(2);
+    game.iniciarRonda();
+
+    const cartaOriginal0 = game.players[0].hand[0];
+    const cartaOriginal1 = game.players[0].hand[1];
+    const cartaOriginal2 = game.players[0].hand[2];
+
+    // Simular mover la carta del medio (índice 1) a la izquierda (índice 0)
+    const [moved] = game.players[0].hand.splice(1, 1);
+    game.players[0].hand.splice(0, 0, moved);
+    game.manoJugador = game.players[0].hand;
+
+    assert.strictEqual(game.players[0].hand[0], cartaOriginal1, 'La carta 1 ahora debe estar en el índice 0');
+    assert.strictEqual(game.players[0].hand[1], cartaOriginal0, 'La carta 0 ahora debe estar en el índice 1');
+    assert.strictEqual(game.players[0].hand[2], cartaOriginal2, 'La carta 2 debe mantenerse en el índice 2');
+    assert.strictEqual(game.manoJugador[0], cartaOriginal1, 'manoJugador debe reflejar el nuevo orden');
+
+    // Jugar la carta del índice 0
+    game.turnoSeat = 0;
+    const cartaJugada = game.jugarCarta(0, 0);
+    assert.strictEqual(cartaJugada, cartaOriginal1, 'La carta jugada debe ser la que se movió al índice 0');
+    assert.strictEqual(game.players[0].hand.length, 2, 'Deben quedar 2 cartas');
+});
+
+testE2E('Reordenar 2 cartas restantes invierte su orden limpiamente', () => {
+    const game = new GameStateManager();
+    game.configurarJugadores(2);
+    game.iniciarRonda();
+    game.turnoSeat = 0;
+    game.jugarCarta(0, 0); // Jugar 1 carta, quedan 2
+
+    const cA = game.players[0].hand[0];
+    const cB = game.players[0].hand[1];
+
+    const [m] = game.players[0].hand.splice(1, 1);
+    game.players[0].hand.splice(0, 0, m);
+
+    assert.strictEqual(game.players[0].hand[0], cB);
+    assert.strictEqual(game.players[0].hand[1], cA);
+});
+
 console.log('\n======================================================');
 console.log(`🏁 RESULTADO E2E: ${passedE2E}/${totalE2E} tests pasados con éxito.`);
 console.log('======================================================\n');

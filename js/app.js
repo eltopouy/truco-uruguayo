@@ -6,6 +6,7 @@ const PALS_SVG = {
 };
 
 const game = new GameStateManager();
+window.game = game;
 window.modoJuego = 'singleplayer';
 
 // Cargar preferencias guardadas del usuario
@@ -378,7 +379,7 @@ window.animarReparto = async function() {
                     
                     if (targetSeat === 0 && card && plyHandEl) {
                         const cardDOM = crearCartaDOM(card, false);
-                        cardDOM.classList.add('animate-deal');
+                        cardDOM.classList.add('animate-deal', `fan-3-${round}`);
                         cardDOM.addEventListener('click', () => jugarUI(round));
                         plyHandEl.appendChild(cardDOM);
                     } else if (targetSeat === 2 && partnerHandEl && card) {
@@ -404,7 +405,7 @@ window.animarReparto = async function() {
                 const c0 = game.manoJugador[i];
                 if (c0 && plyHandEl) {
                     const cardDOM = crearCartaDOM(c0, false);
-                    cardDOM.classList.add('animate-deal');
+                    cardDOM.classList.add('animate-deal', `fan-3-${i}`);
                     cardDOM.addEventListener('click', () => jugarUI(i));
                     plyHandEl.appendChild(cardDOM);
                 }
@@ -454,6 +455,166 @@ window.shakeCards = function() {
 
 // Flag para evitar múltiples disparos del resolver de Flor por render
 let _florCheckScheduled = false;
+
+/**
+ * Configura el abanico visual de cartas y el sistema interactivo de arrastre (Pointer Events)
+ * para permitir ordenar las cartas con el botón izquierdo del ratón / toque táctil,
+ * o jugarlas con un simple clic.
+ */
+function habilitarArrastreYJuego(cardDOM, index, myCards, plyHandEl) {
+    let startX = 0;
+    let startY = 0;
+    let isDragging = false;
+    let wasDragged = false;
+    let currentSlotIndex = index;
+    let activePointerId = null;
+    let cardRects = [];
+    let slotCenters = [];
+    let shiftAmount = 0;
+    let siblingCards = [];
+
+    cardDOM.addEventListener('pointerdown', (e) => {
+        // Solo responder al botón izquierdo (0) en mouse o toques táctiles/lápiz
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (window.isAnimatingDeal) return;
+
+        startX = e.clientX;
+        startY = e.clientY;
+        isDragging = false;
+        wasDragged = false;
+        currentSlotIndex = index;
+        activePointerId = e.pointerId;
+
+        siblingCards = Array.from(plyHandEl.children).filter(el => el.classList.contains('card'));
+        cardRects = siblingCards.map(el => el.getBoundingClientRect());
+        slotCenters = cardRects.map(r => r.left + r.width / 2);
+        shiftAmount = (cardRects[0] ? cardRects[0].width : 100) + 12;
+
+        try {
+            cardDOM.setPointerCapture(e.pointerId);
+        } catch (_) {}
+    });
+
+    cardDOM.addEventListener('pointermove', (e) => {
+        if (activePointerId === null || e.pointerId !== activePointerId) return;
+
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        if (!isDragging) {
+            // Umbral para distinguir un clic de un arrastre intencional para ordenar
+            if (Math.hypot(dx, dy) >= 7) {
+                isDragging = true;
+                wasDragged = true;
+                cardDOM.classList.add('is-dragging');
+                if (navigator.vibrate) navigator.vibrate(10);
+            }
+        }
+
+        if (isDragging) {
+            // Mover la carta arrastrada con elevación y leve rotación inercial
+            cardDOM.style.transform = `translate3d(${dx}px, ${dy - 12}px, 0) scale(1.1) rotate(${dx * 0.04}deg)`;
+
+            // Calcular el slot más cercano según la posición horizontal del centro de la carta
+            const currentCenterX = (slotCenters[index] || 0) + dx;
+            let nearestSlot = index;
+            let minDiff = Infinity;
+            slotCenters.forEach((centerX, sIdx) => {
+                const diff = Math.abs(currentCenterX - centerX);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    nearestSlot = sIdx;
+                }
+            });
+
+            if (nearestSlot !== currentSlotIndex) {
+                currentSlotIndex = nearestSlot;
+
+                // Desplazar visualmente las cartas hermanas para abrir espacio
+                siblingCards.forEach((sibling, sIdx) => {
+                    if (sIdx === index) return;
+
+                    sibling.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1)';
+                    if (index < currentSlotIndex) {
+                        if (sIdx > index && sIdx <= currentSlotIndex) {
+                            sibling.style.transform = `translateX(-${shiftAmount}px)`;
+                        } else {
+                            sibling.style.transform = '';
+                        }
+                    } else if (index > currentSlotIndex) {
+                        if (sIdx >= currentSlotIndex && sIdx < index) {
+                            sibling.style.transform = `translateX(${shiftAmount}px)`;
+                        } else {
+                            sibling.style.transform = '';
+                        }
+                    } else {
+                        sibling.style.transform = '';
+                    }
+                });
+            }
+        }
+    });
+
+    const finalizarArrastre = (e) => {
+        if (activePointerId === null || e.pointerId !== activePointerId) return;
+
+        try {
+            cardDOM.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+
+        activePointerId = null;
+
+        if (isDragging) {
+            const dy = e.clientY - startY;
+            cardDOM.classList.remove('is-dragging');
+            cardDOM.style.transform = '';
+
+            siblingCards.forEach(s => {
+                s.style.transform = '';
+                s.style.transition = '';
+            });
+
+            if (currentSlotIndex !== index && currentSlotIndex >= 0 && currentSlotIndex < myCards.length) {
+                // Reordenar las cartas en la mano del jugador
+                const [movedCard] = myCards.splice(index, 1);
+                myCards.splice(currentSlotIndex, 0, movedCard);
+
+                if (game.players && game.players[0]) {
+                    game.players[0].hand = myCards;
+                }
+                game.manoJugador = myCards;
+
+                if (window.audio && typeof window.audio.play === 'function') {
+                    window.audio.play('card-play');
+                }
+
+                renderJuego();
+            } else if (dy < -80 && game.turnoSeat === 0 && !game.rondaTerminada && !window.isAwaitingStateSync) {
+                // Si la soltó en la mesa hacia arriba y es su turno, jugarla
+                jugarUI(index);
+            } else {
+                renderJuego();
+            }
+
+            wasDragged = true;
+            isDragging = false;
+            setTimeout(() => { wasDragged = false; }, 350);
+        }
+    };
+
+    cardDOM.addEventListener('pointerup', finalizarArrastre);
+    cardDOM.addEventListener('pointercancel', finalizarArrastre);
+
+    cardDOM.addEventListener('click', (e) => {
+        if (wasDragged) {
+            wasDragged = false;
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        jugarUI(index);
+    });
+}
 
 function renderJuego() {
     if (typeof window.updateSyncUIState === 'function') window.updateSyncUIState();
@@ -528,9 +689,12 @@ function renderJuego() {
     if (plyHandEl) {
         plyHandEl.innerHTML = '';
         const myCards = (game.players && game.players[0] && game.players[0].hand) ? game.players[0].hand : (game.manoJugador || []);
+        const totalCards = myCards.length;
         myCards.forEach((c, index) => {
             const cardDOM = crearCartaDOM(c, false);
-            cardDOM.addEventListener('click', () => jugarUI(index));
+            cardDOM.classList.add(`fan-${totalCards}-${index}`);
+            cardDOM.dataset.index = index;
+            habilitarArrastreYJuego(cardDOM, index, myCards, plyHandEl);
             plyHandEl.appendChild(cardDOM);
         });
     }
@@ -753,7 +917,7 @@ async function jugarUI(indexCarta) {
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
         window.startSyncTimeout();
-        enviarAccionFirebase('jugar_carta', { index: indexCarta });
+        enviarAccionFirebase('jugar_carta', { index: indexCarta, carta: { valor: c.valor, palo: c.palo } });
         sincronizarEstadoMotor({ timerStartTime: Date.now() });
     }
     
