@@ -130,38 +130,66 @@ const assert = require('assert');
             await page.close();
         });
 
-        // TEST 4: Vista Móvil Vertical (Viewport 375x812)
-        await runTest('Prueba en resolución Mobile vertical (iPhone/Android)', async () => {
-            const page = await browser.newPage({
-                viewport: { width: 375, height: 812 },
-                isMobile: true,
-                hasTouch: true
-            });
-            // Interceptar peticiones de red externas para aislamiento 100% offline
-            await page.route('**/*.firebaseio.com/**', route => route.abort());
-            await page.goto(filePath);
+        // TEST 4: Vista Móvil Vertical (iPhone SE, iPhone 14, Android)
+        await runTest('Prueba en resolución Mobile vertical (iPhone/Android: cartas grandes, elevadas y menú de voces flotante)', async () => {
+            const devices = [
+                { name: 'iPhone SE', width: 375, height: 667 },
+                { name: 'iPhone 14', width: 390, height: 844 },
+                { name: 'Pixel 7', width: 412, height: 915 }
+            ];
 
-            // Clic en 1 vs 1 en móvil
-            await page.click('text=1 vs 1');
-            await page.waitForFunction(() => {
-                const el = document.getElementById('pantalla-inicio');
-                return el && (el.style.display === 'none' || window.getComputedStyle(el).display === 'none');
-            }, { timeout: 5000 });
-            await page.waitForTimeout(2000);
+            for (const dev of devices) {
+                const page = await browser.newPage({
+                    viewport: { width: dev.width, height: dev.height },
+                    isMobile: true,
+                    hasTouch: true
+                });
+                await page.route('**/*.firebaseio.com/**', route => route.abort());
+                await page.goto(filePath);
 
-            // Verificar que el panel de acciones esté visible y anclado abajo
-            const isActionsVisible = await page.isVisible('#actions-panel');
-            assert.strictEqual(isActionsVisible, true, 'El panel de voces debe estar visible');
+                // Clic en 1 vs 1 en móvil
+                await page.click('text=1 vs 1');
+                await page.waitForFunction(() => {
+                    const el = document.getElementById('pantalla-inicio');
+                    return el && (el.style.display === 'none' || window.getComputedStyle(el).display === 'none');
+                }, { timeout: 5000 });
+                await page.waitForTimeout(1500);
 
-            const actionsPanel = await page.waitForSelector('#actions-panel');
-            const boundingBox = await actionsPanel.boundingBox();
-            assert(boundingBox && (boundingBox.y + boundingBox.height >= 700), 'El panel de voces debe estar anclado en la parte inferior en móvil');
+                // Si saltó modal de Flor, cerrarlo
+                const isModal = await page.isVisible('#modal-custom');
+                if (isModal) {
+                    const btnOk = await page.$('#modal-buttons button');
+                    if (btnOk) await btnOk.click();
+                    await page.waitForTimeout(300);
+                }
 
-            // Verificar tamaño de cartas en mano móvil
-            const firstCard = await page.waitForSelector('.player-hand .card');
-            const cardBox = await firstCard.boundingBox();
-            assert(cardBox.width >= 80, 'Las cartas en móvil deben tener un ancho adecuado (>= 80px)');
-            await page.close();
+                // 1. Panel de acciones flotante y elevado del fondo
+                const actionsPanel = await page.waitForSelector('#actions-panel');
+                const actionsBox = await actionsPanel.boundingBox();
+                assert(actionsBox, `El panel de voces debe ser visible en ${dev.name}`);
+                assert(actionsBox.y + actionsBox.height <= dev.height, `El panel de acciones debe caber en la pantalla en ${dev.name}`);
+
+                // 2. Cartas del jugador grandes y elevadas
+                const cards = await page.$$('.player-hand .card');
+                assert.strictEqual(cards.length, 3, `Debe haber 3 cartas en ${dev.name}`);
+                const cardBoxes = await Promise.all(cards.map(c => c.boundingBox()));
+
+                // Ancho de cartas aumentado (>= 110px) y altura >= 165px
+                assert(cardBoxes[0].width >= 110, `Las cartas deben ser grandes (>= 110px de ancho) en ${dev.name}, midió ${cardBoxes[0].width}`);
+                assert(cardBoxes[0].height >= 165, `Las cartas deben ser altas (>= 165px) en ${dev.name}, midió ${cardBoxes[0].height}`);
+
+                // No desbordan horizontalmente la pantalla
+                assert(cardBoxes[0].x >= -5, `Primera carta no debe salirse a la izquierda en ${dev.name}`);
+                const lastCard = cardBoxes[cardBoxes.length - 1];
+                assert(lastCard.x + lastCard.width <= dev.width + 10, `Última carta no debe salirse a la derecha en ${dev.name}`);
+
+                // Espacio libre y elevación respecto al panel de acciones
+                const bottomOfCards = Math.max(...cardBoxes.map(b => b.y + b.height));
+                const clearance = actionsBox.y - bottomOfCards;
+                assert(clearance >= 10, `Debe existir separación limpia entre cartas y panel de voces en ${dev.name}, clearance=${clearance}`);
+
+                await page.close();
+            }
         });
 
         // TEST 5: Modales de Señas, Jerarquía y Reglamento
