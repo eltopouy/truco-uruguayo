@@ -416,9 +416,13 @@ window.animarReparto = async function() {
                         cardPart.classList.add('animate-deal', `fan-3-${round}`);
                         partnerHandEl.appendChild(cardPart);
                     } else if (targetSeat === 1 && rivalRightHandEl && card) {
-                        rivalRightHandEl.appendChild(crearCartaDOM(card, true));
+                        const cardR = crearCartaDOM(card, true);
+                        cardR.classList.add('animate-deal', `fan-3-${round}`);
+                        rivalRightHandEl.appendChild(cardR);
                     } else if (targetSeat === 3 && rivalLeftHandEl && card) {
-                        rivalLeftHandEl.appendChild(crearCartaDOM(card, true));
+                        const cardL = crearCartaDOM(card, true);
+                        cardL.classList.add('animate-deal', `fan-3-${round}`);
+                        rivalLeftHandEl.appendChild(cardL);
                     }
                     await new Promise(r => setTimeout(r, 120));
                 }
@@ -524,7 +528,9 @@ function habilitarArrastreYJuego(cardDOM, index, myCards, plyHandEl) {
         siblingCards = Array.from(plyHandEl.children).filter(el => el.classList.contains('card'));
         cardRects = siblingCards.map(el => el.getBoundingClientRect());
         slotCenters = cardRects.map(r => r.left + r.width / 2);
-        shiftAmount = (cardRects[0] ? cardRects[0].width : 100) + 12;
+        shiftAmount = slotCenters.length > 1
+            ? Math.max(40, Math.abs(slotCenters[1] - slotCenters[0]))
+            : ((cardRects[0] ? cardRects[0].width : 96) - 12);
 
         try {
             cardDOM.setPointerCapture(e.pointerId);
@@ -688,12 +694,24 @@ function renderJuego() {
         if (rivalRightHandEl) {
             rivalRightHandEl.style.display = 'flex';
             rivalRightHandEl.innerHTML = '';
-            (game.players[1]?.hand || []).forEach(c => rivalRightHandEl.appendChild(crearCartaDOM(c, true)));
+            const rightCards = game.players[1]?.hand || [];
+            const totalRight = rightCards.length;
+            rightCards.forEach((c, index) => {
+                const cardR = crearCartaDOM(c, true);
+                cardR.classList.add(`fan-${totalRight}-${index}`);
+                rivalRightHandEl.appendChild(cardR);
+            });
         }
         if (rivalLeftHandEl) {
             rivalLeftHandEl.style.display = 'flex';
             rivalLeftHandEl.innerHTML = '';
-            (game.players[3]?.hand || []).forEach(c => rivalLeftHandEl.appendChild(crearCartaDOM(c, true)));
+            const leftCards = game.players[3]?.hand || [];
+            const totalLeft = leftCards.length;
+            leftCards.forEach((c, index) => {
+                const cardL = crearCartaDOM(c, true);
+                cardL.classList.add(`fan-${totalLeft}-${index}`);
+                rivalLeftHandEl.appendChild(cardL);
+            });
         }
         if (playArea4p) {
             playArea4p.style.display = 'flex';

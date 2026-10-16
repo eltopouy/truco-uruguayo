@@ -1,8 +1,8 @@
 :root {
     --bg-color: #0b1f14;
     --table-color: radial-gradient(circle at center, #1a4d33 0%, #06140c 100%);
-    --card-width: 100px;
-    --card-height: 155px;
+    --card-width: 106px;
+    --card-height: 164px;
     --gold: #f1c40f;
     --felt-texture: url("https://www.transparenttextures.com/patterns/felt.png");
 }
@@ -33,10 +33,28 @@ body, html {
 
 .play-area {
     position: absolute;
-    top: 50%;
+    top: 47%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 4000;
+    width: auto !important;
+    gap: 26px !important;
+    pointer-events: none;
+}
+
+/* Perspectiva en la mesa: las cartas jugadas en el centro se ven un poco más pequeñas que las de la mano del jugador */
+.play-area .card {
+    width: 84px;
+    height: 130px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.65);
+}
+
+#mesa-oponente {
+    transform: translateY(-14px) scale(0.95) rotate(-3deg) !important;
+}
+
+#mesa-jugador {
+    transform: translateY(14px) rotate(2deg) !important;
 }
 
 /* Mate Flotante */
@@ -87,7 +105,7 @@ body, html {
     overflow: hidden;
 }
 
-/* Animación de entrada al repartir (Premium) */
+/* Animación de entrada al repartir (conserva el ángulo de abanico al finalizar) */
 @keyframes dealing {
     from {
         opacity: 0;
@@ -95,21 +113,21 @@ body, html {
     }
     to {
         opacity: 1;
-        transform: translate(0, 0) rotate(0) scale(1);
+        transform: var(--fan-transform, translate(0, 0) rotate(0deg) scale(1));
     }
 }
 
 .card.animate-deal {
-    animation: dealing 0.7s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    animation: dealing 0.65s cubic-bezier(0.19, 1, 0.22, 1) forwards;
 }
 
 .card.appearing {
-    animation: fadeIn 0.3s ease-out forwards;
+    animation: cardAppear 0.3s ease-out forwards;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.8); }
-    to { opacity: 1; transform: scale(1); }
+@keyframes cardAppear {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes shake {
@@ -185,45 +203,48 @@ body, html {
     z-index: 10;
 }
 
-/* Disposición del mazo: Se define dinámicamente con clases (.deck-seat-0..3 / .deck-mi-derecha / .deck-su-derecha) */
+/* Disposición del mazo y la muestra: menor tamaño por perspectiva y alejados de las cartas jugadas */
 .deck-area {
     display: flex;
     align-items: center;
     transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-    z-index: 4000; 
+    z-index: 2500; 
     position: absolute;
+    pointer-events: none;
+}
+
+.deck-area .card {
+    width: 74px !important;
+    height: 115px !important;
 }
 
 /* El mazo al lado del Jugador Sur (Asiento 0 - Abajo Derecha) */
 .deck-seat-0, .deck-mi-derecha {
     position: absolute;
-    bottom: 22%;
-    right: 16%;
+    bottom: 27%;
+    right: 17%;
     top: auto;
     left: auto;
-    transform: scale(0.85);
     z-index: 2500;
 }
 
 /* El mazo al lado del Rival Este (Asiento 1 - Arriba/Centro Derecha) */
 .deck-seat-1 {
     position: absolute;
-    top: 32%;
-    right: 16%;
+    top: 28%;
+    right: 17%;
     bottom: auto;
     left: auto;
-    transform: scale(0.85);
     z-index: 2500;
 }
 
 /* El mazo al lado del Compañero Norte (Asiento 2 - Arriba Izquierda) */
 .deck-seat-2, .deck-su-derecha {
     position: absolute;
-    top: 28%;
-    left: 14%;
+    top: 26%;
+    left: 17%;
     bottom: auto;
     right: auto;
-    transform: scale(0.85);
     z-index: 2500;
 }
 
@@ -231,15 +252,14 @@ body, html {
 .deck-seat-3 {
     position: absolute;
     bottom: 28%;
-    left: 16%;
+    left: 17%;
     top: auto;
     right: auto;
-    transform: scale(0.85);
     z-index: 2500;
 }
 
 .card-deck {
-    z-index: 5; /* Mazo siempre arriba */
+    z-index: 5; /* Mazo siempre encima de la muestra */
     position: relative;
     /* Efecto visual de Cartas Apiladas */
     box-shadow: 
@@ -257,45 +277,47 @@ body, html {
 .card-muestra {
     z-index: 1; /* Muestra enterrada debajo del mazo */
     position: absolute;
-    top: 15px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+    top: -34px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.85);
 }
 
-/* La Muestra asoma hacia el centro de la mesa dependiendo de dónde esté el mazo */
+/* La Muestra asoma más hacia arriba y al centro con su ángulo realista, pisada abajo por el mazo */
 .deck-seat-0 .card-muestra,
 .deck-seat-1 .card-muestra,
 .deck-mi-derecha .card-muestra {
-    left: -70px;  /* Asoma hacia la izquierda (centro) */
-    top: 5px;
+    left: -44px;
+    top: -34px;
+    --fan-transform: rotate(-22deg);
     transform: rotate(-22deg);
 }
 
 .deck-seat-2 .card-muestra,
 .deck-seat-3 .card-muestra,
 .deck-su-derecha .card-muestra {
-    left: 70px;  /* Asoma hacia la derecha (centro) */
-    top: 5px;
+    left: 44px;
+    top: -34px;
+    --fan-transform: rotate(22deg);
     transform: rotate(22deg);
 }
 
 /* Manos de jugadores */
 .opponent-hand {
     display: flex;
-    gap: 15px;
-    padding: 10px 30px;
+    gap: 0 !important;
+    padding: 8px 20px;
     justify-content: center;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
     perspective: 1000px;
-    top: 35px;
+    top: 32px;
     z-index: 1000;
 }
 
 .player-hand {
     display: flex;
-    gap: 12px;
-    padding: 10px 30px 20px 30px;
+    gap: 0;
+    padding: 10px 24px 20px 24px;
     justify-content: center;
     position: absolute;
     left: 50%;
@@ -309,6 +331,7 @@ body, html {
 
 .player-hand .card {
     cursor: grab;
+    margin: 0 -10px;
     transform-origin: 50% 125%;
     transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s ease;
     touch-action: none;
@@ -319,74 +342,90 @@ body, html {
     cursor: grabbing;
 }
 
-/* Efecto Abanico (Fan) según cantidad de cartas en mano */
+/* Efecto Abanico (Fan) según cantidad de cartas en mano del jugador */
 /* 3 cartas */
 .player-hand .card.fan-3-0 {
-    transform: rotate(-8deg) translateY(6px);
+    --fan-transform: rotate(-8deg) translateY(6px);
+    transform: var(--fan-transform);
     z-index: 10;
 }
 .player-hand .card.fan-3-1 {
-    transform: rotate(0deg) translateY(-2px);
+    --fan-transform: rotate(0deg) translateY(-2px);
+    transform: var(--fan-transform);
     z-index: 20;
 }
 .player-hand .card.fan-3-2 {
-    transform: rotate(8deg) translateY(6px);
+    --fan-transform: rotate(8deg) translateY(6px);
+    transform: var(--fan-transform);
     z-index: 30;
 }
 
 /* 2 cartas */
 .player-hand .card.fan-2-0 {
-    transform: rotate(-5deg) translateY(3px);
+    --fan-transform: rotate(-5deg) translateY(3px);
+    transform: var(--fan-transform);
     z-index: 10;
 }
 .player-hand .card.fan-2-1 {
-    transform: rotate(5deg) translateY(3px);
+    --fan-transform: rotate(5deg) translateY(3px);
+    transform: var(--fan-transform);
     z-index: 20;
 }
 
 /* 1 carta */
 .player-hand .card.fan-1-0 {
-    transform: rotate(0deg) translateY(0);
+    --fan-transform: rotate(0deg) translateY(0);
+    transform: var(--fan-transform);
     z-index: 10;
 }
 
-/* Efecto Abanico para la Mano del Rival / Oponente y Compañero (Norte) */
+/* Perspectiva y Abanico Realista para la Mano del Rival / Oponente y Compañero (Norte) */
 .opponent-hand, .partner-hand {
     gap: 0 !important;
 }
 
 .opponent-hand .card, .partner-hand .card {
-    margin: 0 -8px !important;
+    width: 74px;
+    height: 115px;
+    margin: 0 -14px !important;
+    transform-origin: 50% 115%;
     transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease !important;
+    box-shadow: 0 5px 14px rgba(0,0,0,0.65);
 }
 
-/* 3 cartas rival/compañero */
+/* 3 cartas rival/compañero en abanico realista */
 .opponent-hand .card.fan-3-0, .partner-hand .card.fan-3-0 {
-    transform: rotate(-7deg) translateY(3px);
+    --fan-transform: rotate(-15deg) translateY(6px);
+    transform: var(--fan-transform);
     z-index: 10;
 }
 .opponent-hand .card.fan-3-1, .partner-hand .card.fan-3-1 {
-    transform: rotate(0deg) translateY(-2px);
+    --fan-transform: rotate(0deg) translateY(-3px);
+    transform: var(--fan-transform);
     z-index: 20;
 }
 .opponent-hand .card.fan-3-2, .partner-hand .card.fan-3-2 {
-    transform: rotate(7deg) translateY(3px);
+    --fan-transform: rotate(15deg) translateY(6px);
+    transform: var(--fan-transform);
     z-index: 30;
 }
 
 /* 2 cartas rival/compañero */
 .opponent-hand .card.fan-2-0, .partner-hand .card.fan-2-0 {
-    transform: rotate(-5deg) translateY(2px);
+    --fan-transform: rotate(-9deg) translateY(3px);
+    transform: var(--fan-transform);
     z-index: 10;
 }
 .opponent-hand .card.fan-2-1, .partner-hand .card.fan-2-1 {
-    transform: rotate(5deg) translateY(2px);
+    --fan-transform: rotate(9deg) translateY(3px);
+    transform: var(--fan-transform);
     z-index: 20;
 }
 
 /* 1 carta rival/compañero */
 .opponent-hand .card.fan-1-0, .partner-hand .card.fan-1-0 {
-    transform: rotate(0deg) translateY(0);
+    --fan-transform: rotate(0deg) translateY(0);
+    transform: var(--fan-transform);
     z-index: 10;
 }
 
@@ -682,48 +721,88 @@ body, html {
 
 .partner-hand {
     position: absolute;
-    top: 55px;
+    top: 38px;
     left: 50%;
-    transform: translateX(-50%) scale(0.85);
+    transform: translateX(-50%);
     display: flex;
-    gap: 10px;
+    gap: 0 !important;
     z-index: 1000;
 }
 
 .rival-left-hand {
     position: absolute;
-    left: 15px;
-    top: 45%;
-    transform: translateY(-50%) scale(0.75);
+    left: 18px;
+    top: 46%;
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0;
     z-index: 1000;
 }
 
 .rival-right-hand {
     position: absolute;
-    right: 15px;
-    top: 45%;
-    transform: translateY(-50%) scale(0.75);
+    right: 18px;
+    top: 46%;
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0;
     z-index: 1000;
+}
+
+.rival-left-hand .card,
+.rival-right-hand .card {
+    width: 66px;
+    height: 102px;
+    margin: -18px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.65);
+}
+
+.rival-left-hand .card.fan-3-0, .rival-right-hand .card.fan-3-0 {
+    --fan-transform: rotate(-12deg) translateX(-3px);
+    transform: var(--fan-transform);
+    z-index: 10;
+}
+.rival-left-hand .card.fan-3-1, .rival-right-hand .card.fan-3-1 {
+    --fan-transform: rotate(0deg) translateX(2px);
+    transform: var(--fan-transform);
+    z-index: 20;
+}
+.rival-left-hand .card.fan-3-2, .rival-right-hand .card.fan-3-2 {
+    --fan-transform: rotate(12deg) translateX(-3px);
+    transform: var(--fan-transform);
+    z-index: 30;
+}
+.rival-left-hand .card.fan-2-0, .rival-right-hand .card.fan-2-0 {
+    --fan-transform: rotate(-7deg);
+    transform: var(--fan-transform);
+    z-index: 10;
+}
+.rival-left-hand .card.fan-2-1, .rival-right-hand .card.fan-2-1 {
+    --fan-transform: rotate(7deg);
+    transform: var(--fan-transform);
+    z-index: 20;
 }
 
 .play-area-4p {
     position: absolute;
-    top: 50%;
+    top: 47%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 260px;
-    height: 260px;
+    width: 240px;
+    height: 240px;
     display: flex;
     justify-content: center;
     align-items: center;
     pointer-events: none;
     z-index: 4000;
+}
+
+.play-area-4p .card {
+    width: 76px;
+    height: 118px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.65);
 }
 
 .play-area-4p .slot-south {
@@ -757,7 +836,7 @@ body, html {
 /* --- RESPONSIVIDAD PARA CELULARES Y VISTA VERTICAL --- */
 @media (max-width: 768px) {
     :root {
-        --card-width: clamp(105px, 29.5vw, 135px);
+        --card-width: clamp(96px, 25.5vw, 110px);
         --card-height: calc(var(--card-width) * 1.55);
     }
     
@@ -797,10 +876,10 @@ body, html {
         margin-bottom: 5px !important;
     }
 
-    /* Mano del Oponente (1v1 Arriba) */
+    /* Mano del Oponente (1v1 Arriba): En abanico realista y más chica por perspectiva de lejanía */
     .opponent-hand {
         position: absolute !important;
-        top: 44px !important;
+        top: 42px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         padding: 0 !important;
@@ -812,110 +891,116 @@ body, html {
     }
 
     .opponent-hand .card {
-        width: clamp(72px, 20vw, 88px) !important;
-        height: calc(clamp(72px, 20vw, 88px) * 1.55) !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-        margin: 0 -8px !important;
+        width: clamp(58px, 15.5vw, 68px) !important;
+        height: calc(clamp(58px, 15.5vw, 68px) * 1.55) !important;
+        box-shadow: 0 5px 14px rgba(0,0,0,0.65);
+        margin: 0 -12px !important;
+        transform-origin: 50% 115% !important;
     }
 
-    /* Mazo y Muestra: Tamaño claro y legible a los lados */
+    /* Mazo y Muestra: Menor tamaño por perspectiva y ubicados en los laterales sin solapar mesa ni manos */
     .deck-area {
         position: absolute !important;
         z-index: 2500 !important;
+        pointer-events: none !important;
+    }
+
+    .deck-area .card {
+        width: clamp(50px, 13.5vw, 60px) !important;
+        height: calc(clamp(50px, 13.5vw, 60px) * 1.55) !important;
     }
 
     .deck-seat-0, .deck-mi-derecha {
         bottom: auto !important;
-        top: 52% !important;
-        right: 8px !important;
+        top: 54% !important;
+        right: 10px !important;
         left: auto !important;
-        transform: translateY(-50%) scale(0.72) !important;
-        transform-origin: right center !important;
+        transform: translateY(-50%) !important;
     }
 
     .deck-seat-1 {
         bottom: auto !important;
-        top: 36% !important;
-        right: 8px !important;
+        top: 34% !important;
+        right: 10px !important;
         left: auto !important;
-        transform: translateY(-50%) scale(0.72) !important;
-        transform-origin: right center !important;
+        transform: translateY(-50%) !important;
     }
 
     .deck-seat-2, .deck-su-derecha {
         bottom: auto !important;
-        top: 29% !important;
-        left: 8px !important;
+        top: 30% !important;
+        left: 10px !important;
         right: auto !important;
-        transform: translateY(-50%) scale(0.72) !important;
-        transform-origin: left center !important;
+        transform: translateY(-50%) !important;
     }
 
     .deck-seat-3 {
         bottom: auto !important;
-        top: 48% !important;
-        left: 8px !important;
+        top: 50% !important;
+        left: 10px !important;
         right: auto !important;
-        transform: translateY(-50%) scale(0.72) !important;
-        transform-origin: left center !important;
+        transform: translateY(-50%) !important;
     }
 
+    /* La muestra queda más arriba para verse claramente, con el mazo encima y manteniendo su ángulo realista */
     .deck-seat-0 .card-muestra,
     .deck-seat-1 .card-muestra,
     .deck-mi-derecha .card-muestra {
-        left: -36px !important;
-        top: 8px !important;
-        transform: rotate(-16deg) !important;
+        left: -30px !important;
+        top: -26px !important;
+        --fan-transform: rotate(-22deg);
+        transform: rotate(-22deg) !important;
     }
 
     .deck-seat-2 .card-muestra,
     .deck-seat-3 .card-muestra,
     .deck-su-derecha .card-muestra {
-        left: 36px !important;
-        top: 8px !important;
-        transform: rotate(16deg) !important;
+        left: 30px !important;
+        top: -26px !important;
+        --fan-transform: rotate(22deg);
+        transform: rotate(22deg) !important;
     }
 
-    /* Área central de juego (Cartas tiradas en la mesa) */
+    /* Área central de juego (Cartas tiradas en la mesa): Más pequeñas que la mano del jugador por perspectiva */
     .play-area {
         position: absolute !important;
-        top: 41% !important;
+        top: 42% !important;
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
         display: flex !important;
         flex-direction: row !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: clamp(14px, 4vw, 24px) !important;
+        gap: clamp(10px, 3vw, 18px) !important;
         z-index: 3000 !important;
-        width: 100% !important;
-        max-width: 420px !important;
+        width: auto !important;
+        max-width: 62vw !important;
         pointer-events: none;
     }
 
     .play-area .card {
-        width: clamp(102px, 28vw, 130px) !important;
-        height: calc(clamp(102px, 28vw, 130px) * 1.55) !important;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.7) !important;
+        width: clamp(72px, 19vw, 84px) !important;
+        height: calc(clamp(72px, 19vw, 84px) * 1.55) !important;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.7) !important;
     }
 
     #mesa-oponente {
-        transform: translateY(-8px) !important;
+        transform: translateY(-8px) scale(0.95) rotate(-3deg) !important;
     }
 
     #mesa-jugador {
-        transform: translateY(8px) !important;
+        transform: translateY(8px) rotate(2deg) !important;
     }
 
-    /* Mano del Jugador (Abajo): Cartas GRANDES, nítidas, elevadas y fáciles de pulsar/arrastrar */
+    /* Mano del Jugador (Abajo): Un poco más compactas, más juntas en abanico y lejos de los bordes de la pantalla */
     .player-hand {
         position: absolute !important;
-        bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important; 
+        bottom: calc(108px + env(safe-area-inset-bottom, 0px)) !important; 
         left: 50% !important;
         transform: translateX(-50%) !important;
-        padding: 0 !important;
+        padding: 0 18px !important;
         width: auto !important;
-        max-width: 96vw !important;
+        max-width: 88vw !important;
         display: flex !important;
         justify-content: center !important;
         align-items: flex-end !important;
@@ -926,14 +1011,14 @@ body, html {
     }
 
     .player-hand .card {
-        width: clamp(114px, 30.5vw, 138px) !important;
-        height: calc(clamp(114px, 30.5vw, 138px) * 1.55) !important;
-        min-height: 175px !important;
+        width: clamp(96px, 25.5vw, 110px) !important;
+        height: calc(clamp(96px, 25.5vw, 110px) * 1.55) !important;
+        min-height: 148px !important;
         border-radius: 9px !important;
         box-shadow: 0 10px 28px rgba(0,0,0,0.7) !important;
         transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.18s ease !important;
         touch-action: none !important;
-        margin: 0 -10px !important;
+        margin: 0 -16px !important;
     }
 
     .player-hand .card:not(.is-dragging):active {
@@ -947,61 +1032,62 @@ body, html {
         bottom: auto !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
-        font-size: 0.65rem !important;
-        padding: 2px 7px !important;
+        font-size: 0.62rem !important;
+        padding: 2px 6px !important;
         border-radius: 4px !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.7) !important;
     }
 
     /* Modo 4 Jugadores (2v2) en Celulares */
     .partner-hand {
-        top: 10px !important;
+        top: 40px !important;
         transform: translateX(-50%) !important;
-        gap: 6px !important;
+        gap: 0 !important;
     }
 
     .partner-hand .card {
-        width: clamp(60px, 17vw, 78px) !important;
-        height: calc(clamp(60px, 17vw, 78px) * 1.55) !important;
+        width: clamp(54px, 14.5vw, 64px) !important;
+        height: calc(clamp(54px, 14.5vw, 64px) * 1.55) !important;
+        margin: 0 -11px !important;
     }
 
     .rival-left-hand {
         left: 6px !important;
-        top: 45% !important;
+        top: 44% !important;
         transform: translateY(-50%) !important;
         gap: 0px !important;
     }
 
     .rival-left-hand .card {
-        width: clamp(52px, 14.5vw, 68px) !important;
-        height: calc(clamp(52px, 14.5vw, 68px) * 1.55) !important;
-        margin-bottom: -40px !important;
+        width: clamp(46px, 12.5vw, 56px) !important;
+        height: calc(clamp(46px, 12.5vw, 56px) * 1.55) !important;
+        margin: -18px 0 !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.6);
     }
 
     .rival-right-hand {
         right: 6px !important;
-        top: 45% !important;
+        top: 44% !important;
         transform: translateY(-50%) !important;
         gap: 0px !important;
     }
 
     .rival-right-hand .card {
-        width: clamp(52px, 14.5vw, 68px) !important;
-        height: calc(clamp(52px, 14.5vw, 68px) * 1.55) !important;
-        margin-bottom: -40px !important;
+        width: clamp(46px, 12.5vw, 56px) !important;
+        height: calc(clamp(46px, 12.5vw, 56px) * 1.55) !important;
+        margin: -18px 0 !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.6);
     }
 
     .play-area-4p {
-        width: clamp(230px, 68vw, 290px) !important;
-        height: clamp(230px, 68vw, 290px) !important;
-        top: 45% !important;
+        width: clamp(190px, 54vw, 235px) !important;
+        height: clamp(190px, 54vw, 235px) !important;
+        top: 43% !important;
     }
 
     .play-area-4p .card {
-        width: clamp(75px, 21vw, 96px) !important;
-        height: calc(clamp(75px, 21vw, 96px) * 1.55) !important;
+        width: clamp(62px, 16.5vw, 74px) !important;
+        height: calc(clamp(62px, 16.5vw, 74px) * 1.55) !important;
         box-shadow: 0 6px 18px rgba(0,0,0,0.7) !important;
     }
 
@@ -1089,52 +1175,61 @@ body, html {
     /* Ajuste fino para celulares compactos o de poca altura (ej. iPhone SE) */
     @media (max-height: 700px) {
         .opponent-hand {
-            top: 40px !important;
+            top: 38px !important;
+        }
+        .deck-area .card {
+            width: 48px !important;
+            height: 74px !important;
         }
         .deck-seat-2, .deck-su-derecha {
-            top: 35% !important;
-            left: 4px !important;
-            transform: translateY(-50%) scale(0.64) !important;
+            top: 33% !important;
+            left: 8px !important;
+            transform: translateY(-50%) !important;
         }
         .deck-seat-0, .deck-mi-derecha {
-            top: 52% !important;
-            right: 4px !important;
-            transform: translateY(-50%) scale(0.64) !important;
+            top: 53% !important;
+            right: 8px !important;
+            transform: translateY(-50%) !important;
         }
         .deck-seat-1 {
-            top: 36% !important;
-            right: 4px !important;
-            transform: translateY(-50%) scale(0.64) !important;
+            top: 34% !important;
+            right: 8px !important;
+            transform: translateY(-50%) !important;
         }
         .deck-seat-3 {
-            top: 48% !important;
-            left: 4px !important;
-            transform: translateY(-50%) scale(0.64) !important;
+            top: 50% !important;
+            left: 8px !important;
+            transform: translateY(-50%) !important;
         }
         .deck-seat-0 .card-muestra,
         .deck-seat-1 .card-muestra,
         .deck-mi-derecha .card-muestra {
-            left: -30px !important;
-            top: 6px !important;
-            transform: rotate(-14deg) !important;
+            left: -26px !important;
+            top: -22px !important;
+            transform: rotate(-22deg) !important;
         }
         .deck-seat-2 .card-muestra,
         .deck-seat-3 .card-muestra,
         .deck-su-derecha .card-muestra {
-            left: 30px !important;
-            top: 6px !important;
-            transform: rotate(14deg) !important;
+            left: 26px !important;
+            top: -22px !important;
+            transform: rotate(22deg) !important;
         }
         .player-hand {
-            bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+            bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
         }
         .player-hand .card {
-            width: clamp(108px, 30vw, 130px) !important;
-            height: calc(clamp(108px, 30vw, 130px) * 1.55) !important;
-            min-height: 165px !important;
+            width: clamp(92px, 24.5vw, 102px) !important;
+            height: calc(clamp(92px, 24.5vw, 102px) * 1.55) !important;
+            min-height: 142px !important;
+            margin: 0 -16px !important;
         }
         .play-area {
-            top: 40% !important;
+            top: 41% !important;
+        }
+        .play-area .card {
+            width: clamp(66px, 18vw, 76px) !important;
+            height: calc(clamp(66px, 18vw, 76px) * 1.55) !important;
         }
         #actions-panel {
             bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;

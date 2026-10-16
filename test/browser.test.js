@@ -169,19 +169,19 @@ const assert = require('assert');
                 assert(actionsBox, `El panel de voces debe ser visible en ${dev.name}`);
                 assert(actionsBox.y + actionsBox.height <= dev.height, `El panel de acciones debe caber en la pantalla en ${dev.name}`);
 
-                // 2. Cartas del jugador grandes y elevadas
+                // 2. Cartas del jugador con tamaño compacto, juntas y lejos de los bordes de la pantalla
                 const cards = await page.$$('.player-hand .card');
                 assert.strictEqual(cards.length, 3, `Debe haber 3 cartas en ${dev.name}`);
                 const cardBoxes = await Promise.all(cards.map(c => c.boundingBox()));
 
-                // Ancho de cartas aumentado (>= 110px) y altura >= 165px
-                assert(cardBoxes[0].width >= 110, `Las cartas deben ser grandes (>= 110px de ancho) en ${dev.name}, midió ${cardBoxes[0].width}`);
-                assert(cardBoxes[0].height >= 165, `Las cartas deben ser altas (>= 165px) en ${dev.name}, midió ${cardBoxes[0].height}`);
+                // Ancho compacto de la carta central vertical (entre 90px y 112px) y altura >= 140px
+                assert(cardBoxes[1].width >= 90 && cardBoxes[1].width <= 112, `Las cartas deben tener ancho compacto ideal (90-112px) en ${dev.name}, midió ${cardBoxes[1].width}`);
+                assert(cardBoxes[1].height >= 140, `Las cartas deben tener buena altura (>= 140px) en ${dev.name}, midió ${cardBoxes[1].height}`);
 
-                // No desbordan horizontalmente la pantalla
-                assert(cardBoxes[0].x >= -5, `Primera carta no debe salirse a la izquierda en ${dev.name}`);
+                // Lejos de los bordes de la pantalla (al menos 35px de margen a cada lado)
+                assert(cardBoxes[0].x >= 35, `Primera carta debe quedar lejos del borde izquierdo (>= 35px) en ${dev.name}, midió ${cardBoxes[0].x}`);
                 const lastCard = cardBoxes[cardBoxes.length - 1];
-                assert(lastCard.x + lastCard.width <= dev.width + 10, `Última carta no debe salirse a la derecha en ${dev.name}`);
+                assert(dev.width - (lastCard.x + lastCard.width) >= 35, `Última carta debe quedar lejos del borde derecho (>= 35px) en ${dev.name}, margen=${dev.width - (lastCard.x + lastCard.width)}`);
 
                 // Espacio libre y elevación respecto al panel de acciones
                 const bottomOfCards = Math.max(...cardBoxes.map(b => b.y + b.height));
@@ -353,19 +353,47 @@ const assert = require('assert');
             assert(cls1.includes('fan-3-1'), 'La carta central del rival debe tener clase fan-3-1');
             assert(cls2.includes('fan-3-2'), 'La carta derecha del rival debe tener clase fan-3-2');
 
-            // 2. Separación vertical limpia entre mano del rival y el mazo con la muestra
+            // 2. Separación limpia entre mano del rival, mazo con la muestra, y mesa; además muestra más arriba con mazo encima y perspectiva 1ra persona
+            await page.click('.player-hand .card:first-child');
+            await page.waitForTimeout(800);
+
             const metrics = await page.evaluate(() => {
                 const opp = document.querySelector('.opponent-hand').getBoundingClientRect();
-                const deck = document.querySelector('.deck-area').getBoundingClientRect();
-                const muestra = document.querySelector('.card-muestra').getBoundingClientRect();
+                const deck = document.querySelector('.card-deck').getBoundingClientRect();
+                const muestraEl = document.querySelector('.card-muestra');
+                const deckEl = document.querySelector('.card-deck');
+                const muestra = muestraEl.getBoundingClientRect();
+                const playArea = document.querySelector('.play-area').getBoundingClientRect();
+                const playerCard = document.querySelector('.player-hand .card');
+                const tableCard = document.querySelector('.play-area .card');
+                const oppCard = document.querySelector('.opponent-hand .card');
+
+                const zDeck = parseInt(window.getComputedStyle(deckEl).zIndex, 10) || 0;
+                const zMuestra = parseInt(window.getComputedStyle(muestraEl).zIndex, 10) || 0;
+
+                const overlapRect = (r1, r2) => !(r1.right <= r2.left || r1.left >= r2.right || r1.bottom <= r2.top || r1.top >= r2.bottom);
+
                 return {
                     gapOppToDeck: deck.top - opp.bottom,
-                    gapOppToMuestra: muestra.top - opp.bottom
+                    gapOppToMuestra: muestra.top - opp.bottom,
+                    muestraAboveDeck: deck.top - muestra.top,
+                    zDeck,
+                    zMuestra,
+                    deckOverlapsPlayArea: overlapRect(deck, playArea) || overlapRect(muestra, playArea),
+                    playerW: playerCard ? parseFloat(window.getComputedStyle(playerCard).width) : 0,
+                    tableW: tableCard ? parseFloat(window.getComputedStyle(tableCard).width) : 0,
+                    oppW: oppCard ? parseFloat(window.getComputedStyle(oppCard).width) : 0,
+                    deckW: parseFloat(window.getComputedStyle(deckEl).width)
                 };
             });
 
             assert(metrics.gapOppToDeck >= 5, `El mazo debe ubicarse más abajo sin solapar al rival (gap: ${metrics.gapOppToDeck}px)`);
             assert(metrics.gapOppToMuestra >= 5, `La muestra debe ubicarse más abajo sin solapar al rival (gap: ${metrics.gapOppToMuestra}px)`);
+            assert(metrics.muestraAboveDeck >= 12, `La muestra debe sobresalir hacia arriba respecto al mazo (>= 12px, midió ${metrics.muestraAboveDeck}px)`);
+            assert(metrics.zDeck > metrics.zMuestra, `El mazo (z=${metrics.zDeck}) debe estar por encima de la muestra (z=${metrics.zMuestra})`);
+            assert.strictEqual(metrics.deckOverlapsPlayArea, false, 'El mazo y la muestra no deben solaparse con el área de juego central');
+            assert(metrics.playerW > metrics.tableW && metrics.tableW > metrics.oppW && metrics.oppW >= metrics.deckW,
+                `Jerarquía de perspectiva en 1ra persona debe cumplirse: Jugador(${metrics.playerW}) > Mesa(${metrics.tableW}) > Rival(${metrics.oppW}) >= Mazo(${metrics.deckW})`);
 
             // 3. Verificar que al quedar 2 cartas se mantiene el abanico fan-2
             await page.evaluate(() => {
