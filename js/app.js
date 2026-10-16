@@ -1623,7 +1623,31 @@ document.getElementById('btn-repartir').addEventListener('click', () => {
     }
 });
 
+// Control del Menú Hamburguesa Superior Derecho
+window.toggleMenuHamburguesa = function(force) {
+    const dropdown = document.getElementById('menu-hamburguesa-dropdown');
+    if (!dropdown) return;
+    const isCurrentlyOpen = dropdown.style.display === 'flex';
+    const newState = (typeof force === 'boolean') ? force : !isCurrentlyOpen;
+    dropdown.style.display = newState ? 'flex' : 'none';
+
+    // Mostrar u ocultar botón de Salir de Sala según el modo de juego
+    const btnSalir = document.getElementById('btn-menu-abandonar');
+    if (btnSalir) {
+        btnSalir.style.display = (window.modoJuego === 'multiplayer') ? 'flex' : 'none';
+    }
+};
+
+// Cerrar el menú hamburguesa al hacer clic fuera del contenedor
+document.addEventListener('click', (e) => {
+    const contenedor = document.getElementById('contenedor-menu-hamburguesa');
+    if (contenedor && !contenedor.contains(e.target)) {
+        window.toggleMenuHamburguesa(false);
+    }
+});
+
 document.getElementById('btn-senas').addEventListener('click', () => {
+    window.toggleMenuHamburguesa(false);
     document.getElementById('modal-senas').style.display = 'block';
     document.getElementById('overlay-senas').style.display = 'block';
 });

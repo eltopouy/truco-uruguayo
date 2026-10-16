@@ -199,7 +199,12 @@ const assert = require('assert');
             await page.click('text=1 vs 1');
             await page.waitForTimeout(2000);
 
-            // Abrir modal de señas
+            // Abrir menú hamburguesa en la esquina superior derecha y acceder a señas
+            const btnMenu = page.locator('#btn-menu-hamburguesa');
+            if (await btnMenu.isVisible()) {
+                await btnMenu.click();
+                await page.waitForTimeout(200);
+            }
             const btnSenas = page.locator('#btn-senas');
             if (await btnSenas.isVisible()) {
                 await btnSenas.click();
@@ -501,6 +506,11 @@ const assert = require('assert');
             });
             assert.strictEqual(drawerStateBeforeClick.display, 'none', 'El cajón de chat debe tener display:none hasta que se abra');
             assert.strictEqual(drawerStateBeforeClick.insideTable, false, 'El cajón de chat debe estar fuera de #game-table para no afectar el paño');
+
+            // 0. Verificar que el botón de chat en la barra superior tiene solo ícono y no texto "Chat"
+            const topChatBtnText = await page.textContent('#btn-chat-toggle-inner');
+            assert(topChatBtnText.includes('💬'), 'El botón superior de chat debe contener el emoji 💬');
+            assert(!topChatBtnText.includes('Chat'), 'El botón superior de chat NO debe contener la palabra "Chat"');
 
             // 1. Verificar que el botón flotante de chat está visible en escritorio y con punto verde
             const floatingBtnVisible = await page.isVisible('#floating-chat-btn');
