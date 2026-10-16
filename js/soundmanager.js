@@ -166,11 +166,31 @@ class SoundManager {
                     osc.stop(t + 0.22);
                 });
             }
+            else if (name === 'chat-message') {
+                // Campana suave de notificación de chat (La5 -> Mi6)
+                [880, 1318.5].forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    const t = now + idx * 0.055;
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, t);
+                    gain.gain.setValueAtTime(0.09, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(t);
+                    osc.stop(t + 0.13);
+                });
+            }
         } catch(e) {}
     }
 
     play(name) {
         if (this.muted) return;
+        if (name === 'chat-message') {
+            this._playSynthFallback('chat-message');
+            return;
+        }
         try {
             if (this.sounds && this.sounds[name]) {
                 const s = this.sounds[name];
@@ -206,6 +226,11 @@ class SoundManager {
 if (typeof window !== 'undefined') {
     window.SoundManager = SoundManager;
     window.audio = new SoundManager();
+    SoundManager.play = function(name) {
+        if (window.audio && typeof window.audio.play === 'function') {
+            window.audio.play(name);
+        }
+    };
     // Desbloqueo automático en la primera interacción del usuario (touch o click)
     const unlockListener = () => {
         if (window.audio && typeof window.audio.unlock === 'function') {

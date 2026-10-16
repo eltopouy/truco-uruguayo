@@ -37,6 +37,24 @@
         // Estado maestro del juego
         "estado_maestro": {
           ".validate": "newData.isString()"
+        },
+
+        // Chat en tiempo real de la sala
+        "chat": {
+          ".write": true,
+          "$msgId": {
+            ".validate": "newData.hasChildren(['id', 'autor', 'texto', 'timestamp']) && newData.child('texto').isString() && newData.child('texto').val().length <= 120"
+          }
+        },
+
+        // Indicador de escritura (typing)
+        "typing": {
+          ".write": true
+        },
+
+        // Señalización WebRTC para llamada de voz P2P
+        "voz": {
+          ".write": true
         }
       }
     }

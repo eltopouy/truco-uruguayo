@@ -560,6 +560,45 @@ testE2E('Guard en clic de btn-repartir ignora ejecuciones si rondaTerminada es f
     assert.strictEqual(repartio, true, 'Debe repartir si la ronda efectivamente terminó');
 });
 
+// ----------------------------------------------------
+// 13. Chat Online, Audio de Chat y Aislamiento de Salas
+// ----------------------------------------------------
+console.log('\n💬 13. Sistema de Chat Online y Aislamiento de Salas:');
+
+testE2E('Módulo chatmanager.js existe, está precacheado en sw.js y expone API completa', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const chatPath = path.resolve(__dirname, '../js/chatmanager.js');
+    assert(fs.existsSync(chatPath), 'El archivo js/chatmanager.js debe existir');
+    const chatCode = fs.readFileSync(chatPath, 'utf8');
+    assert(chatCode.includes('window.ChatManager'), 'Debe definir window.ChatManager');
+    assert(chatCode.includes('enviarMensaje'), 'Debe exponer enviarMensaje');
+    assert(chatCode.includes('recibirMensajeRemoto'), 'Debe exponer recibirMensajeRemoto');
+    assert(chatCode.includes('iniciarLlamadaVoz'), 'Debe exponer iniciarLlamadaVoz (WebRTC)');
+
+    const swCode = fs.readFileSync(path.resolve(__dirname, '../sw.js'), 'utf8');
+    assert(swCode.includes('/js/chatmanager.js'), 'sw.js debe incluir /js/chatmanager.js en PRECACHE_ASSETS');
+});
+
+testE2E('SoundManager reproduce sonido sintético chat-message sin lanzar errores ni activar TTS', () => {
+    const sm = new SoundManager();
+    let ttsCalled = false;
+    sm.reproduceVoz = () => { ttsCalled = true; };
+    assert.doesNotThrow(() => {
+        sm.play('chat-message');
+    });
+    assert.strictEqual(ttsCalled, false, 'chat-message debe usar síntesis procedural y no SpeechSynthesis');
+});
+
+testE2E('firebasemanager.js filtra salas por juego === truco y desacopla el chat del bloqueo de secuencia', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const fbCode = fs.readFileSync(path.resolve(__dirname, '../js/firebasemanager.js'), 'utf8');
+    assert(fbCode.includes("juego: 'truco'"), 'Las salas creadas deben etiquetarse con juego: truco');
+    assert(fbCode.includes("data.juego === 'truco'"), 'El listado de salas públicas debe filtrar por juego === truco');
+    assert(fbCode.includes('window.FirebaseManager'), 'Debe exponer window.FirebaseManager para ChatManager y Voz WebRTC');
+});
+
 console.log('\n======================================================');
 console.log(`🏁 RESULTADO E2E: ${passedE2E}/${totalE2E} tests pasados con éxito.`);
 console.log('======================================================\n');
@@ -567,3 +606,4 @@ console.log('======================================================\n');
 if (passedE2E !== totalE2E) {
     process.exit(1);
 }
+

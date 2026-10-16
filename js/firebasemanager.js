@@ -56,7 +56,7 @@ if (db) {
     if (snap.exists()) {
         snap.forEach(child => {
             const data = child.val();
-            if (data && data.publica) {
+            if (data && data.publica && (!data.juego || data.juego === 'truco')) {
                 count++;
                 const item = document.createElement('div');
                 item.className = 'glass';
@@ -200,6 +200,8 @@ window.crearSalaFirebase = async function(isPublica = false) {
     window.modoJuego = 'multiplayer';
     codigoSalaActual = generarCodigo();
     miRol = 'creador';
+    window.miRol = miRol;
+    window.codigoSalaActual = codigoSalaActual;
     
     mostrarLobbyEspera(codigoSalaActual, isPublica);
     
@@ -209,6 +211,7 @@ window.crearSalaFirebase = async function(isPublica = false) {
     roomRef.onDisconnect().remove();
 
     roomRef.set({
+        juego: 'truco',
         estado: 'esperando',
         publica: isPublica,
         timestamp: Date.now(),
@@ -218,6 +221,9 @@ window.crearSalaFirebase = async function(isPublica = false) {
         }
     }).then(() => {
         guardarSesionLocal(codigoSalaActual, miRol);
+        if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
+            window.ChatManager.habilitarChat(true, codigoSalaActual);
+        }
         
         // Escuchar cuando alguien se une
         roomRef.child('estado').on('value', async (snap) => {
@@ -231,7 +237,13 @@ window.crearSalaFirebase = async function(isPublica = false) {
                 const pi = document.getElementById('pantalla-inicio');
                 if (pi) pi.style.display = 'none';
                 const chatToggle = document.getElementById('btn-chat-toggle');
-                if (chatToggle) chatToggle.style.display = 'block';
+                if (chatToggle) {
+                    chatToggle.style.display = 'inline-flex';
+                    chatToggle.classList.remove('hidden');
+                }
+                if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
+                    window.ChatManager.habilitarChat(true, codigoSalaActual);
+                }
                 const btnAb = document.getElementById('btn-abandonar');
                 if (btnAb) btnAb.style.display = 'block';
                 const actionsPanel = document.getElementById('actions-panel');
@@ -294,7 +306,7 @@ window.buscarPartidaRapida = async function() {
             if (snap && snap.exists()) {
                 snap.forEach(child => {
                     const data = child.val();
-                    if (data && data.publica && !salaEncontrada) {
+                    if (data && data.publica && (!data.juego || data.juego === 'truco') && !salaEncontrada) {
                         salaEncontrada = child.key;
                     }
                 });
@@ -340,6 +352,8 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
     window.modoJuego = 'multiplayer';
     codigoSalaActual = codigo;
     miRol = 'invitado';
+    window.miRol = miRol;
+    window.codigoSalaActual = codigoSalaActual;
 
     mostrarLobbyEspera("CONECTANDO...", isPublica);
 
@@ -354,6 +368,13 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
             return;
         }
         const roomData = snap.val();
+        if (roomData.juego && roomData.juego !== 'truco') {
+            quitarLobbyEspera();
+            await window.UI.alert("❌ Ese código pertenece a otro juego (Conga Uruguaya).", "Sala incompatible");
+            const pi = document.getElementById('pantalla-inicio');
+            if (pi) pi.style.display = 'flex';
+            return;
+        }
         if (roomData.estado !== 'esperando') {
             quitarLobbyEspera();
             if (!isPublica) {
@@ -383,7 +404,13 @@ window.unirseSalaFirebase = async function(codigo, isPublica = false) {
             const pi = document.getElementById('pantalla-inicio');
             if (pi) pi.style.display = 'none';
             const chatToggle2 = document.getElementById('btn-chat-toggle');
-            if (chatToggle2) chatToggle2.style.display = 'block';
+            if (chatToggle2) {
+                chatToggle2.style.display = 'inline-flex';
+                chatToggle2.classList.remove('hidden');
+            }
+            if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
+                window.ChatManager.habilitarChat(true, codigoSalaActual);
+            }
             const btnAb = document.getElementById('btn-abandonar');
             if (btnAb) btnAb.style.display = 'block';
             const actionsPanel = document.getElementById('actions-panel');
@@ -737,25 +764,19 @@ async function procesarAccionRed(snap) {
         }
     }
     else if (t === 'chat') {
-        logJugada(`💬 Rival: ${d.msg}`, 'rival');
-        window.audio.play('win-baza');
-        // Auto-abrir el chat si está cerrado y mostrar badge
-        const chatPanel = document.getElementById('chat-container');
-        const badge = document.getElementById('chat-badge');
-        if (chatPanel && chatPanel.style.display === 'none') {
-            chatPanel.style.display = 'block';
-            // Auto-cerrar tras 8s si el jugador no interactúa
-            clearTimeout(window._autoChatClose);
-            window._autoChatClose = setTimeout(() => {
-                if (chatPanel.style.display === 'block') {
-                    chatPanel.style.display = 'none';
-                    if (badge) { badge.style.display = 'flex'; }
-                }
-            }, 8000);
-        } else if (chatPanel && chatPanel.style.display === 'block') {
-            // Ya está abierto, solo un pulso visual
-            chatPanel.style.boxShadow = '0 0 0 2px var(--gold)';
-            setTimeout(() => { chatPanel.style.boxShadow = ''; }, 800);
+        if (window.ChatManager && typeof window.ChatManager.recibirMensajeRemoto === 'function') {
+            window.ChatManager.recibirMensajeRemoto({
+                id: `legacy_${accion.ts || Date.now()}`,
+                autor: game.config?.nombreOponente || 'Rival',
+                asiento: miRol === 'creador' ? 1 : 0,
+                rol: accion.sender || (miRol === 'creador' ? 'invitado' : 'creador'),
+                texto: d.msg || '',
+                tipo: 'texto',
+                timestamp: accion.ts || Date.now()
+            });
+        } else {
+            logJugada(`💬 Rival: ${d.msg}`, 'rival');
+            if (window.audio) window.audio.play('chat-message');
         }
     }
     else if (t === 'abandonar_sala' || t === 'jugador_desconectado' || t === 'ganar_por_abandono') {
@@ -953,6 +974,9 @@ function quitarLobbyEspera() {
 window.cancelarLobbyEspera = function() {
     quitarLobbyEspera();
     borrarSesionLocal();
+    if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
+        window.ChatManager.habilitarChat(false, null);
+    }
     try {
         if (codigoSalaActual && db && miRol === 'creador') {
             db.ref('salas/' + codigoSalaActual).remove();
@@ -960,6 +984,8 @@ window.cancelarLobbyEspera = function() {
     } catch(e) {}
     codigoSalaActual = null;
     miRol = null;
+    window.codigoSalaActual = null;
+    window.miRol = null;
     window.modoJuego = 'singleplayer';
     const inicioEl = document.getElementById('pantalla-inicio');
     if (inicioEl) inicioEl.style.display = 'flex';
@@ -1121,14 +1147,20 @@ async function procesarRespuestaCantoRed(d) {
             await window.UI.alert("🌐 Rival: 'Con Flor me Achico'. Ganás 3 Pts.");
             if (miRol === 'creador') {
                 game.puntosPartido.jugador += 3;
+                game.fase = 'truco';
                 sincronizarEstadoMotor();
+            } else {
+                game.fase = 'truco';
             }
             desbloquearSyncLocal();
         } else if (d.resp === 'no_flor') {
             await window.UI.alert("🌐 Rival no tiene Flor. ¡Cobrás 3 Pts redonditos! 🌸");
             if (miRol === 'creador') {
                 game.puntosPartido.jugador += 3;
+                game.fase = 'truco';
                 sincronizarEstadoMotor();
+            } else {
+                game.fase = 'truco';
             }
             desbloquearSyncLocal();
         } else if (d.resp === 'quiero_contra_flor') {
@@ -1138,7 +1170,10 @@ async function procesarRespuestaCantoRed(d) {
             await window.UI.alert("🌐 Rival se achicó en la Contra Flor. ¡Cobrás 3 Pts! 🌸");
             if (miRol === 'creador') {
                 game.puntosPartido.jugador += 3;
+                game.fase = 'truco';
                 sincronizarEstadoMotor();
+            } else {
+                game.fase = 'truco';
             }
             desbloquearSyncLocal();
         }
@@ -1216,6 +1251,8 @@ async function procesarRespuestaFlorRed(d) {
             game.puntosPartido.jugador += 3;
             game.fase = 'truco';
             sincronizarEstadoMotor();
+        } else {
+            game.fase = 'truco';
         }
         desbloquearSyncLocal();
     } else if (d.resp === 'con_flor_me_achico') {
@@ -1225,6 +1262,8 @@ async function procesarRespuestaFlorRed(d) {
             game.puntosPartido.oponente += 3;
             game.fase = 'truco';
             sincronizarEstadoMotor();
+        } else {
+            game.fase = 'truco';
         }
         desbloquearSyncLocal();
     } else if (d.resp === 'contra_flor_resto') {
@@ -1239,7 +1278,10 @@ async function procesarRespuestaFlorRed(d) {
             enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'achico_contra_flor' });
             if (miRol === 'creador') {
                 game.puntosPartido.oponente += 3;
+                game.fase = 'truco';
                 sincronizarEstadoMotor();
+            } else {
+                game.fase = 'truco';
             }
             desbloquearSyncLocal();
         }
@@ -1271,7 +1313,7 @@ async function resolverFlorRed(mis, sus, alResto) {
 
 window.enviarChatRed = function(texto) {
     if (!texto) {
-        const inp = document.getElementById('input-chat');
+        const inp = document.getElementById('input-chat') || document.getElementById('chat-text-input');
         if (inp) {
             texto = inp.value;
             inp.value = '';
@@ -1281,7 +1323,25 @@ window.enviarChatRed = function(texto) {
     
     // Limitar longitud y sanear
     texto = texto.trim().substring(0, 120);
-    enviarAccionFirebase('chat', { msg: texto });
+
+    // Usar el nuevo ChatManager (canal dedicado sin bloquear el motor del juego)
+    if (window.ChatManager && typeof window.ChatManager.enviarMensaje === 'function') {
+        window.ChatManager.enviarMensaje(texto, 'texto');
+        return;
+    }
+
+    // Fallback directo al nodo chat sin bloquear isAwaitingStateSync
+    if (db && codigoSalaActual) {
+        db.ref(`salas/${codigoSalaActual}/chat`).push({
+            id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            autor: game.config?.nombreJugador || 'Jugador',
+            asiento: miRol === 'invitado' ? 1 : 0,
+            rol: miRol || 'creador',
+            texto: texto,
+            tipo: 'texto',
+            timestamp: Date.now()
+        });
+    }
     logJugada(`💬 Tú: ${texto}`, 'propio');
 };
 
@@ -1326,18 +1386,27 @@ window.checkExistingSession = async function() {
             const roomRef = db.ref('salas/' + savedCode);
             roomRef.once('value', (snap) => {
                 const roomData = snap.val();
-                // Solo reconectar si la sala existe, está activa y el usuario venía con hash o la partida sigue en curso
-                if (snap.exists() && roomData && roomData.estado !== 'finalizado' && (hasHash || roomData.estado === 'conectado')) {
+                // Solo reconectar si la sala existe, pertenece a truco, está activa y el usuario venía con hash o la partida sigue en curso
+                if (snap.exists() && roomData && (!roomData.juego || roomData.juego === 'truco') && roomData.estado !== 'finalizado' && (hasHash || roomData.estado === 'conectado')) {
                     console.log("Reconectando a sesión previa:", savedCode);
                     codigoSalaActual = savedCode;
                     miRol = savedRole;
+                    window.codigoSalaActual = codigoSalaActual;
+                    window.miRol = miRol;
                     window.modoJuego = 'multiplayer';
+
+                    if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
+                        window.ChatManager.habilitarChat(true, codigoSalaActual);
+                    }
 
                     // Reconectar listeners
                     if (miRol === 'creador') {
                         document.getElementById('pantalla-inicio').style.display = 'none';
                         const ctBtn1 = document.getElementById('btn-chat-toggle');
-                        if (ctBtn1) ctBtn1.style.display = 'block';
+                        if (ctBtn1) {
+                            ctBtn1.style.display = 'inline-flex';
+                            ctBtn1.classList.remove('hidden');
+                        }
                         document.getElementById('btn-abandonar').style.display = 'block';
                         
                         roomRef.child('estado').on('value', (s) => {
@@ -1354,7 +1423,10 @@ window.checkExistingSession = async function() {
                     } else {
                         document.getElementById('pantalla-inicio').style.display = 'none';
                         const ctBtn2 = document.getElementById('btn-chat-toggle');
-                        if (ctBtn2) ctBtn2.style.display = 'block';
+                        if (ctBtn2) {
+                            ctBtn2.style.display = 'inline-flex';
+                            ctBtn2.classList.remove('hidden');
+                        }
                         document.getElementById('btn-abandonar').style.display = 'block';
                         
                         roomRef.child('estado_maestro').on('value', (s) => {
@@ -1400,12 +1472,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500);
     }
 
-    // Listener de Escritura (Typing)
+    // Listener de Escritura (Typing) legacy
     const chatInput = document.getElementById('input-chat');
     if (chatInput) {
         let typingTimeout = null;
         chatInput.addEventListener('input', () => {
-            if (window.modoJuego === 'multiplayer' && codigoSalaActual) {
+            if (window.modoJuego === 'multiplayer' && codigoSalaActual && db) {
                 db.ref(`salas/${codigoSalaActual}/typing_${miRol}`).set(true);
                 
                 clearTimeout(typingTimeout);
@@ -1417,7 +1489,9 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 window.enviarChatRed();
-                db.ref(`salas/${codigoSalaActual}/typing_${miRol}`).set(false);
+                if (db && codigoSalaActual) {
+                    db.ref(`salas/${codigoSalaActual}/typing_${miRol}`).set(false);
+                }
             }
         });
     }
@@ -1425,6 +1499,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Listener para el typing del rival
 function attachTypingListener(roomCode, rivalRole) {
+    if (!db || !roomCode) return;
     db.ref(`salas/${roomCode}/typing_${rivalRole}`).on('value', (snap) => {
         const isTyping = snap.val();
         const indicator = document.getElementById('typing-indicator');
@@ -1502,15 +1577,18 @@ function iniciarHeartbeat(roomCode, myRole, rivalRole) {
 }
 
 /**
- * Muestra/oculta el panel de chat. Limpia el badge de notificación al abrir.
+ * Muestra/oculta el cajón de chat moderno (o el panel clásico de respaldo).
  */
 window.toggleChatPanel = function() {
+    if (window.ChatManager && typeof window.ChatManager.toggleDrawer === 'function') {
+        window.ChatManager.toggleDrawer();
+        return;
+    }
     const panel = document.getElementById('chat-container');
     const badge = document.getElementById('chat-badge');
     if (!panel) return;
     const isOpen = panel.style.display !== 'none' && panel.style.display !== '';
     panel.style.display = isOpen ? 'none' : 'block';
-    // Al abrir, limpiar badge y enfocar el input
     if (!isOpen) {
         if (badge) badge.style.display = 'none';
         clearTimeout(window._autoChatClose);
@@ -1526,18 +1604,202 @@ window.toggleChatPanel = function() {
 window.salirAlMenu = function() {
     // 1. Borrar sesión guardada en localStorage para que no se restaure al recargar
     borrarSesionLocal();
-    // 2. Detener heartbeat y desconectar listeners de Firebase
-    try { detenerHeartbeat(); } catch(e) {}
-    // 3. Cancelar cualquier onDisconnect pendiente para no corromper la sala
+    // 2. Desconectar chat y llamada de voz si estaban activos
     try {
-        if (codigoSalaActual) {
+        if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
+            window.ChatManager.habilitarChat(false, null);
+        }
+    } catch(e) {}
+    // 3. Detener heartbeat y desconectar listeners de Firebase
+    try { detenerHeartbeat(); } catch(e) {}
+    // 4. Cancelar cualquier onDisconnect pendiente para no corromper la sala
+    try {
+        if (codigoSalaActual && db) {
             db.ref('salas/' + codigoSalaActual + '/estado').onDisconnect().cancel();
         }
     } catch(e) {}
-    // 4. Apagar el overlay de reconexión antes de recargar (UX)
+    // 5. Apagar el overlay de reconexión antes de recargar (UX)
     const reconnOverlay = document.getElementById('overlay-reconnecting');
     if (reconnOverlay) reconnOverlay.style.display = 'none';
-    // 5. Recargar
+    // 6. Recargar
     location.reload();
 };
+
+// =========================================================================
+// API UNIFICADA FIREBASE MANAGER PARA CHAT EN VIVO, TYPING Y VOZ WEBRTC
+// =========================================================================
+window.FirebaseManager = {
+    isAvailable: () => Boolean(db),
+    getCodigoSala: () => codigoSalaActual,
+    getMiRol: () => miRol,
+    getMiSeat: () => (miRol === 'invitado' ? 1 : 0),
+
+    enviarMensajeChat: function(mensajeObj) {
+        if (!db || !codigoSalaActual) return;
+        const chatRef = db.ref(`salas/${codigoSalaActual}/chat`);
+        chatRef.push(mensajeObj);
+    },
+
+    escucharChat: function(callback) {
+        if (!db || !codigoSalaActual) return;
+        const chatRef = db.ref(`salas/${codigoSalaActual}/chat`);
+        chatRef.off('child_added');
+        chatRef.limitToLast(25).on('child_added', (snapshot) => {
+            const val = snapshot.val();
+            if (val && typeof callback === 'function') {
+                callback(val);
+            }
+        });
+    },
+
+    enviarEstadoTyping: function(isTyping, nombreAutor) {
+        if (!db || !codigoSalaActual || !miRol) return;
+        const mySeat = miRol === 'invitado' ? 1 : 0;
+        const typingRef = db.ref(`salas/${codigoSalaActual}/typing/seat_${mySeat}`);
+        if (isTyping) {
+            typingRef.onDisconnect().remove();
+            typingRef.set({
+                typing: true,
+                autor: nombreAutor || 'Jugador',
+                rol: miRol,
+                timestamp: Date.now()
+            });
+        } else {
+            typingRef.remove();
+        }
+        // Mantener compatibilidad con indicador legacy
+        db.ref(`salas/${codigoSalaActual}/typing_${miRol}`).set(Boolean(isTyping));
+    },
+
+    escucharTyping: function(callback) {
+        if (!db || !codigoSalaActual) return;
+        const rivalSeat = miRol === 'invitado' ? 0 : 1;
+        const typingRef = db.ref(`salas/${codigoSalaActual}/typing/seat_${rivalSeat}`);
+        typingRef.off('value');
+        typingRef.on('value', (snap) => {
+            if (typeof callback === 'function') {
+                callback(snap.val() || { typing: false });
+            }
+        });
+    },
+
+    registrarParticipanteVoz: function(nombre, muted = false) {
+        if (!db || !codigoSalaActual) return;
+        const mySeat = miRol === 'invitado' ? 1 : 0;
+        const ref = db.ref(`salas/${codigoSalaActual}/voz/participantes/seat_${mySeat}`);
+        ref.onDisconnect().remove();
+        ref.set({
+            nombre: nombre,
+            asiento: mySeat,
+            muted: Boolean(muted),
+            speaking: false,
+            timestamp: Date.now()
+        });
+    },
+
+    actualizarEstadoHablandoVoz: function(speaking) {
+        if (!db || !codigoSalaActual) return;
+        const mySeat = miRol === 'invitado' ? 1 : 0;
+        db.ref(`salas/${codigoSalaActual}/voz/participantes/seat_${mySeat}/speaking`).set(Boolean(speaking));
+    },
+
+    removerParticipanteVoz: function() {
+        if (!db || !codigoSalaActual) return;
+        const mySeat = miRol === 'invitado' ? 1 : 0;
+        db.ref(`salas/${codigoSalaActual}/voz/participantes/seat_${mySeat}`).remove();
+    },
+
+    escucharParticipantesVoz: function(callback) {
+        if (!db || !codigoSalaActual) return;
+        const ref = db.ref(`salas/${codigoSalaActual}/voz/participantes`);
+        ref.off('value');
+        ref.on('value', (snap) => {
+            if (typeof callback === 'function') {
+                callback(snap.val() || {});
+            }
+        });
+    },
+
+    enviarOfertaVoz: function(offer) {
+        if (!db || !codigoSalaActual) return;
+        const mySeat = miRol === 'invitado' ? 1 : 0;
+        const ref = db.ref(`salas/${codigoSalaActual}/voz/offer`);
+        ref.onDisconnect().remove();
+        ref.set({
+            from: mySeat,
+            type: offer.type,
+            sdp: offer.sdp,
+            timestamp: Date.now()
+        });
+    },
+
+    escucharOfertaVoz: function(callback) {
+        if (!db || !codigoSalaActual) return;
+        const ref = db.ref(`salas/${codigoSalaActual}/voz/offer`);
+        ref.off('value');
+        ref.on('value', (snap) => {
+            const val = snap.val();
+            if (val && typeof callback === 'function') {
+                callback(val);
+            }
+        });
+    },
+
+    enviarRespuestaVoz: function(answer) {
+        if (!db || !codigoSalaActual) return;
+        const mySeat = miRol === 'invitado' ? 1 : 0;
+        const ref = db.ref(`salas/${codigoSalaActual}/voz/answer`);
+        ref.onDisconnect().remove();
+        ref.set({
+            from: mySeat,
+            type: answer.type,
+            sdp: answer.sdp,
+            timestamp: Date.now()
+        });
+    },
+
+    escucharRespuestaVoz: function(callback) {
+        if (!db || !codigoSalaActual) return;
+        const ref = db.ref(`salas/${codigoSalaActual}/voz/answer`);
+        ref.off('value');
+        ref.on('value', (snap) => {
+            const val = snap.val();
+            if (val && typeof callback === 'function') {
+                callback(val);
+            }
+        });
+    },
+
+    enviarCandidatoIceVoz: function(candidate) {
+        if (!db || !codigoSalaActual || !candidate) return;
+        const mySeat = miRol === 'invitado' ? 1 : 0;
+        const ref = db.ref(`salas/${codigoSalaActual}/voz/candidates/seat_${mySeat}`);
+        ref.onDisconnect().remove();
+        ref.push(candidate.toJSON ? candidate.toJSON() : candidate);
+    },
+
+    escucharCandidatosIceVoz: function(callback) {
+        if (!db || !codigoSalaActual) return;
+        const rivalSeat = miRol === 'invitado' ? 0 : 1;
+        const ref = db.ref(`salas/${codigoSalaActual}/voz/candidates/seat_${rivalSeat}`);
+        ref.off('child_added');
+        ref.on('child_added', (snap) => {
+            const val = snap.val();
+            if (val && typeof callback === 'function') {
+                callback(val);
+            }
+        });
+    },
+
+    limpiarSenalesVoz: function() {
+        if (!db || !codigoSalaActual) return;
+        const mySeat = miRol === 'invitado' ? 1 : 0;
+        db.ref(`salas/${codigoSalaActual}/voz/candidates/seat_${mySeat}`).remove();
+        if (mySeat === 0) {
+            db.ref(`salas/${codigoSalaActual}/voz/offer`).remove();
+            db.ref(`salas/${codigoSalaActual}/voz/answer`).remove();
+        }
+    }
+};
+
 

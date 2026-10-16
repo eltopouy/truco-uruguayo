@@ -283,6 +283,10 @@ function logJugada(texto, tipo = 'sistema') {
         setTimeout(() => msg.remove(), 500);
     }, 8000);
 }
+window.logJugada = logJugada;
+window.agregarLogChat = function(autor, texto, esMio) {
+    logJugada(`💬 ${esMio ? 'Tú' : (autor || 'Rival')}: ${texto}`, esMio ? 'propio' : 'rival');
+};
 
 window.iniciarSolo = function(num = 2) {
     try {
@@ -295,6 +299,14 @@ window.iniciarSolo = function(num = 2) {
         game.iniciarRonda();
         const actionsPanel = document.getElementById('actions-panel');
         if (actionsPanel) actionsPanel.style.display = (window.innerWidth <= 768) ? 'flex' : 'block';
+        const chatToggle = document.getElementById('btn-chat-toggle');
+        if (chatToggle) {
+            chatToggle.style.display = 'inline-flex';
+            chatToggle.classList.remove('hidden');
+        }
+        if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
+            window.ChatManager.habilitarChat(true, null);
+        }
         const txt = num === 4 ? "👥 ¡Partida en Parejas (2 vs 2) iniciada!" : "🧉 ¡Suerte en el paño, gurí!";
         logJugada(txt, "sistema");
         window.animarReparto();
@@ -1341,7 +1353,7 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-flor').addEventListener('click', async () => {
-    if (game.manoJugador.length !== 3 || game.envidoCantado || window.isAwaitingStateSync) return;
+    if (game.manoJugador.length !== 3 || game.envidoCantado || window.isAwaitingStateSync || window.florResuelta) return;
     
     // FLOR
     window.audio && window.audio.play('flor');
@@ -1355,6 +1367,9 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
         renderJuego();
         return;
     }
+
+    window.florResuelta = true;
+    game.envidoCantado = true;
     
     const opFlor = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).tieneFlor;
     
@@ -1394,7 +1409,6 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
     }
 
     if(await verificarLimitesPartido()) return;
-    game.envidoCantado = true;
     game.fase = 'truco'; 
     renderJuego();
 });
@@ -1715,6 +1729,7 @@ window.guardarConfig = function() {
     // Persistencia Local
     try {
         if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('truco_player_name', game.config.nombreJugador);
             localStorage.setItem('truco_user_config', JSON.stringify({
                 nombreJugador: game.config.nombreJugador,
                 nombreOponente: game.config.nombreOponente,
@@ -1765,8 +1780,11 @@ window.abandonarSala = async function() {
     const seguro = await window.UI.confirm("¿Estás seguro que querés abandonar el partido y salir a la pantalla principal?", "Cagazo Inminente");
     if (seguro) {
         if (typeof window.ocultarBotonRepartir === 'function') window.ocultarBotonRepartir();
+        if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
+            window.ChatManager.habilitarChat(false, null);
+        }
         if (window.modoJuego === 'multiplayer') {
-            if (miRol === 'creador') window.finalizarSalaFirebase();
+            if (typeof miRol !== 'undefined' && miRol === 'creador') window.finalizarSalaFirebase();
             enviarAccionFirebase('abandonar_sala');
         }
         location.reload();
@@ -1798,6 +1816,15 @@ window.addEventListener('keydown', (e) => {
         const ov = document.getElementById('overlay-custom');
         if (ov && ov.style.display === 'block') ov.style.display = 'none';
         return;
+    }
+
+    // Atajo para abrir/cerrar Chat: tecla C
+    if (key === 'c' && game && game.partidoIniciado) {
+        if (window.ChatManager && typeof window.ChatManager.toggleDrawer === 'function') {
+            e.preventDefault();
+            window.ChatManager.toggleDrawer();
+            return;
+        }
     }
 
     // Si la partida no está en curso o está animando/resolviendo, ignorar atajos de jugada

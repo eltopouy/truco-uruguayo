@@ -438,6 +438,82 @@ const assert = require('assert');
             await page.close();
         });
 
+        // TEST 11: Sistema de Chat en Vivo, Reacciones Rápidas, Burbujas Flotantes y Punto de Estado
+        await runTest('Cajón de Chat y Voz: abre/cierra, envía reacciones y mensajes, muestra burbujas y actualiza badge de no leídos', async () => {
+            const page = await browser.newPage({
+                viewport: { width: 1280, height: 800 }
+            });
+            await page.route('**/*.firebaseio.com/**', route => route.abort());
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(1800);
+
+            const isModal = await page.isVisible('#modal-custom');
+            if (isModal) {
+                const btnOk = await page.$('#modal-buttons button');
+                if (btnOk) await btnOk.click();
+                await page.waitForTimeout(300);
+            }
+
+            // 1. Verificar que el botón flotante de chat está visible en escritorio y con punto verde
+            const floatingBtnVisible = await page.isVisible('#floating-chat-btn');
+            assert.strictEqual(floatingBtnVisible, true, 'El botón flotante de chat debe estar visible en partida');
+
+            const dotClassesInitial = await page.getAttribute('#chat-status-dot', 'class');
+            assert(dotClassesInitial.includes('dot-verde'), 'El punto de estado inicial debe ser verde (dot-verde)');
+
+            // 2. Simular llegada de un mensaje remoto con el cajón cerrado -> punto amarillo + badge
+            await page.evaluate(() => {
+                window.ChatManager.recibirMensajeRemoto({
+                    id: 'msg_test_remoto_1',
+                    autor: 'Rival Charrúa',
+                    asiento: 1,
+                    rol: 'invitado',
+                    texto: '¡Cantá si tenés con qué, bo!',
+                    tipo: 'texto',
+                    timestamp: Date.now()
+                });
+            });
+            await page.waitForTimeout(200);
+
+            const dotClassesUnread = await page.getAttribute('#chat-status-dot', 'class');
+            assert(dotClassesUnread.includes('dot-amarillo'), 'El punto de estado debe pasar a amarillo al recibir mensaje sin leer');
+
+            const unreadText = await page.textContent('#chat-unread-badge');
+            assert.strictEqual(unreadText.trim(), '1', 'El badge de no leídos debe mostrar 1');
+
+            // Verificar que apareció burbuja flotante en la mesa
+            const speechPops = await page.$$('#floating-speech-bubbles-container .speech-bubble-pop');
+            assert(speechPops.length >= 1, 'Debe mostrarse la burbuja flotante sobre la mesa');
+
+            // 3. Abrir el cajón de chat y verificar que limpia no leídos y vuelve a verde
+            await page.click('#floating-chat-btn');
+            await page.waitForTimeout(200);
+
+            const drawerVisible = await page.isVisible('#chat-drawer');
+            assert.strictEqual(drawerVisible, true, 'El cajón de chat debe abrirse al hacer clic');
+
+            const dotClassesOpen = await page.getAttribute('#chat-status-dot', 'class');
+            assert(dotClassesOpen.includes('dot-verde'), 'El punto debe volver a verde al abrir el cajón');
+
+            // 4. Enviar una reacción rápida y luego un mensaje de texto (respetando cooldown de 900ms)
+            await page.click('.quick-reaction-btn >> nth=0');
+            await page.waitForTimeout(1000);
+
+            await page.fill('#chat-text-input', '¡Tengo el Dos de la muestra!');
+            await page.click('#btn-chat-send');
+            await page.waitForTimeout(200);
+
+            const bubbles = await page.$$('#chat-messages-container .chat-msg-bubble');
+            assert(bubbles.length >= 3, `Deben existir al menos 3 burbujas en el historial (actual: ${bubbles.length})`);
+
+            // Verificar que el envío de chat NUNCA bloquea la mesa con isAwaitingStateSync
+            const isSyncLocked = await page.evaluate(() => Boolean(window.isAwaitingStateSync));
+            assert.strictEqual(isSyncLocked, false, 'Enviar mensajes de chat no debe bloquear isAwaitingStateSync');
+
+            await page.close();
+        });
+
     } finally {
         if (browser) await browser.close();
     }
@@ -450,3 +526,4 @@ const assert = require('assert');
         process.exit(1);
     }
 })();
+
