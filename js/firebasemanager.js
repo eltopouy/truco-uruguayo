@@ -221,9 +221,6 @@ window.crearSalaFirebase = async function(isPublica = false) {
         }
     }).then(() => {
         guardarSesionLocal(codigoSalaActual, miRol);
-        if (window.ChatManager && typeof window.ChatManager.habilitarChat === 'function') {
-            window.ChatManager.habilitarChat(true, codigoSalaActual);
-        }
         
         // Escuchar cuando alguien se une
         roomRef.child('estado').on('value', async (snap) => {

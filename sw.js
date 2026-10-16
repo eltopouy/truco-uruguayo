@@ -1,22 +1,22 @@
 /**
  * Service Worker para Truco Uruguayo (PWA)
- * Versión 2.8.0
+ * Versión 2.8.1
  * Soporte Offline, Caché de Cartas, Sonidos, Chat y Motor de Juego.
  */
 
-const CACHE_NAME = 'truco-uy-v2.8.0';
+const CACHE_NAME = 'truco-uy-v2.8.1';
 
 const PRECACHE_ASSETS = [
     '/',
     '/index.html',
     '/manifest.json',
-    '/css/style.css',
-    '/js/soundmanager.js',
-    '/js/uimanager.js',
-    '/js/gamestatemanager.js',
-    '/js/firebasemanager.js',
-    '/js/chatmanager.js',
-    '/js/app.js',
+    '/css/style.css?v=2.8.1',
+    '/js/soundmanager.js?v=2.8.1',
+    '/js/uimanager.js?v=2.8.1',
+    '/js/gamestatemanager.js?v=2.8.1',
+    '/js/firebasemanager.js?v=2.8.1',
+    '/js/chatmanager.js?v=2.8.1',
+    '/js/app.js?v=2.8.1',
     '/assets/icons/favicon-64.png',
     '/assets/icons/icon-192.png',
     '/assets/icons/icon-512.png',
@@ -81,7 +81,24 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Recursos estáticos locales (imágenes de cartas, audios, estilos, scripts): Cache-first
+    // Archivos de código y estilos (.css y .js): Network-first con fallback a caché
+    // Garantiza que las actualizaciones de UI/CSS siempre se apliquen de inmediato sin desfasaje
+    if (url.origin === self.location.origin && (url.pathname.endsWith('.css') || url.pathname.endsWith('.js'))) {
+        event.respondWith(
+            fetch(request).then((networkResponse) => {
+                if (networkResponse && networkResponse.status === 200) {
+                    const responseClone = networkResponse.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+                }
+                return networkResponse;
+            }).catch(() => {
+                return caches.match(request) || caches.match(url.pathname);
+            })
+        );
+        return;
+    }
+
+    // Recursos multimedia estáticos locales (imágenes de cartas, íconos, audios): Cache-first
     if (url.origin === self.location.origin) {
         event.respondWith(
             caches.match(request).then((cachedResponse) => {

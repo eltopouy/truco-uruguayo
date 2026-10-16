@@ -216,6 +216,13 @@ window.ChatManager = (function () {
             }
         });
 
+        // Asegurar que el cajón inicie cerrado y oculto (incluso si hay caché de CSS)
+        els.drawer.classList.add('hidden');
+        els.drawer.style.display = 'none';
+        if (els.floatingBtn && els.floatingBtn.classList.contains('hidden')) {
+            els.floatingBtn.style.display = 'none';
+        }
+
         actualizarPuntoEstado();
     }
 
@@ -267,8 +274,10 @@ window.ChatManager = (function () {
         if (els.toggleBtn) {
             if (enabled) {
                 els.toggleBtn.classList.remove('hidden');
+                els.toggleBtn.style.display = 'inline-flex';
             } else {
                 els.toggleBtn.classList.add('hidden');
+                els.toggleBtn.style.display = 'none';
                 closeDrawer();
             }
         }
@@ -276,8 +285,10 @@ window.ChatManager = (function () {
         if (els.floatingBtn) {
             if (enabled) {
                 els.floatingBtn.classList.remove('hidden');
+                els.floatingBtn.style.display = '';
             } else {
                 els.floatingBtn.classList.add('hidden');
+                els.floatingBtn.style.display = 'none';
             }
         }
 
@@ -321,6 +332,7 @@ window.ChatManager = (function () {
         if (!els.drawer) return;
         isOpen = true;
         els.drawer.classList.remove('hidden');
+        els.drawer.style.display = 'flex';
         if (els.toggleBtn) els.toggleBtn.classList.add('chat-open');
         if (els.floatingBtn) els.floatingBtn.classList.add('chat-open');
         resetUnread();
@@ -337,6 +349,7 @@ window.ChatManager = (function () {
         if (!els.drawer) return;
         isOpen = false;
         els.drawer.classList.add('hidden');
+        els.drawer.style.display = 'none';
         if (els.toggleBtn) els.toggleBtn.classList.remove('chat-open');
         if (els.floatingBtn) els.floatingBtn.classList.remove('chat-open');
         actualizarPuntoEstado();
@@ -357,6 +370,7 @@ window.ChatManager = (function () {
         }
         if (els.emptyState) {
             els.emptyState.classList.remove('hidden');
+            els.emptyState.style.display = 'flex';
         }
         actualizarUIVoz();
         actualizarPuntoEstado();
@@ -592,6 +606,7 @@ window.ChatManager = (function () {
 
         if (els.emptyState) {
             els.emptyState.classList.add('hidden');
+            els.emptyState.style.display = 'none';
         }
 
         messages.push(msg);
@@ -648,7 +663,10 @@ window.ChatManager = (function () {
      */
     function agregarAvisoSistema(texto) {
         if (!els.messagesContainer) return;
-        if (els.emptyState) els.emptyState.classList.add('hidden');
+        if (els.emptyState) {
+            els.emptyState.classList.add('hidden');
+            els.emptyState.style.display = 'none';
+        }
 
         const notice = document.createElement('div');
         notice.className = 'chat-system-notice';
@@ -698,6 +716,7 @@ window.ChatManager = (function () {
         if (els.unreadBadge) {
             els.unreadBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
             els.unreadBadge.classList.remove('hidden');
+            els.unreadBadge.style.display = 'flex';
         }
         actualizarPuntoEstado();
     }
@@ -707,6 +726,7 @@ window.ChatManager = (function () {
         if (els.unreadBadge) {
             els.unreadBadge.textContent = '0';
             els.unreadBadge.classList.add('hidden');
+            els.unreadBadge.style.display = 'none';
         }
         actualizarPuntoEstado();
     }
@@ -1125,15 +1145,23 @@ window.ChatManager = (function () {
         if (els.voiceActiveBadge) {
             if (inVoiceCall || numInVoice > 0) {
                 els.voiceActiveBadge.classList.remove('hidden');
+                els.voiceActiveBadge.style.display = 'inline-block';
             } else {
                 els.voiceActiveBadge.classList.add('hidden');
+                els.voiceActiveBadge.style.display = 'none';
             }
         }
 
         if (inVoiceCall) {
             els.voiceBar.classList.add('in-call');
-            if (els.voiceJoinBtn) els.voiceJoinBtn.classList.add('hidden');
-            if (els.voiceActiveControls) els.voiceActiveControls.classList.remove('hidden');
+            if (els.voiceJoinBtn) {
+                els.voiceJoinBtn.classList.add('hidden');
+                els.voiceJoinBtn.style.display = 'none';
+            }
+            if (els.voiceActiveControls) {
+                els.voiceActiveControls.classList.remove('hidden');
+                els.voiceActiveControls.style.display = 'flex';
+            }
 
             if (els.voiceMuteBtn) {
                 els.voiceMuteBtn.textContent = isMuted ? '🔇' : '🎙️';
@@ -1162,12 +1190,16 @@ window.ChatManager = (function () {
             els.voiceBar.classList.remove('in-call');
             if (els.voiceJoinBtn) {
                 els.voiceJoinBtn.classList.remove('hidden');
+                els.voiceJoinBtn.style.display = 'flex';
                 const textEl = els.voiceJoinBtn.querySelector('.voice-btn-text');
                 if (textEl) {
                     textEl.textContent = numInVoice > 0 ? 'Unirse a la llamada' : 'Conectar Voz';
                 }
             }
-            if (els.voiceActiveControls) els.voiceActiveControls.classList.add('hidden');
+            if (els.voiceActiveControls) {
+                els.voiceActiveControls.classList.add('hidden');
+                els.voiceActiveControls.style.display = 'none';
+            }
 
             if (els.voiceStatusLabel) {
                 if (numInVoice > 0) {
@@ -1188,11 +1220,13 @@ window.ChatManager = (function () {
 
         if (participantKeys.length === 0) {
             els.voiceUsersList.classList.add('hidden');
+            els.voiceUsersList.style.display = 'none';
             els.voiceUsersList.innerHTML = '';
             return;
         }
 
         els.voiceUsersList.classList.remove('hidden');
+        els.voiceUsersList.style.display = 'flex';
         els.voiceUsersList.innerHTML = '';
 
         participantKeys.forEach(key => {

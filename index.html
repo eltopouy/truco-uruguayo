@@ -186,8 +186,41 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!--   RECURSOS                                              -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=2.8.1">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Reglas críticas inline anti-caché para evitar que el cajón de chat se renderice en el flujo de la mesa */
+        .hidden,
+        #chat-drawer.hidden,
+        #floating-chat-btn.hidden,
+        #btn-chat-toggle.hidden {
+            display: none !important;
+        }
+        #chat-drawer {
+            position: fixed;
+            right: 16px;
+            top: 64px;
+            bottom: 20px;
+            width: 335px;
+            max-width: calc(100vw - 24px);
+            z-index: 25050;
+            flex-direction: column;
+        }
+        #floating-chat-btn {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            z-index: 10010;
+        }
+        #floating-speech-bubbles-container {
+            position: fixed;
+            top: 74px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 14000;
+            pointer-events: none;
+        }
+    </style>
 </head>
 
 <body>
@@ -320,7 +353,7 @@
             style="background: rgba(255,255,255,0.15); padding: 8px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); font-size: 0.9rem; box-shadow: none; position: relative; display: inline-flex; align-items: center; gap: 6px;">
             💬 Chat
             <span id="top-chat-status-dot" class="chat-status-dot dot-verde" style="position: static; width: 10px; height: 10px; border-width: 1.5px;"></span>
-            <span id="voice-active-indicator" class="voice-active-dot hidden" title="Llamada de voz activa">🎙️</span>
+            <span id="voice-active-indicator" class="voice-active-dot hidden" style="display: none;" title="Llamada de voz activa">🎙️</span>
             <span id="chat-badge" style="display:none; position:absolute; top:-6px; right:-6px; background:#e74c3c; color:white; border-radius:50%; width:16px; height:16px; font-size:0.6rem; font-weight:bold; align-items:center; justify-content:center;">!</span>
         </button>
     </div>
@@ -558,76 +591,76 @@
 
         <!-- Mate visual -->
         <div class="mate-container">🧉<span class="mate-smoke">💨</span></div>
-
-        <!-- Burbujas Flotantes de Chat en la Mesa -->
-        <div id="floating-speech-bubbles-container" class="floating-speech-bubbles-container" aria-live="polite"></div>
-
-        <!-- Botón Flotante de Chat y Voz con Indicador de Estado (3 colores) -->
-        <button id="floating-chat-btn" class="floating-chat-trigger hidden" title="Abrir Chat y Llamada de Voz" aria-label="Abrir Chat y Llamada de Voz">
-            <span class="floating-chat-icon">💬</span>
-            <span class="floating-chat-label">Chat</span>
-            <span id="chat-status-dot" class="chat-status-dot dot-verde" title="Estado de comunicación"></span>
-            <span id="chat-unread-badge" class="chat-unread-badge hidden">0</span>
-        </button>
-
-        <!-- Cajón de Chat y Voz en Tiempo Real -->
-        <aside id="chat-drawer" class="chat-drawer glass hidden" aria-label="Chat de la sala">
-            <div class="chat-drawer-header">
-                <div class="chat-header-title">
-                    <span>💬 Chat de Sala</span>
-                    <span id="chat-room-badge" class="chat-room-badge">EN VIVO</span>
-                </div>
-                <button id="btn-chat-close" class="btn-icon-small" title="Cerrar chat" aria-label="Cerrar chat">✕</button>
-            </div>
-
-            <!-- Barra de Llamada de Voz en Tiempo Real (WebRTC) -->
-            <div id="voice-call-bar" class="voice-call-bar">
-                <div class="voice-call-info">
-                    <span id="voice-status-icon" class="voice-status-icon">🎧</span>
-                    <div class="voice-status-texts">
-                        <span id="voice-status-label" class="voice-status-label">Canal de voz disponible</span>
-                        <div id="voice-users-list" class="voice-users-list hidden"></div>
-                    </div>
-                </div>
-                <div class="voice-call-actions">
-                    <button type="button" id="btn-voice-join" class="btn-voice-action btn-voice-join" title="Unirse al canal de voz">
-                        <span>🎙️</span> <span class="voice-btn-text">Conectar Voz</span>
-                    </button>
-                    <div id="voice-active-controls" class="voice-active-controls hidden">
-                        <button type="button" id="btn-voice-mute" class="btn-voice-icon" title="Silenciar / Activar micrófono">🎙️</button>
-                        <button type="button" id="btn-voice-deafen" class="btn-voice-icon" title="Silenciar / Activar audio entrante">🔊</button>
-                        <button type="button" id="btn-voice-hangup" class="btn-voice-icon btn-voice-hangup" title="Colgar llamada de voz">📴</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Historial de Mensajes -->
-            <div id="chat-messages-container" class="chat-messages-container" aria-live="polite">
-                <div class="chat-empty-state" id="chat-empty-state">
-                    <span>🧉</span>
-                    <p>¡Mandá un saludo, cantá con fe o tirá una reacción rápida a la mesa!</p>
-                </div>
-            </div>
-
-            <!-- Barra de Reacciones Rápidas Criollas -->
-            <div class="chat-quick-reactions" id="chat-quick-reactions">
-                <button type="button" class="quick-reaction-btn" data-msg="¡Buena jugada! 👏">👏 Buena</button>
-                <button type="button" class="quick-reaction-btn" data-msg="¡Qué suerte, bo! 🍀">🍀 Qué suerte</button>
-                <button type="button" class="quick-reaction-btn" data-msg="¡Vamo' arriba! 🔥">🔥 Vamo'</button>
-                <button type="button" class="quick-reaction-btn" data-msg="¡No tenés nada! 🤏">🤏 Mentiroso</button>
-                <button type="button" class="quick-reaction-btn" data-msg="¡A la cucha! 🐕">🐕 A la cucha</button>
-                <button type="button" class="quick-reaction-btn" data-msg="¡Jajaja! 😂">😂 Jajaja</button>
-                <button type="button" class="quick-reaction-btn" data-msg="¡Canto con fe! 👑">👑 Con fe</button>
-                <button type="button" class="quick-reaction-btn" data-msg="¿Estás ahí? 👀">👀 ¿Estás?</button>
-            </div>
-
-            <!-- Input de Texto -->
-            <form id="chat-input-form" class="chat-input-form" autocomplete="off">
-                <input type="text" id="chat-text-input" class="chat-text-input" placeholder="Escribí un mensaje..." maxlength="120" />
-                <button type="submit" id="btn-chat-send" class="btn-chat-send" title="Enviar mensaje">➤</button>
-            </form>
-        </aside>
     </div>
+
+    <!-- Burbujas Flotantes de Chat sobre la Mesa (Fuera de #game-table para no interferir en el layout flex) -->
+    <div id="floating-speech-bubbles-container" class="floating-speech-bubbles-container" aria-live="polite"></div>
+
+    <!-- Botón Flotante de Chat y Voz con Indicador de Estado (3 colores) -->
+    <button id="floating-chat-btn" class="floating-chat-trigger hidden" style="display: none;" title="Abrir Chat y Llamada de Voz" aria-label="Abrir Chat y Llamada de Voz">
+        <span class="floating-chat-icon">💬</span>
+        <span class="floating-chat-label">Chat</span>
+        <span id="chat-status-dot" class="chat-status-dot dot-verde" title="Estado de comunicación"></span>
+        <span id="chat-unread-badge" class="chat-unread-badge hidden" style="display: none;">0</span>
+    </button>
+
+    <!-- Cajón de Chat y Voz en Tiempo Real (Overlay fijo, oculto por defecto) -->
+    <aside id="chat-drawer" class="chat-drawer glass hidden" style="display: none;" aria-label="Chat de la sala">
+        <div class="chat-drawer-header">
+            <div class="chat-header-title">
+                <span>💬 Chat de Sala</span>
+                <span id="chat-room-badge" class="chat-room-badge">EN VIVO</span>
+            </div>
+            <button id="btn-chat-close" class="btn-icon-small" title="Cerrar chat" aria-label="Cerrar chat">✕</button>
+        </div>
+
+        <!-- Barra de Llamada de Voz en Tiempo Real (WebRTC) -->
+        <div id="voice-call-bar" class="voice-call-bar">
+            <div class="voice-call-info">
+                <span id="voice-status-icon" class="voice-status-icon">🎧</span>
+                <div class="voice-status-texts">
+                    <span id="voice-status-label" class="voice-status-label">Canal de voz disponible</span>
+                    <div id="voice-users-list" class="voice-users-list hidden" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="voice-call-actions">
+                <button type="button" id="btn-voice-join" class="btn-voice-action btn-voice-join" title="Unirse al canal de voz">
+                    <span>🎙️</span> <span class="voice-btn-text">Conectar Voz</span>
+                </button>
+                <div id="voice-active-controls" class="voice-active-controls hidden" style="display: none;">
+                    <button type="button" id="btn-voice-mute" class="btn-voice-icon" title="Silenciar / Activar micrófono">🎙️</button>
+                    <button type="button" id="btn-voice-deafen" class="btn-voice-icon" title="Silenciar / Activar audio entrante">🔊</button>
+                    <button type="button" id="btn-voice-hangup" class="btn-voice-icon btn-voice-hangup" title="Colgar llamada de voz">📴</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial de Mensajes -->
+        <div id="chat-messages-container" class="chat-messages-container" aria-live="polite">
+            <div class="chat-empty-state" id="chat-empty-state">
+                <span>🧉</span>
+                <p>¡Mandá un saludo, cantá con fe o tirá una reacción rápida a la mesa!</p>
+            </div>
+        </div>
+
+        <!-- Barra de Reacciones Rápidas Criollas -->
+        <div class="chat-quick-reactions" id="chat-quick-reactions">
+            <button type="button" class="quick-reaction-btn" data-msg="¡Buena jugada! 👏">👏 Buena</button>
+            <button type="button" class="quick-reaction-btn" data-msg="¡Qué suerte, bo! 🍀">🍀 Qué suerte</button>
+            <button type="button" class="quick-reaction-btn" data-msg="¡Vamo' arriba! 🔥">🔥 Vamo'</button>
+            <button type="button" class="quick-reaction-btn" data-msg="¡No tenés nada! 🤏">🤏 Mentiroso</button>
+            <button type="button" class="quick-reaction-btn" data-msg="¡A la cucha! 🐕">🐕 A la cucha</button>
+            <button type="button" class="quick-reaction-btn" data-msg="¡Jajaja! 😂">😂 Jajaja</button>
+            <button type="button" class="quick-reaction-btn" data-msg="¡Canto con fe! 👑">👑 Con fe</button>
+            <button type="button" class="quick-reaction-btn" data-msg="¿Estás ahí? 👀">👀 ¿Estás?</button>
+        </div>
+
+        <!-- Input de Texto -->
+        <form id="chat-input-form" class="chat-input-form" autocomplete="off">
+            <input type="text" id="chat-text-input" class="chat-text-input" placeholder="Escribí un mensaje..." maxlength="120" />
+            <button type="submit" id="btn-chat-send" class="btn-chat-send" title="Enviar mensaje">➤</button>
+        </form>
+    </aside>
 
     <!-- Audio Remoto para WebRTC -->
     <audio id="webrtc-remote-audio" autoplay playsinline style="display:none;"></audio>
@@ -697,18 +730,19 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
-    <script src="js/soundmanager.js"></script>
-    <script src="js/uimanager.js"></script>
-    <script src="js/gamestatemanager.js"></script>
-    <script src="js/firebasemanager.js"></script>
-    <script src="js/chatmanager.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/soundmanager.js?v=2.8.1"></script>
+    <script src="js/uimanager.js?v=2.8.1"></script>
+    <script src="js/gamestatemanager.js?v=2.8.1"></script>
+    <script src="js/firebasemanager.js?v=2.8.1"></script>
+    <script src="js/chatmanager.js?v=2.8.1"></script>
+    <script src="js/app.js?v=2.8.1"></script>
 
     <!-- Registro de Service Worker PWA -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then((reg) => {
+                navigator.serviceWorker.register('/sw.js?v=2.8.1').then((reg) => {
+                    if (typeof reg.update === 'function') reg.update();
                     console.log('✅ Service Worker registrado:', reg.scope);
                 }).catch((err) => {
                     console.log('ℹ️ Service Worker omitido:', err);

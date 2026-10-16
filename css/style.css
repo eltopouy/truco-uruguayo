@@ -1469,13 +1469,13 @@ body, html {
 
 /* Cajón Lateral de Chat y Voz */
 .chat-drawer {
-    position: fixed;
+    position: fixed !important;
     right: 16px;
     top: 64px;
     bottom: 20px;
     width: 335px;
     max-width: calc(100vw - 24px);
-    z-index: 20050;
+    z-index: 25050 !important;
     display: flex;
     flex-direction: column;
     border-radius: 18px;
@@ -1974,3 +1974,9 @@ body, html {
     }
 }
 
+.hidden,
+.chat-drawer.hidden,
+.floating-chat-trigger.hidden,
+#btn-chat-toggle.hidden {
+    display: none !important;
+}

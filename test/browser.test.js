@@ -439,12 +439,17 @@ const assert = require('assert');
         });
 
         // TEST 11: Sistema de Chat en Vivo, Reacciones Rápidas, Burbujas Flotantes y Punto de Estado
-        await runTest('Cajón de Chat y Voz: abre/cierra, envía reacciones y mensajes, muestra burbujas y actualiza badge de no leídos', async () => {
+        await runTest('Cajón de Chat y Voz: oculto al inicio (no en el fondo de la mesa), abre/cierra como overlay fijo, envía reacciones y mensajes', async () => {
             const page = await browser.newPage({
                 viewport: { width: 1280, height: 800 }
             });
             await page.route('**/*.firebaseio.com/**', route => route.abort());
             await page.goto(filePath);
+
+            // Antes de iniciar partida: tanto el botón flotante como el cajón de chat deben estar ocultos
+            const drawerVisibleOnStart = await page.isVisible('#chat-drawer');
+            assert.strictEqual(drawerVisibleOnStart, false, 'El cajón de chat debe estar oculto en la pantalla de inicio');
+
             await page.click('text=1 vs 1');
             await page.waitForTimeout(1800);
 
@@ -454,6 +459,20 @@ const assert = require('assert');
                 if (btnOk) await btnOk.click();
                 await page.waitForTimeout(300);
             }
+
+            // Al iniciar la partida, el cajón de chat debe seguir oculto (NUNCA renderizado en el fondo de la mesa)
+            const drawerStateBeforeClick = await page.evaluate(() => {
+                const drawer = document.getElementById('chat-drawer');
+                const table = document.getElementById('game-table');
+                const cs = window.getComputedStyle(drawer);
+                return {
+                    display: cs.display,
+                    position: cs.position,
+                    insideTable: table ? table.contains(drawer) : false
+                };
+            });
+            assert.strictEqual(drawerStateBeforeClick.display, 'none', 'El cajón de chat debe tener display:none hasta que se abra');
+            assert.strictEqual(drawerStateBeforeClick.insideTable, false, 'El cajón de chat debe estar fuera de #game-table para no afectar el paño');
 
             // 1. Verificar que el botón flotante de chat está visible en escritorio y con punto verde
             const floatingBtnVisible = await page.isVisible('#floating-chat-btn');
@@ -492,6 +511,9 @@ const assert = require('assert');
 
             const drawerVisible = await page.isVisible('#chat-drawer');
             assert.strictEqual(drawerVisible, true, 'El cajón de chat debe abrirse al hacer clic');
+
+            const drawerPos = await page.evaluate(() => window.getComputedStyle(document.getElementById('chat-drawer')).position);
+            assert.strictEqual(drawerPos, 'fixed', 'El cajón de chat debe renderizarse como overlay fixed');
 
             const dotClassesOpen = await page.getAttribute('#chat-status-dot', 'class');
             assert(dotClassesOpen.includes('dot-verde'), 'El punto debe volver a verde al abrir el cajón');
