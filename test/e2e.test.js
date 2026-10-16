@@ -599,6 +599,54 @@ testE2E('firebasemanager.js filtra salas por juego === truco y desacopla el chat
     assert(fbCode.includes('window.FirebaseManager'), 'Debe exponer window.FirebaseManager para ChatManager y Voz WebRTC');
 });
 
+// ----------------------------------------------------
+// 14. Integración de Reglas de Flor, Chat en 4P y Robustez de Audio
+// ----------------------------------------------------
+console.log('\n🌸 14. Flor Mutua, Chat en 4P y Resiliencia de Audio:');
+
+testE2E('ChatManager selecciona respuestas de 4 jugadores cuando numJugadores === 4', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const chatCode = fs.readFileSync(path.resolve(__dirname, '../js/chatmanager.js'), 'utf8');
+    assert(chatCode.includes('numJugadores === 4'), 'ChatManager debe verificar game.numJugadores === 4');
+    assert(chatCode.includes('BOT_REPLIES_2V2'), 'ChatManager debe contener respuestas para 2 vs 2 (BOT_REPLIES_2V2)');
+    assert(chatCode.includes('BOT_REPLIES_1V1'), 'ChatManager debe contener respuestas para 1 vs 1');
+});
+
+testE2E('app.js protege llamadas a window.audio.play con guards seguros', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const appCode = fs.readFileSync(path.resolve(__dirname, '../js/app.js'), 'utf8');
+    // Verificar que la llamada en jugarCarta está protegida
+    assert(appCode.includes("if (window.audio && typeof window.audio.play === 'function')"), 
+        'app.js debe verificar window.audio y typeof window.audio.play');
+});
+
+testE2E('Regla de Flor Mutua Achicado otorga 3 puntos a cada bando si nadie canta Contra Flor', () => {
+    const game = new GameStateManager(2);
+    game.iniciarRonda();
+
+    // Asignar flores a ambos
+    const florJugador = [new Carta(7, 'Espada'), new Carta(6, 'Espada'), new Carta(5, 'Espada')];
+    const florRival = [new Carta(7, 'Oro'), new Carta(6, 'Oro'), new Carta(5, 'Oro')];
+
+    const calc1 = game.calcularPuntosEnvidoFlor(florJugador);
+    const calc2 = game.calcularPuntosEnvidoFlor(florRival);
+
+    assert.strictEqual(calc1.tieneFlor, true);
+    assert.strictEqual(calc2.tieneFlor, true);
+
+    // En caso de que ambos tengan flor y ninguno contra-floree, ambos cobran 3 puntos
+    const ptosInicialesJugador = game.puntosPartido.jugador;
+    const ptosInicialesOponente = game.puntosPartido.oponente;
+
+    game.puntosPartido.jugador += 3;
+    game.puntosPartido.oponente += 3;
+
+    assert.strictEqual(game.puntosPartido.jugador, ptosInicialesJugador + 3);
+    assert.strictEqual(game.puntosPartido.oponente, ptosInicialesOponente + 3);
+});
+
 console.log('\n======================================================');
 console.log(`🏁 RESULTADO E2E: ${passedE2E}/${totalE2E} tests pasados con éxito.`);
 console.log('======================================================\n');

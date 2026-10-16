@@ -1,22 +1,22 @@
 /**
  * Service Worker para Truco Uruguayo (PWA)
- * Versión 2.8.2
+ * Versión 2.8.3
  * Soporte Offline, Caché de Cartas, Sonidos, Chat y Motor de Juego.
  */
 
-const CACHE_NAME = 'truco-uy-v2.8.2';
+const CACHE_NAME = 'truco-uy-v2.8.3';
 
 const PRECACHE_ASSETS = [
     '/',
     '/index.html',
     '/manifest.json',
-    '/css/style.css?v=2.8.2',
-    '/js/soundmanager.js?v=2.8.2',
-    '/js/uimanager.js?v=2.8.2',
-    '/js/gamestatemanager.js?v=2.8.2',
-    '/js/firebasemanager.js?v=2.8.2',
-    '/js/chatmanager.js?v=2.8.2',
-    '/js/app.js?v=2.8.2',
+    '/css/style.css?v=2.8.3',
+    '/js/soundmanager.js?v=2.8.3',
+    '/js/uimanager.js?v=2.8.3',
+    '/js/gamestatemanager.js?v=2.8.3',
+    '/js/firebasemanager.js?v=2.8.3',
+    '/js/chatmanager.js?v=2.8.3',
+    '/js/app.js?v=2.8.3',
     '/assets/icons/favicon-64.png',
     '/assets/icons/icon-192.png',
     '/assets/icons/icon-512.png',

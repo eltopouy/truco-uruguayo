@@ -43,7 +43,7 @@ class Carta {
         // Atributos dinámicos calculados por ronda
         this.esPieza = false;
         this.poder = 0; // Jerarquía en el juego (mayor es mejor)
-        this.puntosEnvido = 0; // Puntos fijos al calcular envido/flor
+        this.puntosEnvido = (valor >= 10) ? 0 : valor; // Puntos naturales de envido (0 para figuras, valor para 1..7)
         this.oculto = false;
     }
 
@@ -311,8 +311,9 @@ class GameStateManager {
         // Definir cuáles son las piezas matemáticas de esta mano
         this.definirPiezas();
 
-        // Actualizar la jerarquía (poder) y puntos de envido para todas las cartas repartidas
+        // Actualizar la jerarquía (poder) y puntos de envido para la muestra y todas las cartas repartidas
         const todasLasCartas = [];
+        if (this.muestra) todasLasCartas.push(this.muestra);
         this.players.forEach(p => todasLasCartas.push(...p.hand));
         this.actualizarMatrizDePoder(...todasLasCartas);
 
@@ -323,6 +324,9 @@ class GameStateManager {
     }
 
     definirPiezas() {
+        if (this.muestra) {
+            this.paloMuestra = this.muestra.palo;
+        }
         // Por defecto, las piezas son los valores bases del palo de la muestra
         this.piezasActivas = [...this.piezasBase];
 
@@ -477,6 +481,45 @@ class GameStateManager {
         }
 
         return { tieneFlor, puntos: puntosEnvido, tipo: tipoCalculo };
+    }
+
+    /**
+     * Calcula el mejor puntaje de Envido/Flor de un equipo (Team 0 o Team 1),
+     * permitiendo que en 2 vs 2 cuente el puntaje del jugador con mejor mano.
+     * @param {number} team - 0 (Tú / Compañero) o 1 (Rivales)
+     * @returns {{puntos: number, jugador: Object|null, tieneFlor: boolean, tipo: string}}
+     */
+    calcularMejorEnvidoEquipo(team = 0) {
+        let maxPuntos = 0;
+        let mejorJugador = null;
+        let tieneFlor = false;
+        let tipo = '-';
+
+        if (!Array.isArray(this.players)) {
+            return { puntos: 0, jugador: null, tieneFlor: false, tipo: '-' };
+        }
+
+        this.players.forEach(p => {
+            if (p && p.team === team) {
+                const mano = (p.initialHand && p.initialHand.length > 0) ? p.initialHand : (p.hand || []);
+                const calc = this.calcularPuntosEnvidoFlor(mano);
+                if (calc.tieneFlor) tieneFlor = true;
+                if (calc.puntos > maxPuntos) {
+                    maxPuntos = calc.puntos;
+                    mejorJugador = p;
+                    tipo = calc.tipo;
+                }
+            }
+        });
+
+        return { 
+            puntos: maxPuntos, 
+            mejorPuntaje: maxPuntos,
+            jugador: mejorJugador, 
+            mejorSeat: mejorJugador ? mejorJugador.seat : null,
+            tieneFlor, 
+            tipo 
+        };
     }
 
     /**

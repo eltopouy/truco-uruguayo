@@ -934,6 +934,108 @@ test('Snapshot de estado serializa y restaura bazaStarterSeat correctamente', ()
 });
 
 // ----------------------------------------------------
+// 18. Envido por Equipos (2v2), Muestra y Reinicio de Mano
+// ----------------------------------------------------
+console.log('\n🤝 18. Envido por Equipos (2v2), Muestra y Reinicio de Mano:');
+
+test('calcularMejorEnvidoEquipo calcula correctamente el mejor puntaje del equipo en 2 vs 2', () => {
+    const game = new GameStateManager(4);
+    game.configurarJugadores(4);
+    game.iniciarRonda();
+
+    // Configurar manos fijas para evaluar
+    // Equipo 0: Jugador (seat 0) y Compañero (seat 2)
+    // Asignar cartas sin piezas para cálculo determinista
+    game.muestra = new Carta(12, 'Copa'); // Muestra Copa, no afecta Bastos ni Espadas
+    game.definirPiezas();
+
+    // Seat 0: 7 y 6 de Espada (33 pts) + 1 de Basto
+    game.players[0].hand = [new Carta(7, 'Espada'), new Carta(6, 'Espada'), new Carta(1, 'Basto')];
+    game.players[0].initialHand = [...game.players[0].hand];
+
+    // Seat 2: 7 y 5 de Basto (32 pts) + 4 de Espada
+    game.players[2].hand = [new Carta(7, 'Basto'), new Carta(5, 'Basto'), new Carta(4, 'Espada')];
+    game.players[2].initialHand = [...game.players[2].hand];
+
+    // Equipo 1: Rival Der (seat 1) y Rival Izq (seat 3)
+    // Seat 1: 3 de Oro, 2 de Oro, 1 de Oro -> 5 de Oro, 4 de Oro, etc. (Flor o Envido simple)
+    // 6 y 5 de Oro = 31 pts
+    game.players[1].hand = [new Carta(6, 'Oro'), new Carta(5, 'Oro'), new Carta(2, 'Espada')];
+    game.players[1].initialHand = [...game.players[1].hand];
+
+    // Seat 3: 7 y 7 de distintos palos -> 7 pts
+    game.players[3].hand = [new Carta(7, 'Oro'), new Carta(2, 'Basto'), new Carta(4, 'Copa')];
+    game.players[3].initialHand = [...game.players[3].hand];
+
+    const mejorEquipo0 = game.calcularMejorEnvidoEquipo(0);
+    assert.strictEqual(mejorEquipo0.mejorPuntaje, 33, 'El mejor envido del Equipo 0 debe ser 33 (del asiento 0)');
+    assert.strictEqual(mejorEquipo0.mejorSeat, 0, 'El mejor jugador debe ser el asiento 0');
+
+    const mejorEquipo1 = game.calcularMejorEnvidoEquipo(1);
+    assert.strictEqual(mejorEquipo1.mejorPuntaje, 31, 'El mejor envido del Equipo 1 debe ser 31 (del asiento 1)');
+    assert.strictEqual(mejorEquipo1.mejorSeat, 1, 'El mejor jugador debe ser el asiento 1');
+
+    // Ahora probar cuando el compañero (asiento 2) supera al jugador (asiento 0)
+    game.players[2].hand = [new Carta(7, 'Basto'), new Carta(6, 'Basto'), new Carta(1, 'Copa')]; // 33 pts
+    // Y además con pieza: 2 de Copa (vale 30 pts) + 7 de Basto = 37 pts
+    game.players[2].hand = [new Carta(2, 'Copa'), new Carta(7, 'Basto'), new Carta(1, 'Espada')];
+    game.players[2].initialHand = [...game.players[2].hand];
+    game.actualizarMatrizDePoder(...game.players[2].hand);
+
+    const nuevoMejorEquipo0 = game.calcularMejorEnvidoEquipo(0);
+    assert.strictEqual(nuevoMejorEquipo0.mejorPuntaje, 37, 'El compañero debe superar con 37 pts');
+    assert.strictEqual(nuevoMejorEquipo0.mejorSeat, 2, 'El mejor asiento del equipo debe ser 2');
+});
+
+test('calcularMejorEnvidoEquipo en 1 vs 1 devuelve los puntos de cada jugador', () => {
+    const game = new GameStateManager(2);
+    game.configurarJugadores(2);
+    game.iniciarRonda();
+
+    game.players[0].hand = [new Carta(7, 'Espada'), new Carta(6, 'Espada'), new Carta(1, 'Basto')];
+    game.players[0].initialHand = [...game.players[0].hand];
+
+    game.players[1].hand = [new Carta(7, 'Oro'), new Carta(5, 'Oro'), new Carta(2, 'Copa')];
+    game.players[1].initialHand = [...game.players[1].hand];
+
+    const envido0 = game.calcularMejorEnvidoEquipo(0);
+    const envido1 = game.calcularMejorEnvidoEquipo(1);
+
+    assert.strictEqual(envido0.mejorPuntaje, 33);
+    assert.strictEqual(envido0.mejorSeat, 0);
+    assert.strictEqual(envido1.mejorPuntaje, 32);
+    assert.strictEqual(envido1.mejorSeat, 1);
+});
+
+test('iniciarRonda inicializa correctamente poder y esPieza en la muestra', () => {
+    const game = new GameStateManager(2);
+    game.iniciarRonda();
+
+    assert.notStrictEqual(game.muestra, null, 'Debe haber una carta de muestra');
+    assert.strictEqual(typeof game.muestra.poder, 'number', 'La muestra debe tener poder asignado numéricamente');
+    assert.strictEqual(typeof game.muestra.esPieza, 'boolean', 'La muestra debe tener esPieza boolean');
+    assert.strictEqual(typeof game.muestra.puntosEnvido, 'number', 'La muestra debe tener puntosEnvido numérico');
+});
+
+test('Reinicio de partido con partidoIniciado = false asegura que la 1ra mano empiece en manoSeat 0', () => {
+    const game = new GameStateManager(2);
+    // Primera ronda de partido nuevo
+    game.partidoIniciado = false;
+    game.iniciarRonda();
+    assert.strictEqual(game.manoSeat, 0, 'La primera mano de un partido debe comenzar en el asiento 0');
+    assert.strictEqual(game.partidoIniciado, true);
+
+    // Segunda ronda del mismo partido
+    game.iniciarRonda();
+    assert.strictEqual(game.manoSeat, 1, 'La segunda ronda debe rotar la mano al asiento 1');
+
+    // Revancha (nuevo partido)
+    game.partidoIniciado = false;
+    game.iniciarRonda();
+    assert.strictEqual(game.manoSeat, 0, 'Tras reiniciar partido, la mano debe volver a empezar en 0');
+});
+
+// ----------------------------------------------------
 // Resumen
 // ----------------------------------------------------
 console.log('\n========================================');

@@ -295,6 +295,7 @@ window.iniciarSolo = function(num = 2) {
         const inicioEl = document.getElementById('pantalla-inicio');
         if (inicioEl) inicioEl.style.display = 'none';
         window.modoJuego = 'singleplayer';
+        game.partidoIniciado = false;
         game.configurarJugadores(num);
         game.iniciarRonda();
         const actionsPanel = document.getElementById('actions-panel');
@@ -984,7 +985,7 @@ async function jugarUI(indexCarta) {
     }
 
     logJugada(`🃏 Jugaste ${nombre}`, 'propio');
-    window.audio.play('card-play');
+    if (window.audio && typeof window.audio.play === 'function') window.audio.play('card-play');
     
     if (window.modoJuego === 'multiplayer') {
         window.isAwaitingStateSync = true;
@@ -1052,6 +1053,7 @@ async function verificarLimitesPartido() {
                 game.puntosPartido.jugador = 0;
                 game.puntosPartido.oponente = 0;
                 game.partidoFinalizado = false;
+                game.partidoIniciado = false;
                 const num = game.numJugadores || 2;
                 logJugada("🔄 Comenzando nuevo partido de revancha...", "sistema");
                 window.iniciarSolo(num);
@@ -1315,8 +1317,15 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
     }
 
     game.envidoCantado = true;
-    const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).puntos; // Puntos del BOT para evaluar respuesta
-    const tusPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos; // Puntos del JUGADOR (correctos)
+    const team0Envido = (typeof game.calcularMejorEnvidoEquipo === 'function') 
+        ? game.calcularMejorEnvidoEquipo(0) 
+        : { puntos: game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos };
+    const team1Envido = (typeof game.calcularMejorEnvidoEquipo === 'function') 
+        ? game.calcularMejorEnvidoEquipo(1) 
+        : { puntos: game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente).puntos };
+
+    const tusPtos = team0Envido.puntos;
+    const misPtos = team1Envido.puntos;
     
     // Bot táctico: Evalúa respuesta centralizada mediante GameStateManager
     const diferencia = game.puntosPartido.jugador - game.puntosPartido.oponente;
@@ -1346,6 +1355,7 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
                 game.puntosPartido.oponente += 5;
             }
         } else {
+            await window.UI.alert("No quisiste el Real Envido. (+2 Pts para la IA)");
             game.puntosPartido.oponente += 2; 
         }
     } else {
@@ -1413,13 +1423,9 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
             }
         } else {
             let texto = `Tus ${tusPtos} de Flor contra sus ${misPtos} de Flor...<br><br>`;
-            if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
-                await window.UI.alert(texto + `Nadie agitó, ¡pero tu Flor es mejor! (+4 Pts)`);
-                game.puntosPartido.jugador += 4;
-            } else {
-                await window.UI.alert(texto + `Nadie agitó, ¡pero la Flor de la IA es mejor! (+4 Pts pa' la IA)`);
-                game.puntosPartido.oponente += 4;
-            }
+            await window.UI.alert(texto + `Nadie agitó Contra Flor. Cada uno cobra 3 pts.`);
+            game.puntosPartido.jugador += 3;
+            game.puntosPartido.oponente += 3;
         }
     } else {
         await window.UI.alert("🗣️ Tú: ¡Flor!<br>🤖 Rival: ¡Esa Flor es tuya tigre!<br>(Oponente no tiene y cobrás 3 pts limpitos).");
@@ -1475,13 +1481,12 @@ document.getElementById('btn-truco').addEventListener('click', async () => {
     if (game.manoOponente.length === 3 && !game.envidoCantado) {
         const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
         if (objIA.tieneFlor) {
-            await window.UI.alert(`🗣️ Tú: ¡${canto}!<br>🤖 Rival: ¡Tengo FLOR! (Anula tu toque. La IA cobra 3 pts de su Flor).`);
+            await window.UI.alert(`🗣️ Tú: ¡${canto}!<br>🤖 Rival: ¡Tengo FLOR! (+3 pts para la IA). Ahora responde a tu Truco...`);
             game.puntosPartido.oponente += 3;
             game.envidoCantado = true;
             game.fase = 'truco';
-            if(await verificarLimitesPartido()) return;
+            if (await verificarLimitesPartido()) return;
             renderJuego();
-            return;
         }
     }
 

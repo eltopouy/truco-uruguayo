@@ -55,7 +55,7 @@ window.ChatManager = (function () {
         '¡Jajaja, no te achiques ahora, bo! 😎',
         '¡Con esa cara no asustás a nadie! 🃏',
         '¡Vamo\' arriba que esto recién empieza! 🇺🇾',
-        'Mmm... me parece que estásCargando sin nada 🤔',
+        'Mmm... me parece que estás cargando sin nada 🤔',
         '¡Jugá rápido que se enfría el mate! 🧉',
         '¡Qué ligue tenés hoy, impresionante! 🍀',
         '¡Ojo que tengo el Macho guardado! ⚔️',
@@ -560,7 +560,7 @@ window.ChatManager = (function () {
         // Responder ~65% de las veces para que sea natural
         if (Math.random() > 0.65) return;
 
-        const is4P = window.game && window.game.numPlayers === 4;
+        const is4P = window.game && (window.game.numJugadores === 4 || window.game.numPlayers === 4);
         let autorBot = 'Computadora';
         let textoBot = BOT_REPLIES_1V1[Math.floor(Math.random() * BOT_REPLIES_1V1.length)];
 

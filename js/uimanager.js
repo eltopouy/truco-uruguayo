@@ -44,7 +44,6 @@ window.UI = {
      */
     _buildContextWidget: function() {
         // Solo mostrar si hay una partida activa
-        // Solo mostrar si hay una partida activa
         if (typeof game === 'undefined' || !game.muestra || !game.partidoIniciado) return '';
 
         const muestra = game.muestra;

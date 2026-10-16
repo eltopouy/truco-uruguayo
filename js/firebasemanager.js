@@ -725,7 +725,7 @@ async function procesarAccionRed(snap) {
         }
     }
     else if (t === 'canto_subida') {
-        window.audio.play('truco'); // Los gritos de subida también disparan sonido
+        if (window.audio && typeof window.audio.play === 'function') window.audio.play('truco'); // Los gritos de subida también disparan sonido
         window.resetTimer();
         procesarCantoSubidaRed(d);
     }
@@ -746,7 +746,7 @@ async function procesarAccionRed(snap) {
             renderJuego();
             await window.manejarFinDeRondaUI();
         } else if (d.tipo === 'canta_flor') {
-            window.audio.play('flor');
+            if (window.audio && typeof window.audio.play === 'function') window.audio.play('flor');
             window.resetTimer();
             game.envidoCantado = true;
             procesarCantoFlorRed(d);
@@ -853,7 +853,13 @@ async function procesarCantoEnvidoRed(d) {
         } else if (accionOpt === '2') {
             const ptsNoQuiero = 1;
             enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'no_quiero', ptsRival: ptsNoQuiero });
-            if (miRol === 'creador') { game.puntosPartido.oponente += ptsNoQuiero; game.fase = 'truco'; sincronizarEstadoMotor(); }
+            if (miRol === 'creador') { 
+                game.puntosPartido.oponente += ptsNoQuiero; 
+                game.fase = 'truco'; 
+                sincronizarEstadoMotor(); 
+            } else {
+                game.fase = 'truco';
+            }
         } else {
             // Envío subida...
             const nuevaApue = accionOpt === '4' ? (ptsBase + 3) : ptsFalta;
