@@ -25,6 +25,10 @@ window.ChatManager = (function () {
     let remoteTypingTimeout = null;
     let isLocalTyping = false;
 
+    // Estado de Pestañas e Historial de la Mano Actual
+    let activeTab = 'messages'; // 'messages' | 'history'
+    let handHistory = [];
+
     // =========================================================================
     // ESTADO WEBRTC (CHAT DE VOZ EN TIEMPO REAL)
     // =========================================================================
@@ -90,6 +94,13 @@ window.ChatManager = (function () {
             form: document.getElementById('chat-input-form'),
             input: document.getElementById('chat-text-input'),
             floatingBubbles: document.getElementById('floating-speech-bubbles-container'),
+            // Elementos de Pestañas e Historial de la Mano
+            tabsBar: document.getElementById('chat-tabs-bar'),
+            tabChatBtn: document.getElementById('tab-btn-chat'),
+            tabHistoryBtn: document.getElementById('tab-btn-history'),
+            historyContainer: document.getElementById('chat-history-container'),
+            historyCountBadge: document.getElementById('history-event-count'),
+            historyEmptyState: document.getElementById('history-empty-state'),
             // Elementos de Voz WebRTC
             voiceBar: document.getElementById('voice-call-bar'),
             voiceJoinBtn: document.getElementById('btn-voice-join'),
@@ -103,6 +114,14 @@ window.ChatManager = (function () {
         };
 
         if (!els.drawer) return;
+
+        // Pestañas: Chat / Historial de la Mano
+        if (els.tabChatBtn) {
+            els.tabChatBtn.addEventListener('click', () => switchTab('messages'));
+        }
+        if (els.tabHistoryBtn) {
+            els.tabHistoryBtn.addEventListener('click', () => switchTab('history'));
+        }
 
         // Abrir / cerrar cajón desde la barra superior o el botón flotante
         if (els.toggleBtn) {
@@ -336,11 +355,16 @@ window.ChatManager = (function () {
         if (els.toggleBtn) els.toggleBtn.classList.add('chat-open');
         if (els.floatingBtn) els.floatingBtn.classList.add('chat-open');
         resetUnread();
+        switchTab(activeTab);
 
         setTimeout(() => {
-            scrollToBottom();
-            if (els.input && window.innerWidth > 640) {
-                els.input.focus();
+            if (activeTab === 'history') {
+                if (els.historyContainer) els.historyContainer.scrollTop = els.historyContainer.scrollHeight;
+            } else {
+                scrollToBottom();
+                if (els.input && window.innerWidth > 640) {
+                    els.input.focus();
+                }
             }
         }, 80);
     }
@@ -353,6 +377,148 @@ window.ChatManager = (function () {
         if (els.toggleBtn) els.toggleBtn.classList.remove('chat-open');
         if (els.floatingBtn) els.floatingBtn.classList.remove('chat-open');
         actualizarPuntoEstado();
+    }
+
+    /**
+     * Alterna la vista entre la pestaña de Chat y la de Historial de la Mano Actual
+     * @param {'messages'|'history'} tabName
+     */
+    function switchTab(tabName) {
+        activeTab = tabName;
+        if (!els.drawer) return;
+
+        if (tabName === 'history') {
+            if (els.tabChatBtn) {
+                els.tabChatBtn.classList.remove('active');
+                els.tabChatBtn.setAttribute('aria-selected', 'false');
+            }
+            if (els.tabHistoryBtn) {
+                els.tabHistoryBtn.classList.add('active');
+                els.tabHistoryBtn.setAttribute('aria-selected', 'true');
+            }
+            if (els.messagesContainer) els.messagesContainer.style.display = 'none';
+            if (els.reactionsBar) els.reactionsBar.style.display = 'none';
+            if (els.form) els.form.style.display = 'none';
+            if (els.historyContainer) {
+                els.historyContainer.style.display = 'flex';
+                els.historyContainer.scrollTop = els.historyContainer.scrollHeight;
+            }
+        } else {
+            if (els.tabChatBtn) {
+                els.tabChatBtn.classList.add('active');
+                els.tabChatBtn.setAttribute('aria-selected', 'true');
+            }
+            if (els.tabHistoryBtn) {
+                els.tabHistoryBtn.classList.remove('active');
+                els.tabHistoryBtn.setAttribute('aria-selected', 'false');
+            }
+            if (els.messagesContainer) els.messagesContainer.style.display = 'flex';
+            if (els.reactionsBar) els.reactionsBar.style.display = 'flex';
+            if (els.form) els.form.style.display = 'flex';
+            if (els.historyContainer) els.historyContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * Renderiza un ítem visual en el historial de la mano actual
+     */
+    function renderizarItemHistorial(entry) {
+        const item = document.createElement('div');
+        item.className = `chat-history-item tipo-${entry.tipo}`;
+
+        let icon = '🃏';
+        if (entry.tipo === 'canto') icon = '🗣️';
+        else if (entry.tipo === 'baza') icon = '⚔️';
+        else if (entry.tipo === 'muestra') icon = '🎴';
+        else if (entry.tipo === 'ronda') icon = '🏆';
+
+        let autorClass = '';
+        const autorLower = (entry.autor || '').toLowerCase();
+        if (autorLower === 'tú' || autorLower === 'yo') autorClass = 'autor-yo';
+        else if (autorLower.includes('rival') || autorLower.includes('oponente') || autorLower.includes('ia')) autorClass = 'autor-rival';
+        else if (autorLower.includes('compañero')) autorClass = 'autor-companero';
+
+        const safeAutor = window.escapeHTML(entry.autor);
+        const safeTitulo = window.escapeHTML(entry.titulo);
+        const safeDetalle = window.escapeHTML(entry.detalle);
+
+        const d = new Date(entry.tiempo);
+        const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+
+        item.innerHTML = `
+            <div class="chat-history-icon">${icon}</div>
+            <div class="chat-history-body">
+                <div class="chat-history-header">
+                    <span class="chat-history-autor ${autorClass}">${safeAutor}${safeTitulo ? ' · ' + safeTitulo : ''}</span>
+                    <span class="chat-history-time">${timeStr}</span>
+                </div>
+                <div class="chat-history-text">${safeDetalle}</div>
+            </div>
+        `;
+        return item;
+    }
+
+    /**
+     * Registra un evento de la mano actual (carta jugada, canto de truco/envido/flor, grito, baza)
+     * @param {Object} evento - { tipo: 'carta'|'canto'|'baza'|'muestra'|'ronda', autor: string, titulo: string, detalle: string, tiempo?: number }
+     */
+    function registrarEventoMano(evento) {
+        if (!evento) return;
+        const entry = {
+            id: 'evt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+            tipo: evento.tipo || 'carta',
+            autor: evento.autor || 'Sistema',
+            titulo: evento.titulo || '',
+            detalle: evento.detalle || '',
+            tiempo: evento.tiempo || Date.now()
+        };
+
+        handHistory.push(entry);
+
+        if (els.historyCountBadge) {
+            els.historyCountBadge.innerText = String(handHistory.length);
+        }
+
+        if (els.historyEmptyState) {
+            els.historyEmptyState.style.display = 'none';
+        }
+
+        if (els.historyContainer) {
+            const item = renderizarItemHistorial(entry);
+            els.historyContainer.appendChild(item);
+            if (activeTab === 'history') {
+                els.historyContainer.scrollTop = els.historyContainer.scrollHeight;
+            }
+        }
+    }
+
+    /**
+     * Reinicia el historial al comenzar una nueva mano y anota la muestra inicial
+     */
+    function reiniciarHistorialMano(muestra) {
+        handHistory = [];
+        if (els.historyContainer) {
+            els.historyContainer.innerHTML = '';
+            if (els.historyEmptyState) {
+                els.historyEmptyState.style.display = 'none';
+            }
+        }
+        if (els.historyCountBadge) {
+            els.historyCountBadge.innerText = '0';
+        }
+
+        if (muestra) {
+            const NOMBRES_VALORES = {1: 'As', 2: 'Dos', 3: 'Tres', 4: 'Cuatro', 5: 'Cinco', 6: 'Seis', 7: 'Siete', 10: 'Sota', 11: 'Caballo', 12: 'Rey'};
+            const nomVal = NOMBRES_VALORES[muestra.valor] || muestra.valor;
+            const nomPalo = muestra.palo;
+            registrarEventoMano({
+                tipo: 'muestra',
+                autor: 'Mesa',
+                titulo: 'Nueva Mano',
+                detalle: `Muestra: ${nomVal} de ${nomPalo}`,
+                tiempo: Date.now()
+            });
+        }
     }
 
     /**
@@ -1271,7 +1437,12 @@ window.ChatManager = (function () {
         colgarLlamadaVoz,
         toggleMuteVoz,
         toggleDeafenVoz,
-         getUnreadCount: () => unreadCount,
+        registrarEventoMano,
+        reiniciarHistorialMano,
+        switchTab,
+        cambiarTab: switchTab,
+        getHistorialMano: () => [...handHistory],
+        getUnreadCount: () => unreadCount,
         isOpen: () => isOpen
     };
 })();

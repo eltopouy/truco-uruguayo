@@ -274,17 +274,47 @@ async function resolverFlorSingleplayer() {
 
 function logJugada(texto, tipo = 'sistema') {
     const feed = document.getElementById('game-feed');
-    if (!feed) return;
-    const msg = document.createElement('div');
-    msg.className = `feed-msg ${tipo}`;
-    msg.innerText = texto;
-    feed.prepend(msg);
-    
-    setTimeout(() => {
-        msg.style.opacity = '0';
-        msg.style.transform = 'translateX(-20px)';
-        setTimeout(() => msg.remove(), 500);
-    }, 8000);
+    if (feed) {
+        const msg = document.createElement('div');
+        msg.className = `feed-msg ${tipo}`;
+        msg.innerText = texto;
+        feed.prepend(msg);
+        
+        setTimeout(() => {
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateX(-20px)';
+            setTimeout(() => msg.remove(), 500);
+        }, 8000);
+    }
+
+    // Registrar en el historial de la mano actual (para la pestaña del Chat)
+    if (window.ChatManager && typeof window.ChatManager.registrarEventoMano === 'function') {
+        // Ignorar mensajes de chat normales para que no se dupliquen (ya van a la pestaña de mensajes)
+        if (typeof texto === 'string' && texto.startsWith('💬 ')) return;
+
+        let catTipo = 'carta';
+        let autor = 'Mesa';
+        if (tipo === 'propio') autor = 'Tú';
+        else if (tipo === 'rival') autor = 'Rival';
+
+        if (texto.includes('¡FLOR!') || texto.includes('Flor') || texto.includes('Envido') || texto.includes('TRUCO') || texto.includes('Truco') || texto.includes('RETRUCO') || texto.includes('VALE') || texto.includes('¡QUIERO') || texto.includes('No quiero') || texto.includes('mazo')) {
+            catTipo = 'canto';
+        } else if (texto.includes('baza') || texto.includes('Baza') || texto.includes('⚔️') || texto.includes('⚖️')) {
+            catTipo = 'baza';
+        } else if (texto.includes('Muestra') || texto.includes('muestra') || texto.includes('mezclas') || texto.includes('reparta')) {
+            catTipo = 'muestra';
+        } else if (texto.includes('partido') || texto.includes('revancha') || texto.includes('ganó') || texto.includes('ganaste')) {
+            catTipo = 'ronda';
+        }
+
+        window.ChatManager.registrarEventoMano({
+            tipo: catTipo,
+            autor: autor,
+            titulo: catTipo === 'carta' ? 'Carta' : (catTipo === 'canto' ? 'Canto / Grito' : (catTipo === 'baza' ? 'Baza' : 'Mesa')),
+            detalle: texto,
+            tiempo: Date.now()
+        });
+    }
 }
 window.logJugada = logJugada;
 window.agregarLogChat = function(autor, texto, esMio) {
@@ -384,6 +414,7 @@ window.animarReparto = async function() {
             
             const dealerSeat = (game.manoSeat + game.numJugadores - 1) % game.numJugadores;
             deckArea.classList.add(`deck-seat-${dealerSeat}`);
+            if (game.numJugadores === 4) deckArea.classList.add('deck-4p');
             if (dealerSeat === 0) deckArea.classList.add('deck-mi-derecha');
             else if (dealerSeat === 2 || (game.numJugadores === 2 && dealerSeat === 1)) deckArea.classList.add('deck-su-derecha');
             
@@ -782,6 +813,7 @@ function renderJuego() {
         
         const dealerSeat = (game.manoSeat + game.numJugadores - 1) % game.numJugadores;
         deckArea.classList.add(`deck-seat-${dealerSeat}`);
+        if (game.numJugadores === 4) deckArea.classList.add('deck-4p');
         if (dealerSeat === 0) deckArea.classList.add('deck-mi-derecha');
         else if (dealerSeat === 2 || (game.numJugadores === 2 && dealerSeat === 1)) deckArea.classList.add('deck-su-derecha');
 
@@ -1440,12 +1472,16 @@ document.getElementById('btn-flor').addEventListener('click', async () => {
     renderJuego();
 });
 
-// Reset del flag de Flor al inicio de cada nueva ronda
+// Reset del flag de Flor y reinicio del Historial de Mano en cada nueva ronda
 const _origIniciarRonda = game.iniciarRonda.bind(game);
 game.iniciarRonda = function(...args) {
     window.florResuelta = false;
     _florCheckScheduled = false;
-    return _origIniciarRonda(...args);
+    const res = _origIniciarRonda(...args);
+    if (window.ChatManager && typeof window.ChatManager.reiniciarHistorialMano === 'function') {
+        window.ChatManager.reiniciarHistorialMano(game.muestra);
+    }
+    return res;
 };
 
 document.getElementById('btn-truco').addEventListener('click', async () => {

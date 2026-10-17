@@ -186,7 +186,7 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!--   RECURSOS                                              -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <link rel="stylesheet" href="css/style.css?v=2.8.5">
+    <link rel="stylesheet" href="css/style.css?v=2.8.6">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
     <style>
         /* Reglas críticas inline anti-caché para evitar que el cajón de chat se renderice en el flujo de la mesa */
@@ -554,9 +554,9 @@
             </div>
         </div>
 
-        <!-- Bazas Minimalistas bajo el marcador -->
+        <!-- Bazas Minimalistas bajo el marcador (más elevadas y compactas) -->
         <div id="mini-bazas"
-            style="position: absolute; top: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; z-index: 100;">
+            style="position: absolute; top: 7px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; z-index: 100;">
             <div class="baza-slot" id="baza-1"></div>
             <div class="baza-slot" id="baza-2"></div>
             <div class="baza-slot" id="baza-3"></div>
@@ -617,6 +617,17 @@
             <button id="btn-chat-close" class="btn-icon-small" title="Cerrar chat" aria-label="Cerrar chat">✕</button>
         </div>
 
+        <!-- Pestañas: Chat / Historial de Mano Actual -->
+        <div class="chat-tabs-bar" id="chat-tabs-bar" role="tablist">
+            <button type="button" id="tab-btn-chat" class="chat-tab-btn active" data-tab="messages" role="tab" aria-selected="true">
+                <span>💬 Chat</span>
+            </button>
+            <button type="button" id="tab-btn-history" class="chat-tab-btn" data-tab="history" role="tab" aria-selected="false">
+                <span>📜 Mano Actual</span>
+                <span id="history-event-count" class="history-count-badge">0</span>
+            </button>
+        </div>
+
         <!-- Barra de Llamada de Voz en Tiempo Real (WebRTC) -->
         <div id="voice-call-bar" class="voice-call-bar">
             <div class="voice-call-info">
@@ -643,6 +654,14 @@
             <div class="chat-empty-state" id="chat-empty-state">
                 <span>🧉</span>
                 <p>¡Mandá un saludo, cantá con fe o tirá una reacción rápida a la mesa!</p>
+            </div>
+        </div>
+
+        <!-- Historial de la Mano en Juego (Cartas, Cantos, Gritos) -->
+        <div id="chat-history-container" class="chat-history-container" style="display: none;" aria-live="polite">
+            <div class="chat-empty-state" id="history-empty-state">
+                <span>📜</span>
+                <p>Las cartas jugadas, cantos y gritos de la mano actual se registrarán aquí.</p>
             </div>
         </div>
 
@@ -738,18 +757,18 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
-    <script src="js/soundmanager.js?v=2.8.5"></script>
-    <script src="js/uimanager.js?v=2.8.5"></script>
-    <script src="js/gamestatemanager.js?v=2.8.5"></script>
-    <script src="js/firebasemanager.js?v=2.8.5"></script>
-    <script src="js/chatmanager.js?v=2.8.5"></script>
-    <script src="js/app.js?v=2.8.5"></script>
+    <script src="js/soundmanager.js?v=2.8.6"></script>
+    <script src="js/uimanager.js?v=2.8.6"></script>
+    <script src="js/gamestatemanager.js?v=2.8.6"></script>
+    <script src="js/firebasemanager.js?v=2.8.6"></script>
+    <script src="js/chatmanager.js?v=2.8.6"></script>
+    <script src="js/app.js?v=2.8.6"></script>
 
     <!-- Registro de Service Worker PWA -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=2.8.5').then((reg) => {
+                navigator.serviceWorker.register('/sw.js?v=2.8.6').then((reg) => {
                     if (typeof reg.update === 'function') reg.update();
                     console.log('✅ Service Worker registrado:', reg.scope);
                 }).catch((err) => {

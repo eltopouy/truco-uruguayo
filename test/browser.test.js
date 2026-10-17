@@ -634,6 +634,105 @@ const assert = require('assert');
             await page.close();
         });
 
+        // TEST 13: Mini-bazas elevadas y compactas, mazo en 4P libre de solapamientos, y pestaña de Historial de la Mano Actual en el Chat
+        await runTest('Mini-bazas compactas arriba, mazo 4P sin solapar rivales, e Historial de Mano en Chat funcional', async () => {
+            const page = await browser.newPage({
+                viewport: { width: 390, height: 844 },
+                isMobile: true,
+                hasTouch: true
+            });
+            await page.route('**/*.firebaseio.com/**', route => route.abort());
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2000);
+
+            // 1. Verificar dimensiones y elevación de mini-bazas
+            const bazasMetrics = await page.evaluate(() => {
+                const el = document.getElementById('mini-bazas');
+                const slot = document.querySelector('.baza-slot');
+                const rect = el.getBoundingClientRect();
+                const slotRect = slot.getBoundingClientRect();
+                return {
+                    top: rect.top,
+                    slotWidth: slotRect.width,
+                    slotHeight: slotRect.height
+                };
+            });
+            assert(bazasMetrics.top <= 12, `Mini-bazas debe quedar en la parte superior (top <= 12px, actual: ${bazasMetrics.top}px)`);
+            assert(bazasMetrics.slotWidth <= 14 && bazasMetrics.slotWidth >= 9, `Los círculos de mini-bazas deben ser compactos como el punto de chat (9-14px, actual: ${bazasMetrics.slotWidth}px)`);
+
+            // 2. Probar el cajón de chat: abrir desde el botón superior en móvil, cambiar a pestaña "Mano Actual" y verificar eventos
+            await page.click('#btn-chat-toggle');
+            await page.waitForTimeout(300);
+
+            const tabHistory = page.locator('#tab-btn-history');
+            assert.strictEqual(await tabHistory.isVisible(), true, 'La pestaña "Mano Actual" debe ser visible en el chat');
+
+            await tabHistory.click();
+            await page.waitForTimeout(200);
+
+            const historyContainerVisible = await page.isVisible('#chat-history-container');
+            assert.strictEqual(historyContainerVisible, true, 'El contenedor de historial de mano debe mostrarse al seleccionar la pestaña');
+
+            // Verificar que al menos la muestra o eventos de la mano están registrados
+            const historyCount = await page.evaluate(() => {
+                return (window.ChatManager && typeof window.ChatManager.getHistorialMano === 'function') 
+                    ? window.ChatManager.getHistorialMano().length 
+                    : 0;
+            });
+            assert(historyCount >= 1, `El historial de la mano actual debe registrar al menos el inicio de la mano (actual: ${historyCount})`);
+
+            // Jugar una carta y verificar que se suma al historial de la mano en vivo
+            await page.evaluate(() => {
+                window.logJugada('🃏 Jugaste As de Espadas', 'propio');
+            });
+            await page.waitForTimeout(200);
+
+            const newHistoryCount = await page.evaluate(() => {
+                return window.ChatManager.getHistorialMano().length;
+            });
+            assert(newHistoryCount > historyCount, 'Al jugar una carta o registrar jugada debe sumarse al historial de la mano');
+
+            // Volver a pestaña mensajes
+            await page.click('#tab-btn-chat');
+            await page.waitForTimeout(200);
+            const messagesVisible = await page.isVisible('#chat-messages-container');
+            assert.strictEqual(messagesVisible, true, 'Al hacer clic en Mensajes debe volver a verse el chat normal');
+
+            await page.close();
+
+            // 3. Probar modo 4 Jugadores (2 vs 2): Mazo no solapa rival izquierdo ni rival derecho
+            const page4P = await browser.newPage({
+                viewport: { width: 390, height: 844 },
+                isMobile: true,
+                hasTouch: true
+            });
+            await page4P.route('**/*.firebaseio.com/**', route => route.abort());
+            await page4P.goto(filePath);
+            await page4P.click('text=2 vs 2');
+            await page4P.waitForTimeout(2500);
+
+            const is4PNoOverlap = await page4P.evaluate(() => {
+                const deck = document.querySelector('.deck-area').getBoundingClientRect();
+                const rivalL = document.querySelector('.rival-left-hand').getBoundingClientRect();
+                const rivalR = document.querySelector('.rival-right-hand').getBoundingClientRect();
+
+                const overlap = (r1, r2) => !(r1.right <= r2.left || r1.left >= r2.right || r1.bottom <= r2.top || r1.top >= r2.bottom);
+
+                return {
+                    hasDeck4pClass: document.querySelector('.deck-area').classList.contains('deck-4p'),
+                    overlapLeft: overlap(deck, rivalL),
+                    overlapRight: overlap(deck, rivalR)
+                };
+            });
+
+            assert.strictEqual(is4PNoOverlap.hasDeck4pClass, true, 'El área del mazo debe tener la clase deck-4p');
+            assert.strictEqual(is4PNoOverlap.overlapLeft, false, 'El mazo en 4P no debe solapar las cartas del rival izquierdo');
+            assert.strictEqual(is4PNoOverlap.overlapRight, false, 'El mazo en 4P no debe solapar las cartas del rival derecho');
+
+            await page4P.close();
+        });
+
     } finally {
         if (browser) await browser.close();
     }
