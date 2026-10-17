@@ -1119,30 +1119,154 @@ async function jugarBot() {
     const probBluff = Math.random() < 0.15;
     const esDormido = Math.random() < 0.10;
 
-    // Cantos en 1v1 para el rival (Seat 1)
-    if (game.numJugadores === 2 && currentBot.seat === 1) {
-        const objIA = game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
-        const objJG = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
+    // Cantos en 1v1 (Seat 1) o 2v2 (Rivales Seat 1 y 3)
+    const esRivalTurno = (game.numJugadores === 2 && currentBot.seat === 1) || (game.numJugadores === 4 && (currentBot.seat === 1 || currentBot.seat === 3));
+    if (esRivalTurno) {
+        const teamIAEnvido = (typeof game.calcularMejorEnvidoEquipo === 'function' && game.numJugadores === 4)
+            ? game.calcularMejorEnvidoEquipo(1)
+            : game.calcularPuntosEnvidoFlor(game.manoInicialOponente || game.manoOponente);
+        const teamJGEnvido = (typeof game.calcularMejorEnvidoEquipo === 'function' && game.numJugadores === 4)
+            ? game.calcularMejorEnvidoEquipo(0)
+            : game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador);
 
-        // Envido si corresponde
-        if (hand.length === 3 && !game.envidoCantado && !objIA.tieneFlor && !objJG.tieneFlor && objIA.puntos >= 27 && !esDormido) {
+        // Envido si corresponde y ninguno tiene Flor
+        if (hand.length === 3 && !game.envidoCantado && !teamIAEnvido.tieneFlor && !teamJGEnvido.tieneFlor && teamIAEnvido.puntos >= 27 && !esDormido) {
             game.envidoCantado = true;
-            window.audio && window.audio.play('envido');
-            const quiero = await window.UI.confirm(`🤖 IA: ¡Envido!<br><br>¿Querés aceptar? (Tus puntos: ${objJG.puntos})`);
-            if (quiero) {
-                let ptsPremio = 2;
-                if (objJG.puntos > objIA.puntos || (objJG.puntos === objIA.puntos && game.manoDelPartido === 'jugador')) {
-                    game.recordarPuntosRival(objJG.puntos, false);
-                    await window.UI.alert(`¡Ganaste el Envido! (${objJG.puntos} vs ${objIA.puntos}) (+${ptsPremio} Pts)`);
-                    game.puntosPartido.jugador += ptsPremio;
+            const ptsFalta = typeof game.calcPuntosFalta === 'function' ? game.calcPuntosFalta() : 15;
+            const dif = game.puntosPartido.oponente - game.puntosPartido.jugador;
+
+            // Determinar toque inicial del bot según cartas
+            let tipoBotToque = 'envido';
+            let labelBotToque = 'Envido';
+            let ptsBase = 2;
+            if (teamIAEnvido.puntos >= 33 && Math.random() < 0.4) {
+                tipoBotToque = 'real_envido';
+                labelBotToque = 'Real Envido';
+                ptsBase = 3;
+            } else if (teamIAEnvido.puntos >= 34 && dif < -5 && Math.random() < 0.5) {
+                tipoBotToque = 'falta_envido';
+                labelBotToque = 'Falta Envido';
+                ptsBase = ptsFalta;
+            }
+
+            window.audio && window.audio.play(tipoBotToque);
+            logJugada(`🤖 Rival: ¡${labelBotToque.toUpperCase()}!`, 'rival');
+
+            const opcionesRespuesta = [
+                { label: `¡Quiero! (${ptsBase} pts)`, value: "quiero", success: true, primary: true },
+                { label: `No quiero (+1 pt para la IA)`, value: "no_quiero", neutral: true }
+            ];
+
+            if (tipoBotToque === 'envido') {
+                opcionesRespuesta.push({ label: `¡Real Envido! (5 pts en juego)`, value: "real_envido" });
+                opcionesRespuesta.push({ label: `¡Falta Envido! (${ptsFalta} pts)`, value: "falta_envido", danger: true });
+            } else if (tipoBotToque === 'real_envido') {
+                opcionesRespuesta.push({ label: `¡Falta Envido! (${ptsFalta} pts)`, value: "falta_envido", danger: true });
+            }
+
+            const respJG = await window.UI.options(
+                `🤖 IA: ¡${labelBotToque}!<br><br>Tus puntos: ${teamJGEnvido.puntos}<br>¿Qué respondes?`,
+                opcionesRespuesta,
+                labelBotToque
+            );
+
+            if (respJG === 'quiero') {
+                window.audio && window.audio.play('quiero');
+                game.recordarPuntosRival(teamJGEnvido.puntos, false);
+                if (teamJGEnvido.puntos > teamIAEnvido.puntos || (teamJGEnvido.puntos === teamIAEnvido.puntos && game.manoDelPartido === 'jugador')) {
+                    await window.UI.alert(`¡Ganaste el ${labelBotToque}! (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}) (+${ptsBase} Pts)`);
+                    logJugada(`¡Ganaste el ${labelBotToque} (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos})! (+${ptsBase} pts)`, 'propio');
+                    game.puntosPartido.jugador += ptsBase;
                 } else {
-                    game.recordarPuntosRival(objJG.puntos, false);
-                    await window.UI.alert(`Perdiste el Envido (${objJG.puntos} vs ${objIA.puntos}) (+${ptsPremio} Pts para la IA)`);
-                    game.puntosPartido.oponente += ptsPremio;
+                    await window.UI.alert(`Perdiste el ${labelBotToque} (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}) (+${ptsBase} Pts para la IA)`);
+                    logJugada(`Perdiste el ${labelBotToque} (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}). (+${ptsBase} pts IA)`, 'rival');
+                    game.puntosPartido.oponente += ptsBase;
                 }
-            } else {
-                await window.UI.alert("No quisiste el Envido. (+1 Pt para la IA)");
+            } else if (respJG === 'no_quiero') {
+                window.audio && window.audio.play('no_quiero');
+                await window.UI.alert(`No quisiste el ${labelBotToque}. (+1 Pt para la IA)`);
+                logJugada(`No quisiste el ${labelBotToque} (+1 pt para la IA)`, 'propio');
                 game.puntosPartido.oponente += 1;
+            } else if (respJG === 'real_envido') {
+                window.audio && window.audio.play('real_envido');
+                logJugada(`🗣️ ¡REAL ENVIDO!`, 'propio');
+                await window.UI.alert(`🗣️ Tú: ¡REAL ENVIDO!<br>(Esperando respuesta de la IA...)`);
+                const botDecision = game.decidirEnvido('real_envido', teamIAEnvido.puntos, game.puntosPartido.jugador - game.puntosPartido.oponente);
+                if (botDecision === 'no') {
+                    await botDelay();
+                    window.audio && window.audio.play('no_quiero');
+                    await window.UI.alert(`🤖 Rival: No quiero.<br>¡Cobrás 2 Pts!`);
+                    logJugada(`🤖 Rival: No quiso el Real Envido (+2 pts para ti)`, 'propio');
+                    game.puntosPartido.jugador += 2;
+                } else if (botDecision === 'falta' || botDecision === 'real') {
+                    await botDelay();
+                    window.audio && window.audio.play('falta_envido');
+                    logJugada(`🤖 Rival: ¡FALTA ENVIDO!`, 'rival');
+                    const respSubaFalta = await window.UI.options(
+                        `🤖 IA te cruzó ¡FALTA ENVIDO!<br><br>Tus puntos: ${teamJGEnvido.puntos}<br>¿Aceptás?`,
+                        [
+                            { label: `¡Quiero! (${ptsFalta} pts)`, value: "quiero", success: true, primary: true },
+                            { label: "No quiero (+5 pts para la IA)", value: "no_quiero", neutral: true }
+                        ],
+                        "Falta Envido"
+                    );
+                    if (respSubaFalta === 'quiero') {
+                        window.audio && window.audio.play('quiero');
+                        if (teamJGEnvido.puntos > teamIAEnvido.puntos || (teamJGEnvido.puntos === teamIAEnvido.puntos && game.manoDelPartido === 'jugador')) {
+                            await window.UI.alert(`¡Ganaste la Falta Envido! (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}) (+${ptsFalta} Pts)`);
+                            logJugada(`¡Ganaste la Falta Envido! (+${ptsFalta} pts)`, 'propio');
+                            game.puntosPartido.jugador += ptsFalta;
+                        } else {
+                            await window.UI.alert(`Perdiste la Falta Envido (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}) (+${ptsFalta} Pts para la IA)`);
+                            logJugada(`Perdiste la Falta Envido (+${ptsFalta} pts IA)`, 'rival');
+                            game.puntosPartido.oponente += ptsFalta;
+                        }
+                    } else {
+                        window.audio && window.audio.play('no_quiero');
+                        await window.UI.alert("No quisiste la Falta Envido. (+5 Pts para la IA)");
+                        logJugada("No quisiste la Falta Envido (+5 pts para la IA)", 'propio');
+                        game.puntosPartido.oponente += 5;
+                    }
+                } else {
+                    await botDelay();
+                    window.audio && window.audio.play('quiero');
+                    await window.UI.alert(`🤖 Rival: ¡QUIERO con ${teamIAEnvido.puntos}!`);
+                    if (teamJGEnvido.puntos > teamIAEnvido.puntos || (teamJGEnvido.puntos === teamIAEnvido.puntos && game.manoDelPartido === 'jugador')) {
+                        await window.UI.alert(`¡Ganaste el Real Envido! (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}) (+5 Pts)`);
+                        logJugada(`¡Ganaste el Real Envido (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos})! (+5 pts)`, 'propio');
+                        game.puntosPartido.jugador += 5;
+                    } else {
+                        await window.UI.alert(`Perdiste el Real Envido (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}) (+5 Pts para la IA)`);
+                        logJugada(`Perdiste el Real Envido (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}). (+5 pts IA)`, 'rival');
+                        game.puntosPartido.oponente += 5;
+                    }
+                }
+            } else if (respJG === 'falta_envido') {
+                window.audio && window.audio.play('falta_envido');
+                logJugada(`🗣️ ¡FALTA ENVIDO!`, 'propio');
+                await window.UI.alert(`🗣️ Tú: ¡FALTA ENVIDO!<br>(Esperando respuesta de la IA...)`);
+                const botDecision = game.decidirEnvido('falta_envido', teamIAEnvido.puntos, game.puntosPartido.jugador - game.puntosPartido.oponente);
+                const ptsNoQuiero = tipoBotToque === 'real_envido' ? 3 : 2;
+                if (botDecision === 'no') {
+                    await botDelay();
+                    window.audio && window.audio.play('no_quiero');
+                    await window.UI.alert(`🤖 Rival: No quiero.<br>¡Cobrás ${ptsNoQuiero} Pts!`);
+                    logJugada(`🤖 Rival: No quiso la Falta Envido (+${ptsNoQuiero} pts para ti)`, 'propio');
+                    game.puntosPartido.jugador += ptsNoQuiero;
+                } else {
+                    await botDelay();
+                    window.audio && window.audio.play('quiero');
+                    await window.UI.alert(`🤖 Rival: ¡QUIERO con ${teamIAEnvido.puntos}!`);
+                    if (teamJGEnvido.puntos > teamIAEnvido.puntos || (teamJGEnvido.puntos === teamIAEnvido.puntos && game.manoDelPartido === 'jugador')) {
+                        await window.UI.alert(`¡Ganaste la Falta Envido! (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}) (+${ptsFalta} Pts)`);
+                        logJugada(`¡Ganaste la Falta Envido (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos})! (+${ptsFalta} pts)`, 'propio');
+                        game.puntosPartido.jugador += ptsFalta;
+                    } else {
+                        await window.UI.alert(`Perdiste la Falta Envido (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}) (+${ptsFalta} Pts para la IA)`);
+                        logJugada(`Perdiste la Falta Envido (${teamJGEnvido.puntos} vs ${teamIAEnvido.puntos}). (+${ptsFalta} pts IA)`, 'rival');
+                        game.puntosPartido.oponente += ptsFalta;
+                    }
+                }
             }
             if (await verificarLimitesPartido()) return;
             game.fase = 'truco';
@@ -1370,28 +1494,105 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
         await botDelay();
         window.audio && window.audio.play('no_quiero');
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: No quiero.`);
+        logJugada(`🤖 Rival: No quiero (+1 pt para ti)`, 'rival');
         game.puntosPartido.jugador += 1; 
-    } else if (botCantoRelleno === 'real' && opt !== 'falta_envido' && opt !== 'real_envido') {
-        // REVIRE
+    } else if (botCantoRelleno === 'real' || botCantoRelleno === 'falta') {
+        // REVIRE DE LA IA
         await botDelay();
-        window.audio && window.audio.play('real_envido');
-        await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡REAL ENVIDO!`);
-        const quiereReal = await window.UI.confirm(`🤖 IA te cruzó REAL ENVIDO.<br><br>Tus puntos: ${tusPtos}<br>¿Querés? (5 pts en juego si aceptás)`);
-        if (quiereReal) {
-            game.recordarPuntosRival(tusPtos, false);
-            game.analizarBluff(tusPtos, true); // Probar si el humano mintió
-            window.shakeCards();
-            await window.UI.alert(`🤖 IA muestra: ${misPtos} pts.`);
-            if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
-                await window.UI.alert(`¡Tus ${tusPtos} le ganaron! (+5 pts)`);
-                game.puntosPartido.jugador += 5;
+        if (opt === 'real_envido' || botCantoRelleno === 'falta') {
+            // Revire con FALTA ENVIDO sobre Real Envido o Envido
+            window.audio && window.audio.play('falta_envido');
+            await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡FALTA ENVIDO!`);
+            logJugada(`🤖 Rival: ¡FALTA ENVIDO!`, 'rival');
+            const ptsAlRechazar = opt === 'real_envido' ? 3 : 2;
+            const respFalta = await window.UI.options(
+                `🤖 IA te cruzó ¡FALTA ENVIDO!<br><br>Tus puntos: ${tusPtos}<br>¿Qué respondes?`,
+                [
+                    { label: `¡Quiero! (${ptsFalta} pts en juego)`, value: "quiero", success: true, primary: true },
+                    { label: `No quiero (+${ptsAlRechazar} pts para la IA)`, value: "no_quiero", neutral: true }
+                ],
+                "Falta Envido"
+            );
+            if (respFalta === 'quiero') {
+                window.audio && window.audio.play('quiero');
+                game.recordarPuntosRival(tusPtos, false);
+                game.analizarBluff(tusPtos, true);
+                window.shakeCards();
+                await window.UI.alert(`🤖 IA muestra: ${misPtos} pts.`);
+                if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
+                    await window.UI.alert(`¡Tus ${tusPtos} le ganaron a sus ${misPtos}!<br>¡Cobrás ${ptsFalta} Pts!`);
+                    logJugada(`¡Ganaste la Falta Envido (${tusPtos} vs ${misPtos})! (+${ptsFalta} pts)`, 'propio');
+                    game.puntosPartido.jugador += ptsFalta;
+                } else {
+                    await window.UI.alert(`¡La IA te durmió con ${misPtos} pts!<br>IA cobra ${ptsFalta} Pts.`);
+                    logJugada(`Perdiste la Falta Envido (${tusPtos} vs ${misPtos}). (+${ptsFalta} pts IA)`, 'rival');
+                    game.puntosPartido.oponente += ptsFalta;
+                }
             } else {
-                await window.UI.alert(`¡La IA te durmió con ${misPtos}! (+5 pts)`);
-                game.puntosPartido.oponente += 5;
+                window.audio && window.audio.play('no_quiero');
+                await window.UI.alert(`No quisiste la Falta Envido. (+${ptsAlRechazar} Pts para la IA)`);
+                logJugada(`No quisiste la Falta Envido (+${ptsAlRechazar} pts para la IA)`, 'propio');
+                game.puntosPartido.oponente += ptsAlRechazar;
             }
         } else {
-            await window.UI.alert("No quisiste el Real Envido. (+2 Pts para la IA)");
-            game.puntosPartido.oponente += 2; 
+            // Revire con REAL ENVIDO sobre Envido
+            window.audio && window.audio.play('real_envido');
+            await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡REAL ENVIDO!`);
+            logJugada(`🤖 Rival: ¡REAL ENVIDO!`, 'rival');
+            const respReal = await window.UI.options(
+                `🤖 IA te cruzó REAL ENVIDO.<br><br>Tus puntos: ${tusPtos}<br>¿Qué respondes?`,
+                [
+                    { label: "¡Quiero! (5 pts en juego)", value: "quiero", success: true, primary: true },
+                    { label: "No quiero (+2 pts para la IA)", value: "no_quiero", neutral: true },
+                    { label: `¡Falta Envido! (${ptsFalta} pts)`, value: "falta_envido", danger: true }
+                ],
+                "Real Envido"
+            );
+            if (respReal === 'falta_envido') {
+                window.audio && window.audio.play('falta_envido');
+                logJugada(`🗣️ ¡FALTA ENVIDO!`, 'propio');
+                await window.UI.alert(`🗣️ Tú: ¡FALTA ENVIDO!<br>(Esperando respuesta de la IA...)`);
+                const botAceptaFalta = game.decidirEnvido('falta_envido', misPtos, diferencia);
+                if (botAceptaFalta === 'si') {
+                    await botDelay();
+                    window.audio && window.audio.play('quiero');
+                    window.shakeCards();
+                    await window.UI.alert(`🤖 Rival: ¡QUIERO con ${misPtos}!`);
+                    if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
+                        await window.UI.alert(`¡Tus ${tusPtos} le ganaron a sus ${misPtos}!<br>¡Cobrás ${ptsFalta} Pts!`);
+                        logJugada(`¡Ganaste la Falta Envido (${tusPtos} vs ${misPtos})! (+${ptsFalta} pts)`, 'propio');
+                        game.puntosPartido.jugador += ptsFalta;
+                    } else {
+                        await window.UI.alert(`¡La IA te durmió con ${misPtos} pts!<br>IA cobra ${ptsFalta} Pts.`);
+                        logJugada(`Perdiste la Falta Envido (${tusPtos} vs ${misPtos}). (+${ptsFalta} pts IA)`, 'rival');
+                        game.puntosPartido.oponente += ptsFalta;
+                    }
+                } else {
+                    await botDelay();
+                    window.audio && window.audio.play('no_quiero');
+                    await window.UI.alert(`🤖 Rival: No quiero.<br>¡Cobrás 5 Pts!`);
+                    logJugada(`🤖 Rival: No quiso la Falta Envido (+5 pts para ti)`, 'propio');
+                    game.puntosPartido.jugador += 5;
+                }
+            } else if (respReal === 'quiero') {
+                game.recordarPuntosRival(tusPtos, false);
+                game.analizarBluff(tusPtos, true);
+                window.shakeCards();
+                await window.UI.alert(`🤖 IA muestra: ${misPtos} pts.`);
+                if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
+                    await window.UI.alert(`¡Tus ${tusPtos} le ganaron! (+5 pts)`);
+                    logJugada(`¡Ganaste el Real Envido (${tusPtos} vs ${misPtos})! (+5 pts)`, 'propio');
+                    game.puntosPartido.jugador += 5;
+                } else {
+                    await window.UI.alert(`¡La IA te durmió con ${misPtos}! (+5 pts)`);
+                    logJugada(`Perdiste el Real Envido (${tusPtos} vs ${misPtos}). (+5 pts IA)`, 'rival');
+                    game.puntosPartido.oponente += 5;
+                }
+            } else {
+                await window.UI.alert("No quisiste el Real Envido. (+2 Pts para la IA)");
+                logJugada("No quisiste el Real Envido (+2 pts para la IA)", 'propio');
+                game.puntosPartido.oponente += 2; 
+            }
         }
     } else {
         game.recordarPuntosRival(tusPtos, false);
@@ -1403,13 +1604,15 @@ document.getElementById('btn-envido').addEventListener('click', async () => {
         await window.UI.alert(`🗣️ Tú: ¡${labelToque}!<br>🤖 Rival: ¡QUIERO con ${misPtos}!`);
         if (tusPtos > misPtos || (tusPtos === misPtos && game.manoDelPartido === 'jugador')) {
             await window.UI.alert(`Tus ${tusPtos} le ganaron a sus ${misPtos}.<br>¡Cobrás ${ptsToque} Pts!`);
+            logJugada(`¡Ganaste el ${labelToque} (${tusPtos} vs ${misPtos})! (+${ptsToque} pts)`, 'propio');
             game.puntosPartido.jugador += ptsToque;
         } else {
             await window.UI.alert(`Sus ${misPtos} te durmieron (Tú tenías ${tusPtos}).<br>IA cobra ${ptsToque} Pts.`);
+            logJugada(`Perdiste el ${labelToque} (${tusPtos} vs ${misPtos}). (+${ptsToque} pts IA)`, 'rival');
             game.puntosPartido.oponente += ptsToque;
         }
     }
-    
+
     if(await verificarLimitesPartido()) return;
     game.fase = 'truco'; 
     renderJuego();

@@ -733,6 +733,90 @@ const assert = require('assert');
             await page4P.close();
         });
 
+        // TEST 14: Toques de Envido (Envido, Real Envido y Falta Envido)
+        await runTest('Toques de Envido: Clic en ¡ENVIDO! despliega opciones de Envido, Real Envido y Falta Envido con flujo interactivo', async () => {
+            const page = await browser.newPage({
+                viewport: { width: 1280, height: 800 }
+            });
+            await page.route('**/*.firebaseio.com/**', route => route.abort());
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2000);
+
+            // Cerrar cualquier modal automático si apareció
+            const isModal = await page.isVisible('#modal-custom');
+            if (isModal) {
+                const btnOk = await page.$("#modal-buttons button");
+                if (btnOk) await btnOk.click();
+                await page.waitForTimeout(300);
+            }
+
+            // Asegurar que estamos en fase inicial para cantar envido (mano 3 cartas, sin flor)
+            await page.evaluate(() => {
+                window.game.envidoCantado = false;
+                window.game.fase = 'cantos';
+                window.game.turno = 'jugador';
+                // Forzar mano común de 3 cartas sin flor
+                window.game.players[0].hand = [
+                    { valor: 7, palo: 'Espada', esPieza: false, poder: 12 },
+                    { valor: 6, palo: 'Espada', esPieza: false, poder: 3 },
+                    { valor: 4, palo: 'Basto', esPieza: false, poder: 1 }
+                ];
+                window.game.players[1].hand = [
+                    { valor: 7, palo: 'Copa', esPieza: false, poder: 4 },
+                    { valor: 5, palo: 'Copa', esPieza: false, poder: 2 },
+                    { valor: 4, palo: 'Oro', esPieza: false, poder: 1 }
+                ];
+                window.game.manoJugador = window.game.players[0].hand;
+                window.game.manoOponente = window.game.players[1].hand;
+                window.renderJuego();
+            });
+            await page.waitForTimeout(200);
+
+            const btnEnvido = page.locator('#btn-envido');
+            assert.strictEqual(await btnEnvido.isVisible(), true, 'El botón de Envido debe ser visible');
+
+            // Clic en el botón de Envido
+            await btnEnvido.click();
+            await page.waitForTimeout(300);
+
+            // Verificar que el modal de opciones de toques está visible
+            const modalVisible = await page.isVisible('#modal-custom');
+            assert.strictEqual(modalVisible, true, 'El modal de toques debe abrirse al presionar ¡ENVIDO!');
+
+            const modalButtons = await page.$$("#modal-buttons button");
+            assert(modalButtons.length >= 3, 'Debe haber al menos 3 opciones (Envido, Real Envido, Falta Envido, Cancelar)');
+
+            const btnTexts = await Promise.all(modalButtons.map(b => b.textContent()));
+            const hasEnvido = btnTexts.some(t => t.includes('Envido (2 pts)'));
+            const hasRealEnvido = btnTexts.some(t => t.includes('Real Envido (3 pts)'));
+            const hasFaltaEnvido = btnTexts.some(t => t.includes('Falta Envido'));
+
+            assert(hasEnvido, 'Debe incluir opción de Envido (2 pts)');
+            assert(hasRealEnvido, 'Debe incluir opción de Real Envido (3 pts)');
+            assert(hasFaltaEnvido, 'Debe incluir opción de Falta Envido');
+
+            // Seleccionar Real Envido (3 pts)
+            const btnReal = modalButtons.find(b => btnTexts[modalButtons.indexOf(b)].includes('Real Envido'));
+            assert(btnReal, 'El botón de Real Envido debe existir');
+            await btnReal.click();
+            await page.waitForTimeout(800);
+
+            // Si aparece diálogo de respuesta de la IA (Alerta o confirmación), cerrarlo
+            const modalResp = await page.isVisible('#modal-custom');
+            if (modalResp) {
+                const btnOk = await page.$("#modal-buttons button");
+                if (btnOk) await btnOk.click();
+                await page.waitForTimeout(400);
+            }
+
+            // Verificar que el estado del juego registró envidoCantado = true
+            const envidoCantado = await page.evaluate(() => window.game.envidoCantado);
+            assert.strictEqual(envidoCantado, true, 'El envido debe quedar marcado como cantado');
+
+            await page.close();
+        });
+
     } finally {
         if (browser) await browser.close();
     }

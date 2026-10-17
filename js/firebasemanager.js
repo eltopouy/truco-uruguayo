@@ -1099,19 +1099,28 @@ async function procesarCantoTrucoRed(d) {
 async function procesarCantoSubidaRed(d) {
     const misPtos = game.calcularPuntosEnvidoFlor(game.manoInicialJugador || game.manoJugador).puntos;
     const lossPts = d.apuestaPrevia || 2;
+    const ptsFalta = typeof game.calcPuntosFalta === 'function' ? game.calcPuntosFalta() : 15;
     
+    const opciones = [
+        { label: "QUIERO", value: "1", primary: true, success: true },
+        { label: `SON BUENAS (Pierdes ${lossPts})`, value: "2", neutral: true }
+    ];
+
+    if (d.canto === 'Real Envido') {
+        opciones.push({ label: `Falta Envido (${ptsFalta} pts)`, value: "5", danger: true });
+    }
+
     const accionOpt = await window.UI.options(
         `🌐 Rival: ¡${d.canto}!<br>Apuesta actual: ${d.apuestaTotal} pts.<br>Tus puntos: ${misPtos} pts.`,
-        [
-            { label: "QUIERO", value: "1", primary: true, success: true },
-            { label: `SON BUENAS (Pierdes ${lossPts})`, value: "2", neutral: true }
-        ],
+        opciones,
         "Rival sube la Apuesta"
     );
     
     if (accionOpt === '1') {
         enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'quiero', susPtos: misPtos, apuestaFinal: d.apuestaTotal });
         resolverEnvidoRed(misPtos, d.misPtos || 0, d.apuestaTotal);
+    } else if (accionOpt === '5') {
+        enviarAccionFirebase('canto_subida', { tipo: 'envido', canto: 'Falta Envido', apuestaTotal: ptsFalta, misPtos: misPtos, apuestaPrevia: d.apuestaTotal });
     } else {
         enviarAccionFirebase('respuesta_canto', { tipo: 'envido', resp: 'no_quiero', ptsRival: lossPts });
         if (miRol === 'creador') {

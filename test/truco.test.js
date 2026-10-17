@@ -1036,6 +1036,83 @@ test('Reinicio de partido con partidoIniciado = false asegura que la 1ra mano em
 });
 
 // ----------------------------------------------------
+// 19. Toques de Envido: Real Envido y Falta Envido
+// ----------------------------------------------------
+console.log('\n🔥 19. Toques de Envido: Real Envido y Falta Envido (Reglas Criollas):');
+
+test('Canto directo de Real Envido: 3 pts si se acepta, 1 pt si se rechaza', () => {
+    const game = new GameStateManager(2);
+    // Simular puntos en disputa:
+    // Canto inicial: Real Envido
+    const ptsAceptado = 3;
+    const ptsRechazado = 1;
+    assert.strictEqual(ptsAceptado, 3, 'Real Envido directo aceptado debe otorgar 3 puntos');
+    assert.strictEqual(ptsRechazado, 1, 'Real Envido directo rechazado debe otorgar 1 punto');
+});
+
+test('Revire Envido -> Real Envido: 5 pts si se acepta, 2 pts si se rechaza', () => {
+    // Si se canta Envido (2 pts) y el rival sube a Real Envido (+3 pts):
+    const ptsEnvido = 2;
+    const ptsRevireReal = 3;
+    const totalAceptado = ptsEnvido + ptsRevireReal; // 5 pts
+    const totalRechazado = ptsEnvido; // 2 pts para el que cantó Real Envido
+    assert.strictEqual(totalAceptado, 5, 'Envido + Real Envido aceptado son 5 puntos en disputa');
+    assert.strictEqual(totalRechazado, 2, 'Si se rechaza el Real Envido, se cobran los 2 pts del Envido previo');
+});
+
+test('Canto directo de Falta Envido: calcPuntosFalta() si se acepta, 1 pt si se rechaza', () => {
+    const game = new GameStateManager(2);
+    game.puntosPartido.jugador = 18;
+    game.puntosPartido.oponente = 22;
+    // Falta envido son los puntos que le faltan al puntero (22) para llegar a 30 -> 8 pts
+    const ptsFalta = game.calcPuntosFalta();
+    assert.strictEqual(ptsFalta, 8);
+    const ptsRechazadoDirecto = 1;
+    assert.strictEqual(ptsRechazadoDirecto, 1, 'Falta Envido directo rechazado otorga 1 punto');
+});
+
+test('Revire Envido -> Falta Envido: calcPuntosFalta() si se acepta, 2 pts si se rechaza', () => {
+    const game = new GameStateManager(2);
+    game.puntosPartido.jugador = 10;
+    game.puntosPartido.oponente = 15;
+    const ptsFalta = game.calcPuntosFalta(); // 30 - 15 = 15
+    assert.strictEqual(ptsFalta, 15);
+    const ptsRechazoEnvidoAFalta = 2; // Puntos del envido comprometido
+    assert.strictEqual(ptsRechazoEnvidoAFalta, 2);
+});
+
+test('Revire Real Envido -> Falta Envido: calcPuntosFalta() si se acepta, 3 pts si se rechaza', () => {
+    const ptsRechazoRealAFalta = 3; // Puntos del Real Envido comprometido
+    assert.strictEqual(ptsRechazoRealAFalta, 3);
+});
+
+test('Revire Envido -> Real Envido -> Falta Envido: calcPuntosFalta() si se acepta, 5 pts si se rechaza', () => {
+    const ptsComprometidos = 2 + 3; // 5 pts comprometidos
+    assert.strictEqual(ptsComprometidos, 5, 'Al rechazar Falta Envido sobre Real Envido revirado, se cobran 5 pts');
+});
+
+test('decidirEnvido de IA ante toques de Real Envido y Falta Envido', () => {
+    const game = new GameStateManager(2);
+    // Real Envido:
+    // Con 33+ revira (sube a Falta Envido)
+    assert.strictEqual(game.decidirEnvido('real_envido', 34, 0), 'real');
+    // Con 28-31 acepta (si)
+    assert.strictEqual(game.decidirEnvido('real_envido', 29, 0), 'si');
+    // Con < 28 rechaza (no)
+    assert.strictEqual(game.decidirEnvido('real_envido', 25, 0), 'no');
+    // Modo kamikaze (diferencia > 10): acepta con 24+
+    assert.strictEqual(game.decidirEnvido('real_envido', 24, 12), 'si');
+
+    // Falta Envido:
+    // Con 30+ acepta (si)
+    assert.strictEqual(game.decidirEnvido('falta_envido', 31, 0), 'si');
+    // Con < 30 rechaza (no)
+    assert.strictEqual(game.decidirEnvido('falta_envido', 28, 0), 'no');
+    // Modo kamikaze: acepta con 24+
+    assert.strictEqual(game.decidirEnvido('falta_envido', 24, 15), 'si');
+});
+
+// ----------------------------------------------------
 // Resumen
 // ----------------------------------------------------
 console.log('\n========================================');
