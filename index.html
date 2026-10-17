@@ -186,7 +186,7 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!--   RECURSOS                                              -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <link rel="stylesheet" href="css/style.css?v=2.8.8">
+    <link rel="stylesheet" href="css/style.css?v=2.8.9">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
     <style>
         /* Reglas críticas inline anti-caché para evitar que el cajón de chat se renderice en el flujo de la mesa */
@@ -757,18 +757,18 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
-    <script src="js/soundmanager.js?v=2.8.8"></script>
-    <script src="js/uimanager.js?v=2.8.8"></script>
-    <script src="js/gamestatemanager.js?v=2.8.8"></script>
-    <script src="js/firebasemanager.js?v=2.8.8"></script>
-    <script src="js/chatmanager.js?v=2.8.8"></script>
-    <script src="js/app.js?v=2.8.8"></script>
+    <script src="js/soundmanager.js?v=2.8.9"></script>
+    <script src="js/uimanager.js?v=2.8.9"></script>
+    <script src="js/gamestatemanager.js?v=2.8.9"></script>
+    <script src="js/firebasemanager.js?v=2.8.9"></script>
+    <script src="js/chatmanager.js?v=2.8.9"></script>
+    <script src="js/app.js?v=2.8.9"></script>
 
     <!-- Registro de Service Worker PWA -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=2.8.8').then((reg) => {
+                navigator.serviceWorker.register('/sw.js?v=2.8.9').then((reg) => {
                     if (typeof reg.update === 'function') reg.update();
                     console.log('✅ Service Worker registrado:', reg.scope);
                 }).catch((err) => {

@@ -599,6 +599,11 @@ const assert = require('assert');
             });
             await page.waitForSelector('#modal-custom', { state: 'visible' });
 
+            // Verificar que el diálogo es limpio y no incluye las leyendas que enumeran las piezas de la muestra
+            const modalCustomText = await page.textContent('#modal-custom');
+            assert(!modalCustomText.includes('Piezas:'), 'El cuadro de diálogo no debe contener la leyenda "Piezas:"');
+            assert(!modalCustomText.includes('CAB (Perico)'), 'El cuadro de diálogo debe ser limpio y no listar los valores 2, 4, Sota, etc.');
+
             const buttons = await page.$$('#modal-buttons button');
             assert.strictEqual(buttons.length, 2, 'El diálogo de confirmación debe tener 2 botones');
 
@@ -716,19 +721,22 @@ const assert = require('assert');
                 const deck = document.querySelector('.deck-area').getBoundingClientRect();
                 const rivalL = document.querySelector('.rival-left-hand').getBoundingClientRect();
                 const rivalR = document.querySelector('.rival-right-hand').getBoundingClientRect();
+                const playerHand = document.querySelector('.player-hand').getBoundingClientRect();
 
                 const overlap = (r1, r2) => !(r1.right <= r2.left || r1.left >= r2.right || r1.bottom <= r2.top || r1.top >= r2.bottom);
 
                 return {
                     hasDeck4pClass: document.querySelector('.deck-area').classList.contains('deck-4p'),
                     overlapLeft: overlap(deck, rivalL),
-                    overlapRight: overlap(deck, rivalR)
+                    overlapRight: overlap(deck, rivalR),
+                    overlapPlayer: overlap(deck, playerHand)
                 };
             });
 
             assert.strictEqual(is4PNoOverlap.hasDeck4pClass, true, 'El área del mazo debe tener la clase deck-4p');
             assert.strictEqual(is4PNoOverlap.overlapLeft, false, 'El mazo en 4P no debe solapar las cartas del rival izquierdo');
             assert.strictEqual(is4PNoOverlap.overlapRight, false, 'El mazo en 4P no debe solapar las cartas del rival derecho');
+            assert.strictEqual(is4PNoOverlap.overlapPlayer, false, 'El mazo en 4P no debe solapar las cartas del jugador');
 
             await page4P.close();
         });

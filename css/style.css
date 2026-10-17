@@ -258,11 +258,11 @@ body, html {
     z-index: 2500;
 }
 
-/* --- MODO 4 JUGADORES (2 vs 2): Cuadrantes limpios para no solapar con las manos izquierda/derecha --- */
+/* --- MODO 4 JUGADORES (2 vs 2): Cuadrantes limpios para no solapar con las manos ni paneles --- */
 .deck-4p.deck-seat-0 {
     top: auto !important;
-    bottom: 20% !important;
-    right: 18% !important;
+    bottom: 35% !important;
+    right: 20% !important;
     left: auto !important;
     transform: none !important;
 }
@@ -285,8 +285,8 @@ body, html {
 
 .deck-4p.deck-seat-3 {
     top: auto !important;
-    bottom: 20% !important;
-    left: 18% !important;
+    bottom: 35% !important;
+    left: 20% !important;
     right: auto !important;
     transform: none !important;
 }
@@ -1043,11 +1043,11 @@ body, html {
         transform: translateY(-50%) !important;
     }
 
-    /* Mazo en 4P para Móvil: Ubicado en los 4 cuadrantes libres sin tapar los rivales de los costados */
+    /* Mazo en 4P para Móvil: Elevado sobre la mano del jugador para no solapar nunca sus cartas */
     .deck-4p.deck-seat-0 {
         top: auto !important;
-        bottom: 21% !important;
-        right: 14% !important;
+        bottom: calc(130px + var(--card-height, 155px) + 12px) !important;
+        right: 18px !important;
         left: auto !important;
         transform: none !important;
     }
@@ -1070,8 +1070,8 @@ body, html {
 
     .deck-4p.deck-seat-3 {
         top: auto !important;
-        bottom: 21% !important;
-        left: 14% !important;
+        bottom: calc(130px + var(--card-height, 155px) + 12px) !important;
+        left: 18px !important;
         right: auto !important;
         transform: none !important;
     }
@@ -1187,7 +1187,7 @@ body, html {
 
     .rival-left-hand {
         left: 6px !important;
-        top: 44% !important;
+        top: 39% !important;
         transform: translateY(-50%) !important;
         gap: 0px !important;
     }
@@ -1201,7 +1201,7 @@ body, html {
 
     .rival-right-hand {
         right: 6px !important;
-        top: 44% !important;
+        top: 39% !important;
         transform: translateY(-50%) !important;
         gap: 0px !important;
     }

@@ -1,6 +1,6 @@
 {
   "name": "truco-uruguayo",
-  "version": "2.8.8",
+  "version": "2.8.9",
   "description": "Simulador de Truco Uruguayo Premium con Inteligencia Artificial y Multijugador en Tiempo Real",
   "main": "js/app.js",
   "scripts": {

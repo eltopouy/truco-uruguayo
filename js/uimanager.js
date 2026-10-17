@@ -74,21 +74,6 @@ window.UI = {
                 </div>`;
         }
 
-        // Piezas activas de la ronda
-        let piezasInfo = '';
-        if (game.piezasActivas && game.piezasActivas.length > 0) {
-            const nombresP = game.piezasActivas.map(v => {
-                if (v === 2) return '2';
-                if (v === 4) return '4';
-                if (v === 5) return '5';
-                if (v === 11) return 'CAB (Perico)';
-                if (v === 10) return 'SOT (Perica)';
-                if (v === 12) return 'REY (Alcahuete)';
-                return v;
-            });
-            piezasInfo = `<span style="color:#888; font-size:0.75rem;">Piezas: ${nombresP.join(' > ')}</span>`;
-        }
-
         return `
         <div id="modal-game-context" style="
             background: rgba(0,0,0,0.4);
@@ -113,21 +98,13 @@ window.UI = {
                 position: relative;
                 image-rendering: crisp-edges;
                 image-rendering: pixelated;
-            ">
-                ${(typeof game !== 'undefined' && game.config && game.config.mostrarAyuda) ? `
-                <div style="
-                    position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
-                    background:var(--gold); color:black; font-size:0.55rem; font-weight:900;
-                    padding:1px 5px; border-radius:3px; white-space:nowrap; letter-spacing:0.5px;
-                ">MUESTRA</div>` : ''}
-            </div>
-            <!-- Info de la partida -->
+            "></div>
+            <!-- Info de la partida limpia -->
             <div style="display:flex; flex-direction:column; gap:5px; min-width:0;">
                 <div style="display:flex; align-items:center; gap:6px;">
                     <span style="color:#ccc; font-size:0.8rem;">Palo:</span>
                     <span style="color:${color}; font-weight:bold; font-size:0.9rem;">${muestra.palo}</span>
                 </div>
-                ${piezasInfo}
                 ${envidoInfo}
             </div>
         </div>`;
@@ -254,6 +231,7 @@ window.UI = {
     },
 
     confirm: function(msg, title = "Decisión", textYes = "¡Quiero!", textNo = "No quiero") {
+        if (typeof title === 'function') title = "Decisión";
         this._cleanupPending(false);
         return new Promise((resolve) => {
             this._currentResolver = resolve;
