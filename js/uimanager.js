@@ -114,11 +114,12 @@ window.UI = {
                 image-rendering: crisp-edges;
                 image-rendering: pixelated;
             ">
+                ${(typeof game !== 'undefined' && game.config && game.config.mostrarAyuda) ? `
                 <div style="
                     position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
                     background:var(--gold); color:black; font-size:0.55rem; font-weight:900;
                     padding:1px 5px; border-radius:3px; white-space:nowrap; letter-spacing:0.5px;
-                ">MUESTRA</div>
+                ">MUESTRA</div>` : ''}
             </div>
             <!-- Info de la partida -->
             <div style="display:flex; flex-direction:column; gap:5px; min-width:0;">
@@ -252,7 +253,7 @@ window.UI = {
         });
     },
 
-    confirm: function(msg, title = "Decisión") {
+    confirm: function(msg, title = "Decisión", textYes = "¡Quiero!", textNo = "No quiero") {
         this._cleanupPending(false);
         return new Promise((resolve) => {
             this._currentResolver = resolve;
@@ -262,19 +263,19 @@ window.UI = {
             this._pendingTimeout = setTimeout(() => {
                 if (this.modal.style.display === 'block' && this.title.innerText === title) {
                     this._hide();
-                    this._cleanupPending(false); // Automáticamente "Cancela/No Quiero"
+                    this._cleanupPending(false); // Automáticamente "No quiero"
                 }
             }, 25000);
             
             const btnYes = document.createElement('button');
             btnYes.className = 'btn-action btn-truco';
-            btnYes.innerText = 'Aceptar / Quiero';
+            btnYes.innerText = textYes || '¡Quiero!';
             
             const btnNo = document.createElement('button');
             btnNo.className = 'btn-action';
             btnNo.style.background = 'linear-gradient(135deg, #7f8c8d, #34495e)';
             btnNo.style.boxShadow = '0 4px 0 #1a252f';
-            btnNo.innerText = 'Cancelar / No Quiero';
+            btnNo.innerText = textNo || 'No quiero';
 
             btnYes.onclick = () => {
                 this._hide();

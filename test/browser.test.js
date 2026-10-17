@@ -574,6 +574,66 @@ const assert = require('assert');
             await page.close();
         });
 
+        // TEST 12: Leyendas opcionales en cartas y diálogos de confirmación auténticos (¡Quiero! / No quiero)
+        await runTest('Leyendas en cartas son opcionales (desactivadas por defecto) y confirmaciones usan ¡Quiero! / No quiero', async () => {
+            const page = await browser.newPage();
+            await page.goto(filePath);
+            await page.click('text=1 vs 1');
+            await page.waitForTimeout(2000);
+
+            // Cerrar posible alerta inicial
+            const isModal = await page.isVisible('#modal-custom');
+            if (isModal) {
+                const btnOk = await page.$('#modal-buttons button');
+                if (btnOk) await btnOk.click();
+                await page.waitForTimeout(300);
+            }
+
+            // 1. Por defecto, ninguna carta en mano debe tener la etiqueta de texto 'PIEZA'
+            const labelsPorDefecto = await page.$$('.player-hand .pieza-label-pixel');
+            assert.strictEqual(labelsPorDefecto.length, 0, 'Por defecto no deben mostrarse leyendas "PIEZA" sobre las cartas');
+
+            // 2. Verificar que el diálogo de confirmación usa "¡Quiero!" y "No quiero"
+            const confirmPromise = page.evaluate(() => {
+                return window.UI.confirm('¿Querés Truco?');
+            });
+            await page.waitForSelector('#modal-custom', { state: 'visible' });
+
+            const buttons = await page.$$('#modal-buttons button');
+            assert.strictEqual(buttons.length, 2, 'El diálogo de confirmación debe tener 2 botones');
+
+            const textYes = await buttons[0].textContent();
+            const textNo = await buttons[1].textContent();
+
+            assert(textYes.includes('¡Quiero!'), `El botón afirmativo debe decir "¡Quiero!" (actual: "${textYes}")`);
+            assert(textNo.includes('No quiero'), `El botón negativo debe decir "No quiero" (actual: "${textNo}")`);
+
+            // Confirmar clic en ¡Quiero!
+            await buttons[0].click();
+            const confirmResult = await confirmPromise;
+            assert.strictEqual(confirmResult, true, 'Hacer clic en ¡Quiero! debe resolver afirmativamente');
+
+            // 3. Abrir configuración y activar la casilla de ayudas visuales
+            await page.evaluate(() => window.abrirConfig && window.abrirConfig());
+            const configVisible = await page.isVisible('#modal-config');
+            assert.strictEqual(configVisible, true, 'El modal de configuración debe abrirse');
+
+            // Marcar checkbox de ayudas y guardar
+            await page.check('#config-ayudas');
+            await page.evaluate(() => window.guardarConfig && window.guardarConfig());
+
+            // Forzar una pieza en mano y re-renderizar
+            const pieceLabelCount = await page.evaluate(() => {
+                window.game.players[0].hand[0] = { valor: 2, palo: 'Espada', esPieza: true };
+                window.renderJuego();
+                const labels = document.querySelectorAll('.player-hand .pieza-label-pixel');
+                return labels.length;
+            });
+            assert(pieceLabelCount >= 1, 'Al activar las ayudas en configuración, debe mostrarse la leyenda PIEZA en la carta correspondiente');
+
+            await page.close();
+        });
+
     } finally {
         if (browser) await browser.close();
     }

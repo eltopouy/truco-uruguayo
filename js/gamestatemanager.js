@@ -134,7 +134,7 @@ class GameStateManager {
             limitePuntos: 30,
             nombreJugador: "TÚ",
             nombreOponente: "RIVAL",
-            mostrarAyuda: true
+            mostrarAyuda: false // Por defecto desactivado para realismo físico en las cartas (configurable en Ajustes)
         };
 
         // El Rey (12) actúa como comodín (Alcahuete) si la muestra es una pieza base

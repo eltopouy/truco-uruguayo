@@ -25,6 +25,9 @@ function cargarConfig() {
             if (typeof cfg.vibracion !== 'undefined') {
                 game.config.vibration = !!cfg.vibracion;
             }
+            if (typeof cfg.mostrarAyuda !== 'undefined') {
+                game.config.mostrarAyuda = !!cfg.mostrarAyuda;
+            }
         }
     } catch(e) {}
 }
@@ -339,7 +342,7 @@ function crearCartaDOM(carta, bocaAbajo = false, isMuestra = false) {
         div.style.backgroundPosition = 'center';
         div.style.backgroundColor = 'transparent';
         
-        if (carta.esPieza) {
+        if (carta.esPieza && typeof game !== 'undefined' && game.config && game.config.mostrarAyuda) {
             div.classList.add('pieza-glowing');
             const piezaTag = document.createElement('div');
             piezaTag.className = 'pieza-label-pixel';
@@ -1760,10 +1763,13 @@ window.guardarConfig = function() {
     const rawLim = parseInt(document.getElementById('config-limite').value);
     const soundEnabled = document.getElementById('config-sound').checked;
     const vibrateEnabled = document.getElementById('config-vibrate').checked;
+    const ayudasEl = document.getElementById('config-ayudas');
+    const ayudasEnabled = ayudasEl ? ayudasEl.checked : false;
 
     game.config.nombreJugador = rawYo.substring(0, 20) || "TÚ";
     game.config.nombreOponente = rawRival.substring(0, 20) || "RIVAL";
     game.config.limitePuntos = (rawLim === 40) ? 40 : 30;
+    game.config.mostrarAyuda = ayudasEnabled;
     
     // Config de Sonido y Vibración
     if (window.audio && typeof window.audio.setMuted === 'function') {
@@ -1782,7 +1788,8 @@ window.guardarConfig = function() {
                 nombreOponente: game.config.nombreOponente,
                 limitePuntos: game.config.limitePuntos,
                 sonido: soundEnabled,
-                vibracion: vibrateEnabled
+                vibracion: vibrateEnabled,
+                mostrarAyuda: ayudasEnabled
             }));
         }
     } catch(e) {}
@@ -1813,6 +1820,11 @@ window.abrirConfig = function() {
         document.getElementById('config-sound').checked = !window.audio.muted;
     }
     document.getElementById('config-vibrate').checked = !!game.config.vibration;
+    
+    const elAyudas = document.getElementById('config-ayudas');
+    if (elAyudas) {
+        elAyudas.checked = !!game.config.mostrarAyuda;
+    }
 
     document.getElementById('modal-config').style.display = 'block';
     document.getElementById('overlay-custom').style.display = 'block';
